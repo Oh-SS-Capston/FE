@@ -1,0 +1,11 @@
+{
+  "name": "capston",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Oh! SS - Frontend",
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "preview": "cd frontend && npm run preview"
+  }
+}
