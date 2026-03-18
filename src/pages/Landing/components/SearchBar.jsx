@@ -15,7 +15,7 @@ export default function SearchBar({ repoUrl, onChange, onAnalyze }) {
         value={repoUrl}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Paste GitHub repository URL here..."
+        placeholder="분석 url 형식: https://github.com/facebook/react.git"
         className="w-full bg-transparent py-6 px-6 text-xl text-white outline-none placeholder:text-gray-600 font-medium"
       />
       <button
