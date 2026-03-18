@@ -8,19 +8,22 @@ export default function SearchHistory({ items, onClickItem, onClear }) {
           <div className="p-2 bg-white/5 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
             <History size={24} className="text-cyan-300" />
           </div>
-          <h3 className="text-2xl font-bold tracking-wide">Recent Explorations</h3>
+          <h3 className="text-2xl font-bold tracking-wide text-white">
+            Recent Explorations
+          </h3>
         </div>
 
         <button
           onClick={onClear}
-          className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 hover:bg-white/10"
         >
-          <Trash2 size={14} /> Clear
+          <Trash2 size={16} />
+          Clear
         </button>
       </div>
 
       {items.length === 0 ? (
-        <div className="p-5 bg-white/[0.02] backdrop-blur-md border border-white/5 rounded-2xl text-gray-500">
+        <div className="rounded-2xl border border-white/10 bg-[#0a0a1a]/60 p-6 text-white/70">
           아직 검색 기록이 없어요. 레포를 분석해보세요!
         </div>
       ) : (
@@ -29,11 +32,9 @@ export default function SearchHistory({ items, onClickItem, onClear }) {
             <button
               key={repo}
               onClick={() => onClickItem(repo)}
-              className="group w-full text-left p-5 bg-white/[0.02] backdrop-blur-md border border-white/5 rounded-2xl hover:bg-white/[0.06] hover:border-white/20 transition-all flex justify-between items-center shadow-[0_4px_20px_rgba(0,0,0,0.2)]"
+              className="w-full text-left rounded-2xl border border-white/10 bg-[#0a0a1a]/60 p-4 text-white hover:border-purple-400/40 hover:bg-[#0a0a1a]/80 transition"
             >
-              <span className="text-lg text-gray-400 group-hover:text-white transition-colors font-medium">
-                {repo}
-              </span>
+              {repo}
             </button>
           ))}
         </div>

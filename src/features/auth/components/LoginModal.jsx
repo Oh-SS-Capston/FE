@@ -20,44 +20,95 @@ export default function LoginModal({ onClose }) {
     onClose();
   };
 
+  const inputClass =
+    "w-full bg-white/[0.06] border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-gray-500 outline-none focus:border-purple-500/50 focus:shadow-[0_0_20px_rgba(168,85,247,0.2)] transition-all";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur">
-      <div className="relative w-[420px] rounded-2xl border border-white/10 bg-[#0a0a1a]/90 p-6 text-white shadow-[0_0_40px_rgba(124,58,237,0.25)]">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 rounded-lg p-2 hover:bg-white/10"
-        >
-          <X size={18} />
-        </button>
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="login-title"
+    >
+      {/* 백드롭 */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden />
 
-        <h2 className="mb-6 text-2xl font-bold">로그인</h2>
+      {/* 모달 카드 */}
+      <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#0a0a1a]/90 shadow-[0_0_50px_rgba(0,0,0,0.4)] backdrop-blur-xl overflow-hidden">
+        {/* 상단 글로우 라인 */}
+        <div
+          className="absolute top-0 left-0 right-0 h-px opacity-60"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent, rgba(34,211,238,0.5), rgba(168,85,247,0.5), transparent)",
+          }}
+        />
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="mb-2 block text-sm text-white/70">이메일</label>
-            <input
-              className="w-full rounded-xl border border-white/10 bg-white/5 p-3 outline-none focus:border-purple-400"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="example@email.com"
-            />
+        <div className="p-8">
+          <div className="flex items-center justify-between mb-8">
+            <h2
+              id="login-title"
+              className="text-xl font-bold bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 bg-clip-text text-transparent"
+            >
+              로그인
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+              aria-label="닫기"
+            >
+              <X size={20} />
+            </button>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm text-white/70">비밀번호</label>
-            <input
-              type="password"
-              className="w-full rounded-xl border border-white/10 bg-white/5 p-3 outline-none focus:border-purple-400"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label htmlFor="login-email" className="block text-sm font-medium text-gray-400 mb-2">
+                이메일
+              </label>
+              <input
+                id="login-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="example@email.com"
+                className={inputClass}
+                autoComplete="email"
+              />
+            </div>
+            <div>
+              <label htmlFor="login-password" className="block text-sm font-medium text-gray-400 mb-2">
+                비밀번호
+              </label>
+              <input
+                id="login-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="비밀번호를 입력하세요"
+                className={inputClass}
+                autoComplete="current-password"
+              />
+            </div>
 
-          <button className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-cyan-400 p-3 font-semibold hover:opacity-90">
-            로그인
-          </button>
-        </form>
+            <div className="pt-4 flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-3 px-4 rounded-xl border border-white/20 text-gray-300 hover:text-white hover:bg-white/5 transition-colors font-medium"
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 shadow-[0_0_20px_rgba(124,58,237,0.4)] hover:shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all active:scale-[0.98]"
+              >
+                로그인
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

@@ -1,18 +1,10 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Github, Star } from "lucide-react";
+import { History, Star } from "lucide-react";
 
 import SearchBar from "./components/SearchBar";
 import SearchHistory from "./components/SearchHistory";
 import { addHistory, clearHistory, getHistory } from "../../features/search/model/searchHistoryStore";
-
-// 별 위치 고정
-const STAR_SEED = 42;
-const mulberry32 = (a) => () => ((a += 0x6d2b79f5) | 0) >>> 0;
-const seededRandom = (seed) => {
-  const next = mulberry32(seed);
-  return () => next() / 0xffffffff;
-};
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -38,56 +30,45 @@ export default function LandingPage() {
     if (!repo) return;
     const next = addHistory(repo);
     setHistory(next);
-
-    // 기존과 동일: /analyze 로 이동 + state로 repo 전달
     navigate("/analyze", { state: { repo } });
   };
 
-  const starStyle = useMemo(() => {
-    const rnd = seededRandom(STAR_SEED);
-    const shadows = Array.from({ length: 120 }, () => {
-      const x = rnd() * 100;
-      const y = rnd() * 100;
-      const blur = rnd() * 1.5;
-      const spread = rnd() * 1;
-      const alpha = 0.15 + rnd() * 0.35;
-      return `${x}vw ${y}vh ${blur}px ${spread}px rgba(255,255,255,${alpha})`;
-    }).join(", ");
-    return { boxShadow: shadows };
-  }, []);
-
   return (
-    <div className="relative min-h-[calc(100vh-56px)] overflow-hidden bg-[#050512] text-white">
-      {/* stars */}
-      <div className="pointer-events-none absolute inset-0 opacity-70">
-        <div className="absolute left-0 top-0 h-[2px] w-[2px]" style={starStyle} />
-      </div>
+    <div className="relative z-10">
+      <main className="pt-40 pb-20 px-6 max-w-6xl mx-auto flex flex-col items-center">
 
-      {/* gradient blobs */}
-      <div className="pointer-events-none absolute -left-32 -top-32 h-[420px] w-[420px] rounded-full bg-purple-600/25 blur-3xl" />
-      <div className="pointer-events-none absolute -right-32 top-24 h-[420px] w-[420px] rounded-full bg-cyan-400/20 blur-3xl" />
-
-      <div className="mx-auto flex max-w-[1200px] flex-col items-center px-6 py-16">
-        {/* Hero */}
-        <div className="w-full max-w-[920px] rounded-3xl border border-white/10 bg-white/5 p-10 backdrop-blur">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <Github className="text-purple-300" />
-            </div>
-            <h1 className="text-4xl font-extrabold tracking-tight">
-              OSS Documentation, Generated from Code
-            </h1>
-          </div>
-
-          <p className="text-white/70 text-lg mb-10">
-            GitHub 레포 URL을 넣으면, Public API / Diagram / Evidence 기반 설명을 탐색할 수 있어요.
+        {/* Hero Section */}
+        <section className="text-center mb-20">
+          <h2 className="text-2xl md:text-4xl font-extrabold mb-8 tracking-tight leading-tight">
+            Explore the <br className="md:hidden" />
+            <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-500 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(59,130,246,0.6)]">
+              Galaxy
+            </span>{" "}
+            of OSS (Open Source Software)
+          </h2>
+          <p className="text-sm md:text-base text-gray-400 font-light max-w-3xl mx-auto leading-relaxed">
+            GitHub 레포지토리를 분석하여{" "}
+            <span className="text-purple-300 font-semibold drop-shadow-[0_0_10px_rgba(168,85,247,0.4)]">
+              시각적인 우주
+            </span>
+            로 펼쳐드립니다.
           </p>
+        </section>
 
-          <SearchBar repoUrl={repoUrl} onChange={setRepoUrl} onAnalyze={() => handleAnalyze()} />
+        {/* SearchBar */}
+        <div className="w-full max-w-4xl mb-32 relative">
+          <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 rounded-full blur-xl opacity-30 animate-tilt" />
+          <SearchBar
+            repoUrl={repoUrl}
+            onChange={setRepoUrl}
+            onAnalyze={() => handleAnalyze()}
+          />
         </div>
 
-        {/* Bottom sections */}
-        <div className="w-full grid md:grid-cols-2 gap-16 mt-16">
+        {/* Bottom Sections */}
+        <div className="w-full grid md:grid-cols-2 gap-16">
+
+          {/* 검색 기록 */}
           <SearchHistory
             items={history}
             onClickItem={(repo) => handleAnalyze(repo)}
@@ -97,29 +78,45 @@ export default function LandingPage() {
             }}
           />
 
-          {/* Recommendations (기존 하드코딩 섹션 느낌 유지) */}
+          {/* 추천 레포지토리 */}
           <section>
             <div className="flex items-center gap-3 mb-8">
-              <div className="p-2 bg-white/5 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(34,211,238,0.15)]">
-                <Star size={24} className="text-purple-200" />
+              <div className="p-2 bg-white/5 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
+                <Star size={24} className="text-yellow-300" />
               </div>
-              <h3 className="text-2xl font-bold tracking-wide">Recommendations</h3>
+              <h3 className="text-2xl font-bold tracking-wide">Featured Planets</h3>
             </div>
 
-            <div className="space-y-4">
-              {["facebook/react", "spring-projects/spring-boot", "apache/kafka"].map((repo) => (
+            <div className="grid grid-cols-1 gap-4">
+              {[
+                { name: "facebook/react",             lang: "JavaScript", star: "220k", color: "from-blue-400 to-cyan-300"    },
+                { name: "spring-projects/spring-boot", lang: "Java",       star: "72k",  color: "from-green-400 to-emerald-300" },
+                { name: "apache/kafka",                lang: "Java",       star: "28k",  color: "from-orange-400 to-yellow-300" },
+              ].map((item) => (
                 <button
-                  key={repo}
-                  onClick={() => handleAnalyze(repo)}
-                  className="w-full text-left rounded-2xl border border-white/10 bg-[#0a0a1a]/60 p-4 text-white hover:border-cyan-300/40 hover:bg-[#0a0a1a]/80 transition"
+                  key={item.name}
+                  onClick={() => handleAnalyze(item.name)}
+                  className="group p-6 bg-gradient-to-br from-white/[0.03] to-transparent backdrop-blur-md border border-white/10 rounded-3xl hover:border-purple-500/40 hover:shadow-[0_0_30px_rgba(168,85,247,0.2)] transition-all text-left relative overflow-hidden"
                 >
-                  {repo}
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="flex justify-between items-start mb-3 relative z-10">
+                    <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 group-hover:from-purple-300 group-hover:to-cyan-300 transition-all">
+                      {item.name}
+                    </span>
+                    <span className={`text-xs font-bold px-3 py-1.5 rounded-full bg-gradient-to-r ${item.color} text-[#050510] shadow-sm`}>
+                      {item.lang}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-sm text-gray-500 font-medium relative z-10">
+                    <Star size={14} className="text-yellow-500" fill="currentColor" /> {item.star} stars
+                  </div>
                 </button>
               ))}
             </div>
           </section>
+
         </div>
-      </div>
+      </main>
     </div>
   );
 }
