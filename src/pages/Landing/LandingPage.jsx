@@ -19,9 +19,8 @@ export default function LandingPage() {
     const trimmed = input.trim();
     if (!trimmed) return null;
     const match =
-      trimmed.match(/github\.com[/]([^/]+)[/]([^/?#]+)/) ||
-      trimmed.match(/^([^/]+)[/]([^/]+)$/);
-    if (!match) return trimmed;
+      trimmed.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\.git$/)
+    if (!match) return null;
     return `${match[1]}/${match[2]}`;
   };
 
