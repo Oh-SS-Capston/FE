@@ -107,7 +107,7 @@ export default function AnalyPage() {
 
   return (
     <div className="relative z-10">
-      <div className="max-w-4xl mx-auto px-6 py-10 space-y-8">
+      <div className="w-[90vw] mx-auto px-6 py-10 space-y-8">
         {/* Back 버튼 */}
         <button
           onClick={() => navigate("/")}
@@ -123,7 +123,7 @@ export default function AnalyPage() {
           error={repoInfoError}
         />
 
-        <div className="grid lg:grid-cols-2 gap-8">
+        <div className="flex flex-col gap-8">
           <ClassDiagramSection diagramSvg={diagramSvg} />
           <DirectoryStructureSection
             tree={tree}
