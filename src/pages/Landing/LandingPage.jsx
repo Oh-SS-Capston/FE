@@ -18,10 +18,17 @@ export default function LandingPage() {
   const parseRepo = (input) => {
     const trimmed = input.trim();
     if (!trimmed) return null;
-    const match =
-      trimmed.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\.git$/)
-    if (!match) return null;
-    return `${match[1]}/${match[2]}`;
+    let match =
+      trimmed.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\.git$/);
+    if (match) return `${match[1]}/${match[2]}`;
+
+    match = trimmed.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)$/);
+    if (match) return `${match[1]}/${match[2]}`;
+
+    match = trimmed.match(/^([^/]+)\/([^/]+)$/);
+    if (match) return `${match[1]}/${match[2]}`;
+
+    return null;
   };
 
   const handleAnalyze = (raw) => {
