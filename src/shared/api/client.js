@@ -11,23 +11,44 @@ export class ApiError extends Error {
 }
 
 export async function apiClient(path, options = {}) {
-  const { body, headers, ...restOptions } = options;
+  const {
+    body,
+    headers,
+    skipAuthRefresh = false,
+    ...restOptions
+  } = options;
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...restOptions,
+  const makeRequest = () =>
+    fetch(`${API_BASE_URL}${path}`, {
+      ...restOptions,
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...headers,
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
 
-    // 로그인은 팀원이 처리하더라도,
-    // 백엔드 인증 쿠키를 보내려면 이 옵션은 필요함
-    credentials: "include",
+  let response = await makeRequest();
 
-    headers: {
-      Accept: "application/json",
-      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-      ...headers,
-    },
+  if (
+    response.status === 401 &&
+    !skipAuthRefresh &&
+    path !== "/api/v1/auth/refresh"
+  ) {
+    const refreshResponse = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    });
 
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+    if (refreshResponse.ok) {
+      response = await makeRequest();
+    }
+  }
 
   const contentType = response.headers.get("content-type") ?? "";
 
