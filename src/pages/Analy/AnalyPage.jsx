@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
 import RepoInfoSection from "./components/RepoInfoSection";
@@ -9,7 +9,11 @@ import DirectoryStructureSection from "./components/DirectoryStructureSection";
 export default function AnalyPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const repo = location.state?.repo;
+  const [searchParams] = useSearchParams();
+
+  const run = location.state?.run;
+  const runId = run?.runId ?? searchParams.get("runId");
+  const repo = location.state?.repo ?? searchParams.get("repo");
 
   const [repoInfo, setRepoInfo] = useState(null);
   const [repoInfoLoading, setRepoInfoLoading] = useState(false);
