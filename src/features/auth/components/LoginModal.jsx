@@ -1,27 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { useEffect } from "react";
+import { LogIn, X } from "lucide-react";
+import { useAuth } from "../model/AuthContext";
 
 export default function LoginModal({ onClose }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const { loginWithGoogle } = useAuth();
 
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape") onClose();
     };
+
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
   }, [onClose]);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // TODO: 백엔드 API 연결 시 여기서 호출
-    alert(`로그인 시도: ${email}`);
-    onClose();
-  };
-
-  const inputClass =
-    "w-full bg-white/[0.06] border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-gray-500 outline-none focus:border-purple-500/50 focus:shadow-[0_0_20px_rgba(168,85,247,0.2)] transition-all";
 
   return (
     <div
@@ -30,12 +21,13 @@ export default function LoginModal({ onClose }) {
       aria-modal="true"
       aria-labelledby="login-title"
     >
-      {/* 백드롭 */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden
+      />
 
-      {/* 모달 카드 */}
       <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#0a0a1a]/90 shadow-[0_0_50px_rgba(0,0,0,0.4)] backdrop-blur-xl overflow-hidden">
-        {/* 상단 글로우 라인 */}
         <div
           className="absolute top-0 left-0 right-0 h-px opacity-60"
           style={{
@@ -52,6 +44,7 @@ export default function LoginModal({ onClose }) {
             >
               로그인
             </h2>
+
             <button
               type="button"
               onClick={onClose}
@@ -62,52 +55,18 @@ export default function LoginModal({ onClose }) {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label htmlFor="login-email" className="block text-sm font-medium text-gray-400 mb-2">
-                이메일
-              </label>
-              <input
-                id="login-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="example@email.com"
-                className={inputClass}
-                autoComplete="email"
-              />
-            </div>
-            <div>
-              <label htmlFor="login-password" className="block text-sm font-medium text-gray-400 mb-2">
-                비밀번호
-              </label>
-              <input
-                id="login-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="비밀번호를 입력하세요"
-                className={inputClass}
-                autoComplete="current-password"
-              />
-            </div>
+          <p className="mb-6 text-sm text-gray-400 leading-relaxed">
+            Google 계정으로 로그인하면 OSS 분석 요청을 생성할 수 있습니다.
+          </p>
 
-            <div className="pt-4 flex gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 py-3 px-4 rounded-xl border border-white/20 text-gray-300 hover:text-white hover:bg-white/5 transition-colors font-medium"
-              >
-                취소
-              </button>
-              <button
-                type="submit"
-                className="flex-1 py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 shadow-[0_0_20px_rgba(124,58,237,0.4)] hover:shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all active:scale-[0.98]"
-              >
-                로그인
-              </button>
-            </div>
-          </form>
+          <button
+            type="button"
+            onClick={loginWithGoogle}
+            className="w-full py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 shadow-[0_0_20px_rgba(124,58,237,0.4)] hover:shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+          >
+            <LogIn size={18} />
+            Google로 로그인
+          </button>
         </div>
       </div>
     </div>

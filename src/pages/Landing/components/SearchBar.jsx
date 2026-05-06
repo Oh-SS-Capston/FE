@@ -1,9 +1,15 @@
-import { Search } from "lucide-react";
-import { Github } from "lucide-react";
+import { Github, Loader2, Search } from "lucide-react";
 
-export default function SearchBar({ repoUrl, onChange, onAnalyze }) {
+export default function SearchBar({
+  repoUrl,
+  onChange,
+  onAnalyze,
+  loading = false,
+}) {
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") onAnalyze();
+    if (e.key === "Enter" && !loading) {
+      onAnalyze();
+    }
   };
 
   return (
@@ -11,18 +17,32 @@ export default function SearchBar({ repoUrl, onChange, onAnalyze }) {
       <div className="pl-8 text-gray-500">
         <Github size={28} />
       </div>
+
       <input
         value={repoUrl}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
+        disabled={loading}
         placeholder="분석 url 형식: https://github.com/facebook/react.git"
-        className="w-full bg-transparent py-6 px-6 text-xl text-white outline-none placeholder:text-gray-600 font-medium"
+        className="w-full bg-transparent py-6 px-6 text-xl text-white outline-none placeholder:text-gray-600 font-medium disabled:opacity-60"
       />
+
       <button
         onClick={onAnalyze}
-        className="mr-3 px-10 py-4 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 rounded-full font-bold text-lg shadow-[0_0_20px_rgba(124,58,237,0.4)] hover:shadow-[0_0_35px_rgba(124,58,237,0.6)] transition-all active:scale-95 flex items-center gap-2"
+        disabled={loading}
+        className="mr-3 px-10 py-4 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 rounded-full font-bold text-lg shadow-[0_0_20px_rgba(124,58,237,0.4)] hover:shadow-[0_0_35px_rgba(124,58,237,0.6)] transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        <Search size={20} className="stroke-[3px]" /> Analyze
+        {loading ? (
+          <>
+            <Loader2 size={20} className="animate-spin" />
+            Analyzing
+          </>
+        ) : (
+          <>
+            <Search size={20} className="stroke-[3px]" />
+            Analyze
+          </>
+        )}
       </button>
     </div>
   );
