@@ -9,15 +9,18 @@ import {
   clearHistory,
   getHistory,
 } from "../../features/search/model/searchHistoryStore";
+import { useAuth } from "../../features/auth/model/AuthContext";
 import { createRepoRun } from "../../features/run/api/runApi";
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { authLoading, isAuthenticated } = useAuth();
 
   const [repoUrl, setRepoUrl] = useState("");
   const [history, setHistory] = useState([]);
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
   const [analyzeError, setAnalyzeError] = useState(null);
+  const analyzeDisabled = authLoading || !isAuthenticated;
 
   useEffect(() => {
     setHistory(getHistory());
@@ -60,6 +63,10 @@ export default function LandingPage() {
   };
 
   const handleAnalyze = async (raw) => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     const normalized = normalizeGithubRepo(raw ?? repoUrl);
 
     if (!normalized) {
@@ -133,6 +140,8 @@ export default function LandingPage() {
             onChange={setRepoUrl}
             onAnalyze={() => handleAnalyze()}
             loading={analyzeLoading}
+            disabled={analyzeDisabled}
+            loginRequired={!authLoading && !isAuthenticated}
           />
 
           {analyzeError && (
