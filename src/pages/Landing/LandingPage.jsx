@@ -9,15 +9,18 @@ import {
   clearHistory,
   getHistory,
 } from "../../features/search/model/searchHistoryStore";
+import { useAuth } from "../../features/auth/model/AuthContext";
 import { createRepoRun } from "../../features/run/api/runApi";
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { authLoading, isAuthenticated } = useAuth();
 
   const [repoUrl, setRepoUrl] = useState("");
   const [history, setHistory] = useState([]);
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
   const [analyzeError, setAnalyzeError] = useState(null);
+  const analyzeDisabled = authLoading || !isAuthenticated;
 
   useEffect(() => {
     setHistory(getHistory());
@@ -60,6 +63,10 @@ export default function LandingPage() {
   };
 
   const handleAnalyze = async (raw) => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     const normalized = normalizeGithubRepo(raw ?? repoUrl);
 
     if (!normalized) {
@@ -106,7 +113,7 @@ export default function LandingPage() {
 
   return (
     <div className="relative z-10">
-      <main className="pt-40 pb-20 px-6 max-w-6xl mx-auto flex flex-col items-center">
+      <main className="w-full max-w-6xl mx-auto flex flex-col items-center px-6 pt-40 pb-20">
         <section className="text-center mb-20">
           <h2 className="text-2xl md:text-4xl font-extrabold mb-8 tracking-tight leading-tight">
             Explore the <br className="md:hidden" />
@@ -133,6 +140,8 @@ export default function LandingPage() {
             onChange={setRepoUrl}
             onAnalyze={() => handleAnalyze()}
             loading={analyzeLoading}
+            disabled={analyzeDisabled}
+            loginRequired={!authLoading && !isAuthenticated}
           />
 
           {analyzeError && (
@@ -153,7 +162,7 @@ export default function LandingPage() {
           />
 
           <section>
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-3 mb-8 min-w-0">
               <div className="p-2 bg-white/5 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
                 <Star size={24} className="text-yellow-300" />
               </div>
@@ -192,8 +201,8 @@ export default function LandingPage() {
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                  <div className="flex justify-between items-start mb-3 relative z-10">
-                    <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 group-hover:from-purple-300 group-hover:to-cyan-300 transition-all">
+                  <div className="flex justify-between items-start gap-3 mb-3 relative z-10 min-w-0">
+                    <span className="min-w-0 truncate text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 group-hover:from-purple-300 group-hover:to-cyan-300 transition-all">
                       {item.name}
                     </span>
 

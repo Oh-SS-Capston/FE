@@ -37,7 +37,7 @@ export function AppShell() {
 
   return (
     <div
-      className="fixed inset-0 w-full h-full min-h-screen text-white selection:bg-purple-500/50 overflow-auto"
+      className="fixed inset-0 w-full h-full min-h-screen text-white selection:bg-purple-500/50 overflow-y-auto overflow-x-hidden"
       style={{
         background: "radial-gradient(ellipse at top, #0a0b1f 0%, #030306 50%, #000000 100%)",
       }}
