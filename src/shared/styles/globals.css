@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+* {
+  box-sizing: border-box;
+}
+
 /* A2z 폰트 (에이투지체) */
 @font-face {
   font-family: 'A2z';
@@ -70,6 +74,7 @@ html, body {
   min-height: 100vh;
   height: 100%;
   width: 100%;
+  overflow-x: hidden;
   background-color: #030306;
   color: #e5e7eb;
   font-family: 'A2z', sans-serif;
