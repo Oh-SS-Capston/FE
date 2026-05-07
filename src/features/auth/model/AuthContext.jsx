@@ -3,6 +3,7 @@ import {
   getCurrentUser,
   logout as logoutRequest,
   redirectToGoogleLogin,
+  redirectToGoogleSignup,
 } from "../api/authApi";
 
 const AuthContext = createContext(null);
@@ -33,11 +34,16 @@ export function AuthProvider({ children }) {
     redirectToGoogleLogin();
   }, []);
 
+  const signupWithGoogle = useCallback(() => {
+    redirectToGoogleSignup();
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await logoutRequest();
     } finally {
       setUser(null);
+      window.location.replace("/"); // 로그아웃 후 화면갱신용으로 메인으로 보냄
     }
   }, []);
 
@@ -47,10 +53,11 @@ export function AuthProvider({ children }) {
       authLoading,
       isAuthenticated: Boolean(user),
       loginWithGoogle,
+      signupWithGoogle,
       logout,
       refreshMe,
     }),
-    [user, authLoading, loginWithGoogle, logout, refreshMe]
+    [user, authLoading, loginWithGoogle, signupWithGoogle, logout, refreshMe]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
