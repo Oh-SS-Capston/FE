@@ -5,6 +5,10 @@ export function redirectToGoogleLogin() {
   window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
 }
 
+export function redirectToGoogleSignup() {
+  window.location.href = `${API_BASE_URL}/oauth2/authorization/google?prompt=select_account`;
+}
+
 export function getCurrentUser() {
   return apiClient("/api/v1/auth/me", {
     method: "GET",

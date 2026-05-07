@@ -3,7 +3,7 @@ import { UserPlus, X } from "lucide-react";
 import { useAuth } from "../model/AuthContext";
 
 export default function SignupModal({ onClose }) {
-  const { loginWithGoogle } = useAuth();
+  const { signupWithGoogle } = useAuth();
 
   useEffect(() => {
     const handleEscape = (e) => {
@@ -61,11 +61,11 @@ export default function SignupModal({ onClose }) {
 
           <button
             type="button"
-            onClick={loginWithGoogle}
+            onClick={signupWithGoogle}
             className="w-full py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 shadow-[0_0_20px_rgba(124,58,237,0.4)] hover:shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all active:scale-[0.98] flex items-center justify-center gap-2"
           >
             <UserPlus size={18} />
-            Google로 시작하기
+            Google 계정으로 시작하기
           </button>
         </div>
       </div>
