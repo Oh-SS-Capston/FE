@@ -5,10 +5,9 @@ import { ArrowLeft } from "lucide-react";
 import RepoInfoSection from "./components/RepoInfoSection";
 import ClassDiagramSection from "./components/ClassDiagramSection";
 import DirectoryStructureSection from "./components/DirectoryStructureSection";
-import {
-  buildClassMap,
-  getArtifactJson,
-} from "../../features/classmap/api/classMapApi";
+import AnalyzeProgressPanel from "./components/AnalyzeProgressPanel";
+
+import { getArtifactJson, getRunProgress } from "../../features/run/api/runApi";
 
 export default function AnalyPage() {
   const navigate = useNavigate();
@@ -28,9 +27,12 @@ export default function AnalyPage() {
   const [treeError, setTreeError] = useState(null);
   const [expanded, setExpanded] = useState({});
 
+  const [progress, setProgress] = useState(null);
+  const [progressError, setProgressError] = useState(null);
+
   const [classDiagram, setClassDiagram] = useState(null);
-  const [diagramLoading, setDiagramLoading] = useState(false);
-  const [diagramError, setDiagramError] = useState(null);
+  const [classDiagramLoading, setClassDiagramLoading] = useState(false);
+  const [classDiagramError, setClassDiagramError] = useState(null);
 
   useEffect(() => {
     if (!repo) return;
@@ -89,62 +91,95 @@ export default function AnalyPage() {
     })();
   }, [repo]);
 
+  /*
+   * 핵심:
+   * 프론트는 buildClassMap을 직접 호출하지 않습니다.
+   * 백엔드 pipeline이 classMap까지 자동 실행하고,
+   * 프론트는 progress API만 polling합니다.
+   */
   useEffect(() => {
-    if (!runId) {
+    if (!runId) return;
+
+    let cancelled = false;
+    let timerId = null;
+    let artifactLoaded = false;
+
+    const poll = async () => {
+      try {
+        const nextProgress = await getRunProgress(runId);
+
+        if (cancelled) return;
+
+        setProgress(nextProgress);
+        setProgressError(null);
+
+        const status = nextProgress?.status;
+
+        if (status === "QUEUED" || status === "RUNNING") {
+          timerId = window.setTimeout(poll, 1500);
+          return;
+        }
+
+        if (
+          !artifactLoaded &&
+          (status === "SUCCESS" || status === "PARTIAL_SUCCESS")
+        ) {
+          artifactLoaded = true;
+          await loadArtifacts(nextProgress);
+        }
+      } catch (e) {
+        if (cancelled) return;
+
+        setProgressError(e?.message ?? "분석 진행 상태를 불러오지 못했습니다.");
+        timerId = window.setTimeout(poll, 3000);
+      }
+    };
+
+    poll();
+
+    return () => {
+      cancelled = true;
+
+      if (timerId) {
+        window.clearTimeout(timerId);
+      }
+    };
+  }, [runId]);
+
+  const loadArtifacts = async (progressResult) => {
+    const classDiagramArtifactId =
+      progressResult?.artifacts?.classDiagramArtifactId;
+
+    const classMapFailed = progressResult?.failedSteps?.find(
+      (step) => step.stage === "CLASSMAP"
+    );
+
+    if (!classDiagramArtifactId) {
       setClassDiagram(null);
+
+      if (classMapFailed) {
+        setClassDiagramError(classMapFailed.message);
+      }
+
       return;
     }
 
-    let ignore = false;
+    try {
+      setClassDiagramLoading(true);
+      setClassDiagramError(null);
 
-    (async () => {
-      try {
-        setDiagramLoading(true);
-        setDiagramError(null);
-        setClassDiagram(null);
+      const artifact = await getArtifactJson(classDiagramArtifactId);
 
-        const buildResult = await buildClassMap({
-          runId,
-          maxNodes: 120,
-          maxEdges: 240,
-          startHereTopN: 8,
-        });
-
-        const artifactId = buildResult?.classDiagramArtifactId;
-
-        if (!artifactId) {
-          throw new Error("classDiagramArtifactId가 응답에 없습니다.");
-        }
-
-        const artifactResult = await getArtifactJson(artifactId);
-
-        const diagram = artifactResult?.content;
-
-        if (!diagram) {
-          throw new Error("artifact content에 class_diagram.json이 없습니다.");
-        }
-
-        if (!ignore) {
-          setClassDiagram(diagram);
-        }
-      } catch (e) {
-        if (!ignore) {
-          setClassDiagram(null);
-          setDiagramError(
-            e?.message ?? "클래스다이어그램을 불러오지 못했습니다."
-          );
-        }
-      } finally {
-        if (!ignore) {
-          setDiagramLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      ignore = true;
-    };
-  }, [runId]);
+      setClassDiagram(artifact?.content ?? null);
+    } catch (e) {
+      setClassDiagram(null);
+      setClassDiagramError(
+        e?.message ?? "클래스 다이어그램 산출물을 불러오지 못했습니다."
+      );
+    } finally {
+      setClassDiagramLoading(false);
+    }
+  };
 
   const toggleFolder = async (path) => {
     if (!repo) return;
@@ -182,7 +217,7 @@ export default function AnalyPage() {
         })
       );
     } catch {
-      // 조용히 무시
+      // 디렉토리 펼치기 실패는 전체 분석 실패로 처리하지 않습니다.
     }
   };
 
@@ -191,6 +226,7 @@ export default function AnalyPage() {
       <div className="relative z-10 min-h-[calc(100vh-80px)] flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-400 mb-4">레포지토리 정보가 없습니다.</p>
+
           <button
             onClick={() => navigate("/")}
             className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
@@ -201,6 +237,10 @@ export default function AnalyPage() {
       </div>
     );
   }
+
+  const classMapFailed = progress?.failedSteps?.find(
+    (step) => step.stage === "CLASSMAP"
+  );
 
   return (
     <div className="relative z-10">
@@ -220,11 +260,19 @@ export default function AnalyPage() {
           error={repoInfoError}
         />
 
+        {progressError && (
+          <div className="rounded-xl border border-red-500/20 bg-red-950/10 p-4 text-sm text-red-200">
+            {progressError}
+          </div>
+        )}
+
+        <AnalyzeProgressPanel progress={progress} />
+
         <div className="flex flex-col gap-8">
           <ClassDiagramSection
             classDiagram={classDiagram}
-            loading={diagramLoading}
-            error={diagramError}
+            loading={classDiagramLoading}
+            error={classDiagramError || classMapFailed?.message}
           />
 
           <DirectoryStructureSection
