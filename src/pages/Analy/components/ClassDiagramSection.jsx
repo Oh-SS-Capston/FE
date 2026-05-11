@@ -1,4 +1,132 @@
-import { Box, GitBranch, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Background,
+  Controls,
+  Handle,
+  MarkerType,
+  MiniMap,
+  Position,
+  ReactFlow,
+} from "@xyflow/react";
+import dagre from "@dagrejs/dagre";
+import {
+  Box,
+  GitBranch,
+  Loader2,
+  TriangleAlert,
+  Workflow,
+} from "lucide-react";
+
+const CLASS_NODE_WIDTH = 260;
+const CLASS_NODE_HEIGHT = 150;
+
+const GROUP_PADDING_X = 28;
+const GROUP_PADDING_TOP = 82;
+const GROUP_PADDING_BOTTOM = 28;
+const GROUP_GAP_X = 28;
+const GROUP_GAP_Y = 28;
+
+const GROUP_MODE = {
+  PACKAGE: "PACKAGE",
+  LAYER: "LAYER",
+};
+
+const FOCUS_MODE = {
+  ALL: "ALL",
+  ENTRY_POINT: "ENTRY_POINT",
+  EXTENSION_POINT: "EXTENSION_POINT",
+};
+
+const DEFAULT_VISIBLE_EDGE_TYPES = {
+  EXTENDS: true,
+  IMPLEMENTS: true,
+  PARAM: true,
+  RETURNS: true,
+};
+
+const EDGE_META = {
+  EXTENDS: {
+    label: "상속",
+    stroke: "#c084fc",
+    dasharray: undefined,
+    markerType: MarkerType.ArrowClosed,
+  },
+  IMPLEMENTS: {
+    label: "구현",
+    stroke: "#67e8f9",
+    dasharray: "8 5",
+    markerType: MarkerType.ArrowClosed,
+  },
+  PARAM: {
+    label: "입력 의존",
+    stroke: "#6ee7b7",
+    dasharray: "5 5",
+    markerType: MarkerType.Arrow,
+  },
+  RETURNS: {
+    label: "반환 의존",
+    stroke: "#fde68a",
+    dasharray: "5 5",
+    markerType: MarkerType.Arrow,
+  },
+};
+
+const LAYER_META = {
+  PRESENTATION: {
+    id: "layer:presentation",
+    label: "presentation",
+    order: 10,
+    accentColor: "#38bdf8",
+  },
+  DTO: {
+    id: "layer:dto",
+    label: "dto",
+    order: 15,
+    accentColor: "#818cf8",
+  },
+  SERVICE: {
+    id: "layer:service",
+    label: "service",
+    order: 20,
+    accentColor: "#c084fc",
+  },
+  REPOSITORY: {
+    id: "layer:repository",
+    label: "repository",
+    order: 30,
+    accentColor: "#34d399",
+  },
+  DOMAIN: {
+    id: "layer:domain",
+    label: "domain",
+    order: 40,
+    accentColor: "#fbbf24",
+  },
+  CONFIG: {
+    id: "layer:config",
+    label: "config",
+    order: 50,
+    accentColor: "#22d3ee",
+  },
+  EXCEPTION: {
+    id: "layer:exception",
+    label: "exception",
+    order: 60,
+    accentColor: "#fb7185",
+  },
+  SUPPORT: {
+    id: "layer:support",
+    label: "support",
+    order: 70,
+    accentColor: "#94a3b8",
+  },
+  OTHER: {
+    id: "layer:other",
+    label: "other",
+    order: 80,
+    accentColor: "#64748b",
+  },
+};
 
 function formatScore(score) {
   if (score === null || score === undefined) {
@@ -12,37 +140,1132 @@ function formatScore(score) {
   return String(score);
 }
 
+function shortPackageName(packageName) {
+  if (!packageName) {
+    return "default";
+  }
+
+  const tokens = packageName.split(".");
+
+  if (tokens.length <= 3) {
+    return packageName;
+  }
+
+  return `…${tokens.slice(-3).join(".")}`;
+}
+
+function packageGroupLabel(packageName) {
+  if (!packageName) {
+    return "default";
+  }
+
+  const tokens = packageName.split(".");
+  return tokens[tokens.length - 1];
+}
+
 function badgeClassName(badge) {
   switch (badge) {
-    case "public_api":
-      return "border-cyan-400/30 bg-cyan-400/10 text-cyan-200";
     case "start_here":
       return "border-purple-400/30 bg-purple-400/10 text-purple-200";
-    case "config":
-      return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
     case "extension_point":
       return "border-yellow-400/30 bg-yellow-400/10 text-yellow-200";
     case "input_model":
-    case "output_model":
       return "border-blue-400/30 bg-blue-400/10 text-blue-200";
+    case "output_model":
+      return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
+    case "config":
+      return "border-cyan-400/30 bg-cyan-400/10 text-cyan-200";
     default:
       return "border-white/10 bg-white/5 text-gray-300";
   }
 }
 
-function edgeClassName(edgeType) {
-  switch (edgeType) {
-    case "EXTENDS":
-      return "text-purple-300 border-purple-400/20 bg-purple-400/10";
-    case "IMPLEMENTS":
-      return "text-cyan-300 border-cyan-400/20 bg-cyan-400/10";
-    case "PARAM":
-      return "text-emerald-300 border-emerald-400/20 bg-emerald-400/10";
-    case "RETURNS":
-      return "text-yellow-300 border-yellow-400/20 bg-yellow-400/10";
+function badgeLabel(badge) {
+  switch (badge) {
+    case "start_here":
+      return "start here";
+    case "extension_point":
+      return "extension";
+    case "input_model":
+      return "input";
+    case "output_model":
+      return "output";
+    case "config":
+      return "config";
     default:
-      return "text-gray-300 border-white/10 bg-white/5";
+      return badge;
   }
+}
+
+function isEntryPoint(node) {
+  return node.badges?.includes("start_here");
+}
+
+function isExtensionPoint(node) {
+  return node.badges?.includes("extension_point");
+}
+
+function isFocusedNode(node, focusMode) {
+  if (focusMode === FOCUS_MODE.ALL) {
+    return true;
+  }
+
+  if (focusMode === FOCUS_MODE.ENTRY_POINT) {
+    return isEntryPoint(node);
+  }
+
+  if (focusMode === FOCUS_MODE.EXTENSION_POINT) {
+    return isExtensionPoint(node);
+  }
+
+  return true;
+}
+
+function UmlClassNode({ data }) {
+  const badges = data.badges ?? [];
+  const isTopBottom = data.handleDirection === "TB";
+
+  const focusClassName = data.isSelected
+    ? "border-white shadow-[0_0_0_2px_rgba(255,255,255,0.85),0_0_36px_rgba(34,211,238,0.35)]"
+    : data.isDimmed
+      ? "border-white/10 opacity-25"
+      : data.isEntryPoint && data.isExtensionPoint
+        ? "border-fuchsia-300 shadow-[0_0_0_1px_rgba(216,180,254,0.6),0_0_28px_rgba(250,204,21,0.22),0_0_28px_rgba(192,132,252,0.28)]"
+        : data.isEntryPoint
+          ? "border-purple-300 shadow-[0_0_0_1px_rgba(216,180,254,0.55),0_0_28px_rgba(192,132,252,0.28)]"
+          : data.isExtensionPoint
+            ? "border-yellow-300 shadow-[0_0_0_1px_rgba(253,224,71,0.55),0_0_28px_rgba(250,204,21,0.25)]"
+            : "border-white/15";
+
+  return (
+    <div
+      className={`w-[260px] overflow-hidden rounded-xl border bg-[#0b1020]/95 transition-all duration-200 ${focusClassName}`}
+    >
+      <Handle
+        type="target"
+        position={isTopBottom ? Position.Top : Position.Left}
+        className="!h-2.5 !w-2.5 !border-0 !bg-cyan-300"
+      />
+      <Handle
+        type="source"
+        position={isTopBottom ? Position.Bottom : Position.Right}
+        className="!h-2.5 !w-2.5 !border-0 !bg-cyan-300"
+      />
+
+      <div className="border-b border-white/10 bg-white/[0.04] px-4 py-3">
+        <p
+          className="truncate text-[11px] text-gray-500"
+          title={data.packageName}
+        >
+          {shortPackageName(data.packageName)}
+        </p>
+
+        <div className="mt-1 flex items-center justify-between gap-3">
+          <h4
+            className="truncate text-base font-bold text-gray-100"
+            title={data.qualifiedName}
+          >
+            {data.label}
+          </h4>
+
+          <span className="shrink-0 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-200">
+            {data.access ?? "UNKNOWN"}
+          </span>
+        </div>
+      </div>
+
+      <div className="min-h-[52px] border-b border-white/10 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="text-gray-500">score</span>
+          <span className="font-semibold text-gray-200">
+            {formatScore(data.score)}
+          </span>
+        </div>
+
+        {badges.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {badges.map((badge) => (
+              <span
+                key={badge}
+                className={`rounded-full border px-2 py-0.5 text-[10px] ${badgeClassName(
+                  badge
+                )}`}
+              >
+                {badgeLabel(badge)}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-[11px] text-gray-600">no role badge</p>
+        )}
+      </div>
+
+      <div className="px-4 py-3 text-[11px] text-gray-500">
+        <p>attributes / operations</p>
+        <p className="mt-1 text-gray-600">BE 확장 후 표시 가능</p>
+      </div>
+    </div>
+  );
+}
+
+function DiagramGroupNode({ data }) {
+  return (
+    <div
+      className="h-full w-full rounded-2xl border bg-white/[0.025] shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+      style={{
+        borderColor: `${data.accentColor}55`,
+      }}
+      title={data.fullName}
+    >
+      <div className="flex h-[58px] items-center justify-between rounded-t-2xl border-b border-white/10 bg-white/[0.04] px-5">
+        <div className="flex items-center gap-3">
+          <span
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: data.accentColor }}
+          />
+
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500">
+              {data.groupMode === GROUP_MODE.PACKAGE ? "package" : "layer"}
+            </p>
+            <p className="font-semibold text-gray-200">{data.label}</p>
+          </div>
+        </div>
+
+        <div className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-gray-400">
+          {data.count} types
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const nodeTypes = {
+  umlClass: UmlClassNode,
+  diagramGroup: DiagramGroupNode,
+};
+
+function tokenize(text) {
+  if (!text) {
+    return [];
+  }
+
+  return text
+    .toLowerCase()
+    .split(/[.\-_/$]/)
+    .filter(Boolean);
+}
+
+function hasAny(tokens, candidates) {
+  return candidates.some((candidate) => tokens.includes(candidate));
+}
+
+function inferLayer(node) {
+  const packageTokens = tokenize(node.packageName);
+  const simpleName = (node.label ?? "").toLowerCase();
+
+  if (
+    hasAny(packageTokens, [
+      "controller",
+      "controllers",
+      "web",
+      "api",
+      "rest",
+      "endpoint",
+      "endpoints",
+    ]) ||
+    /(controller|resource|endpoint|handler)$/.test(simpleName)
+  ) {
+    return LAYER_META.PRESENTATION;
+  }
+
+  if (
+    hasAny(packageTokens, [
+      "dto",
+      "request",
+      "requests",
+      "response",
+      "responses",
+      "payload",
+      "command",
+      "commands",
+      "query",
+      "queries",
+    ]) ||
+    /(dto|request|response|command|query)$/.test(simpleName)
+  ) {
+    return LAYER_META.DTO;
+  }
+
+  if (
+    hasAny(packageTokens, [
+      "service",
+      "services",
+      "application",
+      "usecase",
+      "usecases",
+      "facade",
+    ]) ||
+    /(service|facade|usecase)$/.test(simpleName)
+  ) {
+    return LAYER_META.SERVICE;
+  }
+
+  if (
+    hasAny(packageTokens, [
+      "repository",
+      "repositories",
+      "dao",
+      "persistence",
+      "store",
+    ]) ||
+    /(repository|dao)$/.test(simpleName)
+  ) {
+    return LAYER_META.REPOSITORY;
+  }
+
+  if (
+    hasAny(packageTokens, [
+      "domain",
+      "model",
+      "models",
+      "entity",
+      "entities",
+      "aggregate",
+      "aggregates",
+      "vo",
+    ])
+  ) {
+    return LAYER_META.DOMAIN;
+  }
+
+  if (
+    hasAny(packageTokens, ["config", "configuration", "security"]) ||
+    /(config|configuration)$/.test(simpleName)
+  ) {
+    return LAYER_META.CONFIG;
+  }
+
+  if (
+    hasAny(packageTokens, ["exception", "exceptions", "error", "errors"]) ||
+    /(exception|error)$/.test(simpleName)
+  ) {
+    return LAYER_META.EXCEPTION;
+  }
+
+  if (
+    hasAny(packageTokens, [
+      "common",
+      "util",
+      "utils",
+      "support",
+      "helper",
+      "helpers",
+    ])
+  ) {
+    return LAYER_META.SUPPORT;
+  }
+
+  return LAYER_META.OTHER;
+}
+
+function createPackageDescriptor(node) {
+  const packageName = node.packageName || "default";
+
+  return {
+    id: `group:package:${packageName}`,
+    label: packageGroupLabel(packageName),
+    fullName: packageName,
+    packageName,
+    groupMode: GROUP_MODE.PACKAGE,
+    order: packageName,
+    accentColor: "#64748b",
+  };
+}
+
+function createLayerDescriptor(node) {
+  const layer = inferLayer(node);
+
+  return {
+    id: `group:${layer.id}`,
+    label: layer.label,
+    fullName: layer.label,
+    packageName: null,
+    groupMode: GROUP_MODE.LAYER,
+    order: layer.order,
+    accentColor: layer.accentColor,
+  };
+}
+
+function groupNodesByMode(diagramNodes, groupMode) {
+  const groups = new Map();
+
+  diagramNodes.forEach((node) => {
+    const descriptor =
+      groupMode === GROUP_MODE.PACKAGE
+        ? createPackageDescriptor(node)
+        : createLayerDescriptor(node);
+
+    if (!groups.has(descriptor.id)) {
+      groups.set(descriptor.id, {
+        ...descriptor,
+        nodes: [],
+      });
+    }
+
+    groups.get(descriptor.id).nodes.push(node);
+  });
+
+  return [...groups.values()].sort((a, b) => {
+    if (groupMode === GROUP_MODE.LAYER) {
+      return a.order - b.order;
+    }
+
+    return String(a.order).localeCompare(String(b.order));
+  });
+}
+
+function buildChildNodesForGroup(group, direction, focusMode, selectedNodeId) {
+  const count = group.nodes.length;
+  const maxColumns = group.groupMode === GROUP_MODE.LAYER ? 4 : 3;
+
+  const columns = Math.min(
+    maxColumns,
+    Math.max(1, Math.ceil(Math.sqrt(count)))
+  );
+
+  const rows = Math.ceil(count / columns);
+
+  const width =
+    GROUP_PADDING_X * 2 +
+    columns * CLASS_NODE_WIDTH +
+    Math.max(0, columns - 1) * GROUP_GAP_X;
+
+  const height =
+    GROUP_PADDING_TOP +
+    GROUP_PADDING_BOTTOM +
+    rows * CLASS_NODE_HEIGHT +
+    Math.max(0, rows - 1) * GROUP_GAP_Y;
+
+  const children = group.nodes.map((node, index) => {
+    const col = index % columns;
+    const row = Math.floor(index / columns);
+    const nodeId = String(node.symbolId);
+
+    return {
+      id: nodeId,
+      type: "umlClass",
+      parentId: group.id,
+      extent: "parent",
+      position: {
+        x: GROUP_PADDING_X + col * (CLASS_NODE_WIDTH + GROUP_GAP_X),
+        y: GROUP_PADDING_TOP + row * (CLASS_NODE_HEIGHT + GROUP_GAP_Y),
+      },
+      data: {
+        label: node.label,
+        access: node.access,
+        packageName: node.packageName,
+        qualifiedName: node.qualifiedName,
+        score: node.score,
+        badges: node.badges ?? [],
+        reasons: node.reasons ?? [],
+        handleDirection: direction,
+        isEntryPoint: isEntryPoint(node),
+        isExtensionPoint: isExtensionPoint(node),
+        isDimmed:
+          focusMode !== FOCUS_MODE.ALL &&
+          !isFocusedNode(node, focusMode) &&
+          selectedNodeId !== nodeId,
+        isSelected: selectedNodeId === nodeId,
+      },
+    };
+  });
+
+  return {
+    width,
+    height,
+    children,
+  };
+}
+
+function toFlowEdges(diagramEdges, visibleEdgeTypes, validNodeIds) {
+  return diagramEdges
+    .filter((edge) => visibleEdgeTypes[edge.edgeType])
+    .map((edge, index) => {
+      const sourceId = String(edge.sourceSymbolId);
+      const targetId = String(edge.targetSymbolId);
+
+      return {
+        ...edge,
+        sourceId,
+        targetId,
+        _index: index,
+      };
+    })
+    .filter(
+      (edge) =>
+        validNodeIds.has(edge.sourceId) && validNodeIds.has(edge.targetId)
+    )
+    .map((edge) => {
+      const meta = EDGE_META[edge.edgeType] ?? EDGE_META.PARAM;
+      const isStructural =
+        edge.edgeType === "EXTENDS" || edge.edgeType === "IMPLEMENTS";
+
+      return {
+        id: `${edge.edgeType}-${edge.sourceId}-${edge.targetId}-${edge._index}`,
+        source: edge.sourceId,
+        target: edge.targetId,
+        type: "smoothstep",
+        animated: false,
+        zIndex: 2,
+        label: meta.label,
+        labelStyle: {
+          fill: meta.stroke,
+          fontSize: 11,
+          fontWeight: 700,
+        },
+        labelBgStyle: {
+          fill: "#030712",
+          fillOpacity: 0.92,
+        },
+        labelBgPadding: [5, 3],
+        labelBgBorderRadius: 6,
+        style: {
+          stroke: meta.stroke,
+          strokeWidth: isStructural ? 2.4 : 1.8,
+          strokeDasharray: meta.dasharray,
+        },
+        markerEnd: {
+          type: meta.markerType,
+          color: meta.stroke,
+          width: isStructural ? 22 : 18,
+          height: isStructural ? 22 : 18,
+        },
+        data: {
+          original: edge,
+        },
+      };
+    });
+}
+
+function buildGroupEdges(flowEdges, nodeToGroupMap) {
+  const seen = new Set();
+  const groupEdges = [];
+
+  flowEdges.forEach((edge) => {
+    const sourceGroup = nodeToGroupMap.get(edge.source);
+    const targetGroup = nodeToGroupMap.get(edge.target);
+
+    if (!sourceGroup || !targetGroup || sourceGroup === targetGroup) {
+      return;
+    }
+
+    const key = `${sourceGroup}->${targetGroup}`;
+
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+
+    groupEdges.push({
+      source: sourceGroup,
+      target: targetGroup,
+    });
+  });
+
+  return groupEdges;
+}
+
+function layoutPackageGroups(groups, groupEdges, direction) {
+  if (groupEdges.length === 0) {
+    return buildFallbackGroupGrid(groups);
+  }
+
+  const graph = new dagre.graphlib.Graph();
+
+  graph.setDefaultEdgeLabel(() => ({}));
+  graph.setGraph({
+    rankdir: direction,
+    ranksep: 140,
+    nodesep: 90,
+    edgesep: 40,
+    marginx: 40,
+    marginy: 40,
+  });
+
+  groups.forEach((group) => {
+    graph.setNode(group.id, {
+      width: group.width,
+      height: group.height,
+    });
+  });
+
+  groupEdges.forEach((edge) => {
+    graph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(graph);
+
+  return groups.map((group) => {
+    const position = graph.node(group.id);
+
+    return {
+      ...group,
+      x: position.x - group.width / 2,
+      y: position.y - group.height / 2,
+    };
+  });
+}
+
+function layoutLayerGroups(groups, direction) {
+  const sorted = [...groups].sort((a, b) => a.order - b.order);
+
+  if (direction === "TB") {
+    const maxWidth = Math.max(...sorted.map((group) => group.width));
+    let currentY = 0;
+
+    return sorted.map((group) => {
+      const positioned = {
+        ...group,
+        x: (maxWidth - group.width) / 2,
+        y: currentY,
+      };
+
+      currentY += group.height + 140;
+
+      return positioned;
+    });
+  }
+
+  const maxHeight = Math.max(...sorted.map((group) => group.height));
+  let currentX = 0;
+
+  return sorted.map((group) => {
+    const positioned = {
+      ...group,
+      x: currentX,
+      y: (maxHeight - group.height) / 2,
+    };
+
+    currentX += group.width + 140;
+
+    return positioned;
+  });
+}
+
+function buildFallbackGroupGrid(groups) {
+  const columns = Math.max(1, Math.ceil(Math.sqrt(groups.length)));
+  const gapX = 120;
+  const gapY = 120;
+
+  let currentY = 0;
+  const rows = [];
+
+  for (let i = 0; i < groups.length; i += columns) {
+    rows.push(groups.slice(i, i + columns));
+  }
+
+  const positioned = [];
+
+  rows.forEach((row) => {
+    const rowHeight = Math.max(...row.map((group) => group.height));
+    let currentX = 0;
+
+    row.forEach((group) => {
+      positioned.push({
+        ...group,
+        x: currentX,
+        y: currentY,
+      });
+
+      currentX += group.width + gapX;
+    });
+
+    currentY += rowHeight + gapY;
+  });
+
+  return positioned;
+}
+
+function buildGroupedLayout(
+  diagramNodes,
+  diagramEdges,
+  visibleEdgeTypes,
+  direction,
+  groupMode,
+  focusMode,
+  selectedNodeId
+) {
+  const groups = groupNodesByMode(diagramNodes, groupMode);
+
+  const nodeToGroupMap = new Map();
+
+  groups.forEach((group) => {
+    group.nodes.forEach((node) => {
+      nodeToGroupMap.set(String(node.symbolId), group.id);
+    });
+  });
+
+  const validNodeIds = new Set(
+    diagramNodes.map((node) => String(node.symbolId))
+  );
+
+  const flowEdges = toFlowEdges(diagramEdges, visibleEdgeTypes, validNodeIds);
+
+  const groupsWithChildren = groups.map((group) => {
+    const { width, height, children } = buildChildNodesForGroup(
+      group,
+      direction,
+      focusMode,
+      selectedNodeId
+    );
+
+    return {
+      ...group,
+      width,
+      height,
+      children,
+    };
+  });
+
+  const groupEdges = buildGroupEdges(flowEdges, nodeToGroupMap);
+
+  const layoutedGroups =
+    groupMode === GROUP_MODE.LAYER
+      ? layoutLayerGroups(groupsWithChildren, direction)
+      : layoutPackageGroups(groupsWithChildren, groupEdges, direction);
+
+  const parentNodes = layoutedGroups.map((group) => ({
+    id: group.id,
+    type: "diagramGroup",
+    position: {
+      x: group.x,
+      y: group.y,
+    },
+    data: {
+      label: group.label,
+      fullName: group.fullName,
+      groupMode: group.groupMode,
+      count: group.nodes.length,
+      accentColor: group.accentColor,
+    },
+    style: {
+      width: group.width,
+      height: group.height,
+      zIndex: 0,
+    },
+    selectable: false,
+    draggable: false,
+  }));
+
+  const childNodes = layoutedGroups.flatMap((group) =>
+    group.children.map((child) => ({
+      ...child,
+      data: {
+        ...child.data,
+        handleDirection: direction,
+      },
+    }))
+  );
+
+  return {
+    nodes: [...parentNodes, ...childNodes],
+    edges: flowEdges,
+    groups: layoutedGroups,
+  };
+}
+
+function LegendItem({ edgeType }) {
+  const meta = EDGE_META[edgeType];
+
+  return (
+    <div className="flex items-center gap-2 text-xs text-gray-400">
+      <span
+        className="inline-block h-0.5 w-7"
+        style={{
+          backgroundColor: meta.stroke,
+          borderTop:
+            meta.dasharray !== undefined
+              ? `1px dashed ${meta.stroke}`
+              : undefined,
+        }}
+      />
+      <span>{meta.label}</span>
+    </div>
+  );
+}
+
+function EdgeToggle({ edgeType, checked, count, onChange }) {
+  const meta = EDGE_META[edgeType];
+  const disabled = count === 0;
+
+  return (
+    <label
+      className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition ${
+        disabled
+          ? "cursor-not-allowed border-white/5 bg-white/[0.02] text-gray-600"
+          : "cursor-pointer border-white/10 bg-white/[0.03] text-gray-300 hover:bg-white/[0.06]"
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={() => onChange(edgeType)}
+        className="accent-cyan-300"
+      />
+      <span>{meta.label}</span>
+      <span className="text-[10px] text-gray-500">{count}</span>
+    </label>
+  );
+}
+
+function LayoutToggle({ value, onChange }) {
+  return (
+    <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
+      <button
+        type="button"
+        onClick={() => onChange("TB")}
+        className={`rounded-full px-3 py-1.5 text-xs transition ${
+          value === "TB"
+            ? "bg-cyan-400/15 text-cyan-200"
+            : "text-gray-400 hover:text-gray-200"
+        }`}
+      >
+        위 → 아래
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onChange("LR")}
+        className={`rounded-full px-3 py-1.5 text-xs transition ${
+          value === "LR"
+            ? "bg-cyan-400/15 text-cyan-200"
+            : "text-gray-400 hover:text-gray-200"
+        }`}
+      >
+        왼쪽 → 오른쪽
+      </button>
+    </div>
+  );
+}
+
+function GroupModeToggle({ value, onChange }) {
+  return (
+    <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
+      <button
+        type="button"
+        onClick={() => onChange(GROUP_MODE.PACKAGE)}
+        className={`rounded-full px-3 py-1.5 text-xs transition ${
+          value === GROUP_MODE.PACKAGE
+            ? "bg-purple-400/15 text-purple-200"
+            : "text-gray-400 hover:text-gray-200"
+        }`}
+      >
+        Package 기준
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onChange(GROUP_MODE.LAYER)}
+        className={`rounded-full px-3 py-1.5 text-xs transition ${
+          value === GROUP_MODE.LAYER
+            ? "bg-purple-400/15 text-purple-200"
+            : "text-gray-400 hover:text-gray-200"
+        }`}
+      >
+        Layer 기준
+      </button>
+    </div>
+  );
+}
+
+function FocusModeToggle({
+  value,
+  onChange,
+  entryPointCount,
+  extensionPointCount,
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
+      <button
+        type="button"
+        onClick={() => onChange(FOCUS_MODE.ALL)}
+        className={`rounded-full px-3 py-1.5 text-xs transition ${
+          value === FOCUS_MODE.ALL
+            ? "bg-white/10 text-white"
+            : "text-gray-400 hover:text-gray-200"
+        }`}
+      >
+        전체
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onChange(FOCUS_MODE.ENTRY_POINT)}
+        className={`rounded-full px-3 py-1.5 text-xs transition ${
+          value === FOCUS_MODE.ENTRY_POINT
+            ? "bg-purple-400/15 text-purple-200"
+            : "text-gray-400 hover:text-gray-200"
+        }`}
+      >
+        진입점 {entryPointCount}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onChange(FOCUS_MODE.EXTENSION_POINT)}
+        className={`rounded-full px-3 py-1.5 text-xs transition ${
+          value === FOCUS_MODE.EXTENSION_POINT
+            ? "bg-yellow-400/15 text-yellow-200"
+            : "text-gray-400 hover:text-gray-200"
+        }`}
+      >
+        확장점 {extensionPointCount}
+      </button>
+    </div>
+  );
+}
+
+function FlowCanvas({ nodes, edges, nodeTypes, onInit }) {
+  const containerRef = useRef(null);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    const element = containerRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    const updateSize = () => {
+      const { width, height } = element.getBoundingClientRect();
+      setIsReady(width > 0 && height > 0);
+    };
+
+    updateSize();
+
+    if (typeof ResizeObserver === "undefined") {
+      const timer = window.setTimeout(updateSize, 0);
+
+      return () => {
+        window.clearTimeout(timer);
+      };
+    }
+
+    const observer = new ResizeObserver(() => {
+      updateSize();
+    });
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative h-[840px] w-full min-w-0 bg-[#050816]"
+      style={{
+        width: "100%",
+        height: 840,
+        minHeight: 840,
+      }}
+    >
+      {nodes.length === 0 ? (
+        <div className="flex h-full w-full items-center justify-center text-sm text-gray-500">
+          표시할 타입 노드가 없습니다.
+        </div>
+      ) : !isReady ? (
+        <div className="flex h-full w-full items-center justify-center text-sm text-gray-500">
+          다이어그램 영역을 준비 중입니다.
+        </div>
+      ) : (
+        <ReactFlow
+          className="h-full w-full"
+          style={{
+            width: "100%",
+            height: "100%",
+          }}
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onInit={onInit}
+          fitView
+          fitViewOptions={{ padding: 0.1 }}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable
+          minZoom={0.06}
+          maxZoom={1.5}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background gap={22} size={1} color="rgba(255,255,255,0.06)" />
+          <MiniMap
+            pannable
+            zoomable
+            nodeColor={(node) =>
+              node.type === "diagramGroup" ? "#334155" : "#22d3ee"
+            }
+            maskColor="rgba(0,0,0,0.55)"
+          />
+          <Controls showInteractive={false} />
+        </ReactFlow>
+      )}
+    </div>
+  );
+}
+
+function FocusSidePanel({
+  entryPoints,
+  extensionPoints,
+  selectedNodeId,
+  onFocusNode,
+  onChangeFocusMode,
+}) {
+  return (
+    <aside className="w-full shrink-0 border-t border-white/10 bg-[#070b18]/80 xl:w-[360px] xl:border-l xl:border-t-0">
+      <div className="sticky top-0 max-h-[840px] overflow-y-auto p-5">
+        <div>
+          <h4 className="text-sm font-bold text-gray-100">진입점 / 확장점</h4>
+          <p className="mt-1 text-xs text-gray-500">
+            항목을 클릭하면 다이어그램에서 해당 클래스로 이동합니다.
+          </p>
+        </div>
+
+        <div className="mt-5">
+          <PanelHeader
+            title="진입점"
+            count={entryPoints.length}
+            colorClassName="text-purple-200"
+            onClick={() => onChangeFocusMode(FOCUS_MODE.ENTRY_POINT)}
+          />
+
+          <div className="mt-2 space-y-2">
+            {entryPoints.length === 0 ? (
+              <EmptyPanelText text="진입점 후보가 없습니다." />
+            ) : (
+              entryPoints.map((node) => (
+                <FocusListItem
+                  key={`entry-${node.symbolId}`}
+                  node={node}
+                  selected={selectedNodeId === String(node.symbolId)}
+                  accent="purple"
+                  onClick={() => onFocusNode(node)}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="mt-7">
+          <PanelHeader
+            title="확장점"
+            count={extensionPoints.length}
+            colorClassName="text-yellow-200"
+            onClick={() => onChangeFocusMode(FOCUS_MODE.EXTENSION_POINT)}
+          />
+
+          <div className="mt-2 space-y-2">
+            {extensionPoints.length === 0 ? (
+              <EmptyPanelText text="확장점 후보가 없습니다." />
+            ) : (
+              extensionPoints.map((node) => (
+                <FocusListItem
+                  key={`extension-${node.symbolId}`}
+                  node={node}
+                  selected={selectedNodeId === String(node.symbolId)}
+                  accent="yellow"
+                  onClick={() => onFocusNode(node)}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function PanelHeader({ title, count, colorClassName, onClick }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <button
+        type="button"
+        onClick={onClick}
+        className={`text-sm font-semibold ${colorClassName} hover:underline`}
+      >
+        {title}
+      </button>
+
+      <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-xs text-gray-400">
+        {count}
+      </span>
+    </div>
+  );
+}
+
+function EmptyPanelText({ text }) {
+  return (
+    <p className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-xs text-gray-500">
+      {text}
+    </p>
+  );
+}
+
+function FocusListItem({ node, selected, accent, onClick }) {
+  const borderClass =
+    accent === "purple"
+      ? "border-purple-400/25 hover:border-purple-300/60"
+      : "border-yellow-400/25 hover:border-yellow-300/60";
+
+  const selectedClass =
+    accent === "purple"
+      ? "border-purple-300 bg-purple-400/10"
+      : "border-yellow-300 bg-yellow-400/10";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full rounded-xl border px-3 py-3 text-left transition ${
+        selected ? selectedClass : `${borderClass} bg-white/[0.025]`
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-gray-100">
+            {node.label}
+          </p>
+          <p className="mt-1 truncate text-xs text-gray-500">
+            {shortPackageName(node.packageName)}
+          </p>
+        </div>
+
+        <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] text-gray-400">
+          {formatScore(node.score)}
+        </span>
+      </div>
+
+      {node.badges?.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {node.badges.slice(0, 3).map((badge) => (
+            <span
+              key={badge}
+              className={`rounded-full border px-1.5 py-0.5 text-[10px] ${badgeClassName(
+                badge
+              )}`}
+            >
+              {badgeLabel(badge)}
+            </span>
+          ))}
+        </div>
+      )}
+    </button>
+  );
 }
 
 export default function ClassDiagramSection({
@@ -50,12 +1273,159 @@ export default function ClassDiagramSection({
   loading = false,
   error = null,
 }) {
-  const nodes = classDiagram?.nodes ?? [];
-  const edges = classDiagram?.edges ?? [];
-  const nodeById = new Map(nodes.map((node) => [node.symbolId, node]));
+  const [visibleEdgeTypes, setVisibleEdgeTypes] = useState(
+    DEFAULT_VISIBLE_EDGE_TYPES
+  );
+  const [layoutDirection, setLayoutDirection] = useState("TB");
+  const [groupMode, setGroupMode] = useState(GROUP_MODE.PACKAGE);
+  const [focusMode, setFocusMode] = useState(FOCUS_MODE.ALL);
+  const [selectedNodeId, setSelectedNodeId] = useState(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState(null);
+
+  const diagramNodes = classDiagram?.nodes ?? [];
+  const diagramEdges = classDiagram?.edges ?? [];
+
+  const entryPoints = useMemo(
+    () =>
+      diagramNodes
+        .filter(isEntryPoint)
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0)),
+    [diagramNodes]
+  );
+
+  const extensionPoints = useMemo(
+    () =>
+      diagramNodes
+        .filter(isExtensionPoint)
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0)),
+    [diagramNodes]
+  );
+
+  const edgeTypeCounts = useMemo(() => {
+    return diagramEdges.reduce(
+      (acc, edge) => {
+        acc[edge.edgeType] = (acc[edge.edgeType] ?? 0) + 1;
+        return acc;
+      },
+      {
+        EXTENDS: 0,
+        IMPLEMENTS: 0,
+        PARAM: 0,
+        RETURNS: 0,
+      }
+    );
+  }, [diagramEdges]);
+
+  const { nodes, edges, groups } = useMemo(
+    () =>
+      buildGroupedLayout(
+        diagramNodes,
+        diagramEdges,
+        visibleEdgeTypes,
+        layoutDirection,
+        groupMode,
+        focusMode,
+        selectedNodeId
+      ),
+    [
+      diagramNodes,
+      diagramEdges,
+      visibleEdgeTypes,
+      layoutDirection,
+      groupMode,
+      focusMode,
+      selectedNodeId,
+    ]
+  );
+
+  const visibleEdgeCount = edges.length;
+  const totalEdgeCount =
+    classDiagram?.summary?.selectedEdgeCount ?? diagramEdges.length;
+  const groupCount = groups.length;
+
+  const toggleEdgeType = (edgeType) => {
+    setVisibleEdgeTypes((prev) => ({
+      ...prev,
+      [edgeType]: !prev[edgeType],
+    }));
+  };
+
+  const handleFocusNode = useCallback(
+    (node) => {
+      const nodeId = String(node.symbolId);
+
+      setSelectedNodeId(nodeId);
+
+      if (!reactFlowInstance) {
+        return;
+      }
+
+      const targetNode = nodes.find((item) => item.id === nodeId);
+
+      if (!targetNode) {
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        reactFlowInstance.fitView({
+          nodes: [targetNode],
+          duration: 650,
+          padding: 0.6,
+          minZoom: 0.7,
+          maxZoom: 1.15,
+        });
+      });
+    },
+    [reactFlowInstance, nodes]
+  );
+
+  if (loading) {
+    return (
+      <section className="rounded-2xl border border-white/10 bg-[#0a0a1a]/60 p-6">
+        <div className="flex items-center gap-3 text-gray-300">
+          <Loader2 size={20} className="animate-spin" />
+          <span>클래스다이어그램을 생성하고 불러오는 중입니다.</span>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="rounded-2xl border border-red-500/20 bg-red-950/10 p-6">
+        <div className="flex items-start gap-3">
+          <TriangleAlert size={20} className="mt-0.5 text-red-300" />
+          <div>
+            <h3 className="font-semibold text-red-200">
+              클래스다이어그램을 불러오지 못했습니다.
+            </h3>
+            <p className="mt-1 text-sm text-red-200/80">{error}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (!classDiagram) {
+    return (
+      <section className="rounded-2xl border border-white/10 bg-[#0a0a1a]/60 p-6">
+        <div className="flex items-start gap-3">
+          <Box size={20} className="mt-0.5 text-gray-400" />
+          <div>
+            <h3 className="font-semibold text-gray-200">
+              아직 클래스다이어그램이 없습니다.
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              분석 완료 후 class_diagram.json이 표시됩니다.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl overflow-hidden">
+    <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl">
       <div
         className="h-1 opacity-60"
         style={{
@@ -64,170 +1434,123 @@ export default function ClassDiagramSection({
         }}
       />
 
-      <div className="p-6">
-        <h3 className="flex items-center gap-2 text-lg font-bold text-gray-200 mb-4">
-          <Box size={22} className="text-cyan-400" />
-          Class Diagram
-        </h3>
-
-        {loading ? (
-          <div className="min-h-[260px] rounded-xl border border-white/10 bg-[#050508]/80 flex flex-col items-center justify-center p-6">
-            <Loader2 size={28} className="animate-spin text-cyan-400 mb-3" />
-            <p className="text-gray-500 text-sm">
-              클래스다이어그램을 생성하고 불러오는 중입니다.
-            </p>
-          </div>
-        ) : error ? (
-          <div className="min-h-[220px] rounded-xl border border-red-500/20 bg-red-950/10 flex items-center justify-center p-6">
-            <p className="text-red-300 text-sm text-center leading-relaxed">
-              클래스다이어그램을 불러오지 못했습니다.
-              <br />
-              <span className="text-red-400/70">{error}</span>
-            </p>
-          </div>
-        ) : !classDiagram ? (
-          <div className="min-h-[220px] rounded-xl border border-white/10 bg-[#050508]/80 flex items-center justify-center p-6">
-            <p className="text-gray-500 text-sm text-center leading-relaxed">
-              아직 다이어그램이 없습니다.
-              <br />
-              <span className="text-gray-600">
-                분석 완료 후 class_diagram.json이 표시됩니다.
-              </span>
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs text-gray-500">Nodes</p>
-                <p className="text-2xl font-bold text-cyan-200">
-                  {nodes.length}
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs text-gray-500">Edges</p>
-                <p className="text-2xl font-bold text-purple-200">
-                  {edges.length}
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs text-gray-500">Total Types</p>
-                <p className="text-2xl font-bold text-gray-200">
-                  {classDiagram?.summary?.totalTypeCount ?? "-"}
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs text-gray-500">Candidate Types</p>
-                <p className="text-2xl font-bold text-gray-200">
-                  {classDiagram?.summary?.candidateTypeCount ?? "-"}
-                </p>
-              </div>
+      <div className="border-b border-white/10 p-6">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <GitBranch size={20} className="text-cyan-300" />
+              <h3 className="text-xl font-bold text-gray-100">
+                Class Diagram
+              </h3>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-[#050508]/80 p-4 overflow-auto">
-              <div className="min-w-[900px]">
-                <div className="grid grid-cols-3 gap-4">
-                  {nodes.map((node) => (
-                    <div
-                      key={node.symbolId}
-                      className="rounded-xl border border-cyan-400/20 bg-cyan-950/10 p-4 shadow-[0_0_20px_rgba(34,211,238,0.08)]"
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <div className="min-w-0">
-                          <p className="font-bold text-gray-100 truncate">
-                            {node.label}
-                          </p>
-                          <p className="text-xs text-gray-500 truncate">
-                            {node.packageName || node.qualifiedName}
-                          </p>
-                        </div>
+            <p className="mt-2 text-sm text-gray-500">
+              {groupMode === GROUP_MODE.PACKAGE
+                ? "실제 패키지 구조 기준으로 클래스를 묶어 보여줍니다."
+                : "패키지명과 클래스명을 기준으로 추론한 레이어 구조로 묶어 보여줍니다."}
+            </p>
 
-                        <span className="text-xs text-cyan-200 bg-cyan-400/10 border border-cyan-400/20 rounded-full px-2 py-1">
-                          {formatScore(node.score)}
-                        </span>
-                      </div>
-
-                      {node.badges?.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-3">
-                          {node.badges.map((badge) => (
-                            <span
-                              key={badge}
-                              className={`text-[11px] border rounded-full px-2 py-0.5 ${badgeClassName(
-                                badge
-                              )}`}
-                            >
-                              {badge}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-[#050508]/80 p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <GitBranch size={18} className="text-purple-300" />
-                <h4 className="font-bold text-gray-200">Relationships</h4>
-              </div>
-
-              {edges.length === 0 ? (
-                <p className="text-sm text-gray-500">
-                  표시할 관계가 없습니다.
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-[360px] overflow-auto pr-1">
-                  {edges.map((edge, index) => {
-                    const source = nodeById.get(edge.sourceSymbolId);
-                    const target = nodeById.get(edge.targetSymbolId);
-
-                    return (
-                      <div
-                        key={`${edge.sourceSymbolId}-${edge.targetSymbolId}-${edge.edgeType}-${index}`}
-                        className="rounded-lg border border-white/10 bg-white/[0.03] p-3"
-                      >
-                        <div className="flex flex-wrap items-center gap-2 text-sm">
-                          <span className="font-semibold text-gray-200">
-                            {source?.label ?? edge.sourceSymbolId}
-                          </span>
-
-                          <span
-                            className={`text-xs border rounded-full px-2 py-0.5 ${edgeClassName(
-                              edge.edgeType
-                            )}`}
-                          >
-                            {edge.label ?? edge.edgeType}
-                          </span>
-
-                          <span className="font-semibold text-gray-200">
-                            {target?.label ?? edge.targetSymbolId}
-                          </span>
-                        </div>
-
-                        <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
-                          <span>evidence: {edge.evidenceCount ?? 0}</span>
-                          <span>
-                            confidence:{" "}
-                            {edge.confidence === null ||
-                            edge.confidence === undefined
-                              ? "-"
-                              : edge.confidence}
-                          </span>
-                          <span>resolution: {edge.resolution ?? "-"}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <p className="mt-2 text-xs text-gray-600">
+              현재 모드:{" "}
+              {groupMode === GROUP_MODE.PACKAGE ? "Package" : "Layer"} / 그룹:{" "}
+              {groupCount}개 / 현재 표시 관계선: {visibleEdgeCount} / 전체
+              관계선: {totalEdgeCount}
+            </p>
           </div>
-        )}
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <SummaryCard
+              label="Nodes"
+              value={classDiagram?.summary?.selectedNodeCount ?? "-"}
+            />
+            <SummaryCard
+              label={groupMode === GROUP_MODE.PACKAGE ? "Packages" : "Layers"}
+              value={groupCount}
+            />
+            <SummaryCard label="Visible Edges" value={visibleEdgeCount} />
+            <SummaryCard
+              label="Candidates"
+              value={classDiagram?.summary?.candidateTypeCount ?? "-"}
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {Object.keys(EDGE_META).map((edgeType) => (
+              <EdgeToggle
+                key={edgeType}
+                edgeType={edgeType}
+                checked={visibleEdgeTypes[edgeType]}
+                count={edgeTypeCounts[edgeType] ?? 0}
+                onChange={toggleEdgeType}
+              />
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <FocusModeToggle
+              value={focusMode}
+              onChange={setFocusMode}
+              entryPointCount={entryPoints.length}
+              extensionPointCount={extensionPoints.length}
+            />
+
+            <GroupModeToggle value={groupMode} onChange={setGroupMode} />
+
+            <LayoutToggle
+              value={layoutDirection}
+              onChange={setLayoutDirection}
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          <LegendItem edgeType="EXTENDS" />
+          <LegendItem edgeType="IMPLEMENTS" />
+          <LegendItem edgeType="PARAM" />
+          <LegendItem edgeType="RETURNS" />
+        </div>
+      </div>
+
+      <div className="flex w-full flex-col xl:flex-row">
+        <div className="w-full min-w-0 flex-1">
+          <FlowCanvas
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            onInit={setReactFlowInstance}
+          />
+        </div>
+
+        <FocusSidePanel
+          entryPoints={entryPoints}
+          extensionPoints={extensionPoints}
+          selectedNodeId={selectedNodeId}
+          onFocusNode={handleFocusNode}
+          onChangeFocusMode={setFocusMode}
+        />
+      </div>
+
+      <div className="flex items-start gap-3 border-t border-white/10 px-6 py-4 text-sm text-gray-500">
+        <Workflow size={17} className="mt-0.5 shrink-0" />
+        <p>
+          진입점은 처음 보면 좋은 타입 후보이고, 확장점은 구현·확장 관점에서
+          중요한 타입 후보입니다. Layer 모드는 현재 프론트에서 패키지명과
+          클래스명을 기반으로 추론한 결과입니다.
+        </p>
       </div>
     </section>
+  );
+}
+
+function SummaryCard({ label, value }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+      <p className="text-[11px] uppercase tracking-wide text-gray-500">
+        {label}
+      </p>
+      <p className="mt-1 text-lg font-bold text-gray-100">{value}</p>
+    </div>
   );
 }
