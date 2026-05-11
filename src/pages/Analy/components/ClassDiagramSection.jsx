@@ -17,14 +17,14 @@ import {
   Workflow,
 } from "lucide-react";
 
-const CLASS_NODE_WIDTH = 260;
-const CLASS_NODE_HEIGHT = 150;
+const CLASS_NODE_WIDTH = 320;
+const CLASS_NODE_HEIGHT = 190;
 
-const GROUP_PADDING_X = 28;
-const GROUP_PADDING_TOP = 82;
-const GROUP_PADDING_BOTTOM = 28;
-const GROUP_GAP_X = 28;
-const GROUP_GAP_Y = 28;
+const GROUP_PADDING_X = 40;
+const GROUP_PADDING_TOP = 92;
+const GROUP_PADDING_BOTTOM = 40;
+const GROUP_GAP_X = 72;
+const GROUP_GAP_Y = 96;
 
 const GROUP_MODE = {
   PACKAGE: "PACKAGE",
@@ -239,7 +239,7 @@ function UmlClassNode({ data }) {
 
   return (
     <div
-      className={`w-[260px] overflow-hidden rounded-xl border bg-[#0b1020]/95 transition-all duration-200 ${focusClassName}`}
+    className={`w-[320px] overflow-hidden rounded-xl border bg-[#0b1020]/95 transition-all duration-200 ${focusClassName}`}
     >
       <Handle
         type="target"
@@ -260,18 +260,18 @@ function UmlClassNode({ data }) {
           {shortPackageName(data.packageName)}
         </p>
 
-        <div className="mt-1 flex items-center justify-between gap-3">
-          <h4
-            className="truncate text-base font-bold text-gray-100"
-            title={data.qualifiedName}
-          >
-            {data.label}
-          </h4>
+        <div className="mt-1 flex min-h-[42px] items-start justify-between gap-3">
+  <h4
+    className="min-w-0 flex-1 whitespace-normal break-words text-[15px] font-bold leading-5 text-gray-100"
+    title={data.qualifiedName}
+  >
+    {data.label}
+  </h4>
 
-          <span className="shrink-0 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-200">
-            {data.access ?? "UNKNOWN"}
-          </span>
-        </div>
+  <span className="mt-0.5 shrink-0 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-200">
+    {data.access ?? "UNKNOWN"}
+  </span>
+</div>
       </div>
 
       <div className="min-h-[52px] border-b border-white/10 px-4 py-3">
@@ -527,7 +527,7 @@ function groupNodesByMode(diagramNodes, groupMode) {
 
 function buildChildNodesForGroup(group, direction, focusMode, selectedNodeId) {
   const count = group.nodes.length;
-  const maxColumns = group.groupMode === GROUP_MODE.LAYER ? 4 : 3;
+  const maxColumns = group.groupMode === GROUP_MODE.LAYER ? 3 : 2;
 
   const columns = Math.min(
     maxColumns,
@@ -618,29 +618,30 @@ function toFlowEdges(diagramEdges, visibleEdgeTypes, validNodeIds) {
         type: "smoothstep",
         animated: false,
         zIndex: 2,
-        label: meta.label,
-        labelStyle: {
-          fill: meta.stroke,
-          fontSize: 11,
-          fontWeight: 700,
-        },
-        labelBgStyle: {
-          fill: "#030712",
-          fillOpacity: 0.92,
-        },
-        labelBgPadding: [5, 3],
-        labelBgBorderRadius: 6,
+        // label: meta.label,
+        // labelStyle: {
+        //   fill: meta.stroke,
+        //   fontSize: 11,
+        //   fontWeight: 700,
+        // },
+        // labelBgStyle: {
+        //   fill: "#030712",
+        //   fillOpacity: 0.92,
+        // },
+        // labelBgPadding: [5, 3],
+        // labelBgBorderRadius: 6,
         style: {
           stroke: meta.stroke,
-          strokeWidth: isStructural ? 2.4 : 1.8,
+          strokeWidth: isStructural ? 2.6 : 1.9,
           strokeDasharray: meta.dasharray,
         },
         markerEnd: {
           type: meta.markerType,
           color: meta.stroke,
-          width: isStructural ? 22 : 18,
-          height: isStructural ? 22 : 18,
+          width: isStructural ? 24 : 18,
+          height: isStructural ? 24 : 18,
         },
+        interractionWidth: 18,
         data: {
           original: edge,
         },
