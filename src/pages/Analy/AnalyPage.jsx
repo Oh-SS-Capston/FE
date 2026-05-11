@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
@@ -17,6 +17,10 @@ const EMPTY_LLM_RESULTS = {
   fileTreeDocs: null,
 };
 
+function unwrapApiResponse(response) {
+  return response?.result ?? response;
+}
+
 export default function AnalyPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,6 +29,16 @@ export default function AnalyPage() {
   const run = location.state?.run;
   const runId = run?.runId ?? searchParams.get("runId");
   const repo = location.state?.repo ?? searchParams.get("repo");
+
+  const loadedArtifactIdsRef = useRef({
+    classDiagram: null,
+    llm: {
+      scenarioSpecs: null,
+      subsystemSummaries: null,
+      apiDocs: null,
+      fileTreeDocs: null,
+    },
+  });
 
   const [repoInfo, setRepoInfo] = useState(null);
   const [repoInfoLoading, setRepoInfoLoading] = useState(false);
@@ -63,7 +77,6 @@ export default function AnalyPage() {
         }
 
         const data = await res.json();
-
         setRepoInfo(data);
       } catch (e) {
         setRepoInfoError(e?.message ?? String(e));
@@ -103,39 +116,167 @@ export default function AnalyPage() {
     })();
   }, [repo]);
 
-  /*
-   * 프론트는 백엔드 자동 파이프라인 진행 상태만 polling합니다.
-   * 분석 완료 후 산출물 id를 이용해 결과 JSON을 읽어옵니다.
-   */
   useEffect(() => {
     if (!runId) return;
 
     let cancelled = false;
     let timerId = null;
-    let artifactLoaded = false;
+
+    loadedArtifactIdsRef.current = {
+      classDiagram: null,
+      llm: {
+        scenarioSpecs: null,
+        subsystemSummaries: null,
+        apiDocs: null,
+        fileTreeDocs: null,
+      },
+    };
+
+    setClassDiagram(null);
+    setClassDiagramError(null);
+    setLlmResults(EMPTY_LLM_RESULTS);
+    setLlmError(null);
+
+    const loadArtifactContent = async (artifactId) => {
+      const response = await getArtifactJson(artifactId);
+      const artifact = unwrapApiResponse(response);
+      return artifact?.content ?? null;
+    };
+
+    const loadClassDiagramIfReady = async (nextProgress) => {
+      const artifactId = nextProgress?.artifacts?.classDiagramArtifactId;
+
+      const classMapFailed = nextProgress?.failedSteps?.find(
+        (step) => step.stage === "CLASSMAP"
+      );
+
+      if (!artifactId) {
+        if (classMapFailed) {
+          setClassDiagramError(classMapFailed.message);
+        }
+
+        return;
+      }
+
+      if (loadedArtifactIdsRef.current.classDiagram === artifactId) {
+        return;
+      }
+
+      try {
+        loadedArtifactIdsRef.current.classDiagram = artifactId;
+        setClassDiagramLoading(true);
+        setClassDiagramError(null);
+
+        const content = await loadArtifactContent(artifactId);
+
+        if (!cancelled) {
+          setClassDiagram(content);
+        }
+      } catch (e) {
+        loadedArtifactIdsRef.current.classDiagram = null;
+
+        if (!cancelled) {
+          setClassDiagram(null);
+          setClassDiagramError(
+            e?.message ?? "클래스 다이어그램 산출물을 불러오지 못했습니다."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setClassDiagramLoading(false);
+        }
+      }
+    };
+
+    const loadLlmArtifactsIfReady = async (nextProgress) => {
+      const artifactMap = {
+        scenarioSpecs:
+          nextProgress?.artifacts?.llmScenarioSpecsArtifactId ?? null,
+        subsystemSummaries:
+          nextProgress?.artifacts?.llmSubsystemSummariesArtifactId ?? null,
+        apiDocs: nextProgress?.artifacts?.llmApiDocsArtifactId ?? null,
+        fileTreeDocs:
+          nextProgress?.artifacts?.llmFileTreeDocsArtifactId ?? null,
+      };
+
+      const pendingEntries = Object.entries(artifactMap).filter(
+        ([key, artifactId]) =>
+          artifactId &&
+          loadedArtifactIdsRef.current.llm[key] !== artifactId
+      );
+
+      if (pendingEntries.length === 0) {
+        return;
+      }
+
+      try {
+        setLlmLoading(true);
+        setLlmError(null);
+
+        const settled = await Promise.allSettled(
+          pendingEntries.map(async ([key, artifactId]) => {
+            const content = await loadArtifactContent(artifactId);
+            return [key, artifactId, content];
+          })
+        );
+
+        if (cancelled) return;
+
+        let hasFailure = false;
+
+        settled.forEach((result) => {
+          if (result.status === "fulfilled") {
+            const [key, artifactId, content] = result.value;
+
+            loadedArtifactIdsRef.current.llm[key] = artifactId;
+
+            setLlmResults((prev) => ({
+              ...prev,
+              [key]: content,
+            }));
+          } else {
+            hasFailure = true;
+          }
+        });
+
+        if (hasFailure) {
+          setLlmError("일부 LLM 결과 산출물을 불러오지 못했습니다.");
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setLlmError(e?.message ?? "LLM 결과 산출물을 불러오지 못했습니다.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLlmLoading(false);
+        }
+      }
+    };
 
     const poll = async () => {
       try {
-        const nextProgress = await getRunProgress(runId);
+        const response = await getRunProgress(runId);
+        const nextProgress = unwrapApiResponse(response);
 
         if (cancelled) return;
 
         setProgress(nextProgress);
         setProgressError(null);
 
+        /*
+         * 핵심 변경:
+         * 전체 파이프라인 SUCCESS를 기다리지 않고,
+         * artifact id가 생기는 순간 바로 결과를 조회합니다.
+         */
+        await Promise.allSettled([
+          loadClassDiagramIfReady(nextProgress),
+          loadLlmArtifactsIfReady(nextProgress),
+        ]);
+
         const status = nextProgress?.status;
 
         if (status === "QUEUED" || status === "RUNNING") {
           timerId = window.setTimeout(poll, 1500);
-          return;
-        }
-
-        if (
-          !artifactLoaded &&
-          (status === "SUCCESS" || status === "PARTIAL_SUCCESS")
-        ) {
-          artifactLoaded = true;
-          await loadArtifacts(nextProgress);
         }
       } catch (e) {
         if (cancelled) return;
@@ -156,115 +297,73 @@ export default function AnalyPage() {
     };
   }, [runId]);
 
-  const loadArtifacts = async (progressResult) => {
-    await Promise.allSettled([
-      loadClassDiagramArtifact(progressResult),
-      loadLlmArtifacts(progressResult),
-    ]);
-  };
-
-  const loadClassDiagramArtifact = async (progressResult) => {
-    const classDiagramArtifactId =
-      progressResult?.artifacts?.classDiagramArtifactId;
-
-    const classMapFailed = progressResult?.failedSteps?.find(
-      (step) => step.stage === "CLASSMAP"
-    );
-
-    if (!classDiagramArtifactId) {
-      setClassDiagram(null);
-
-      if (classMapFailed) {
-        setClassDiagramError(classMapFailed.message);
-      }
-
-      return;
-    }
-
-    try {
-      setClassDiagramLoading(true);
-      setClassDiagramError(null);
-
-      const artifact = await getArtifactJson(classDiagramArtifactId);
-
-      setClassDiagram(artifact?.content ?? null);
-    } catch (e) {
-      setClassDiagram(null);
-      setClassDiagramError(
-        e?.message ?? "클래스 다이어그램 산출물을 불러오지 못했습니다."
-      );
-    } finally {
-      setClassDiagramLoading(false);
-    }
-  };
-
-  const loadLlmArtifacts = async (progressResult) => {
-    const artifactIds = {
-      scenarioSpecs:
-        progressResult?.artifacts?.llmScenarioSpecsArtifactId ?? null,
-      subsystemSummaries:
-        progressResult?.artifacts?.llmSubsystemSummariesArtifactId ?? null,
-      apiDocs: progressResult?.artifacts?.llmApiDocsArtifactId ?? null,
-      fileTreeDocs:
-        progressResult?.artifacts?.llmFileTreeDocsArtifactId ?? null,
-    };
-
-    const hasAnyLlmArtifactId = Object.values(artifactIds).some(Boolean);
-
-    if (!hasAnyLlmArtifactId) {
-      setLlmResults(EMPTY_LLM_RESULTS);
-      return;
-    }
-
-    try {
-      setLlmLoading(true);
-      setLlmError(null);
-
-      const settled = await Promise.allSettled(
-        Object.entries(artifactIds).map(async ([key, artifactId]) => {
-          if (!artifactId) {
-            return [key, null];
-          }
-
-          const artifact = await getArtifactJson(artifactId);
-          return [key, artifact?.content ?? null];
-        })
-      );
-
-      const nextResults = { ...EMPTY_LLM_RESULTS };
-      const failedKeys = [];
-
-      settled.forEach((result) => {
-        if (result.status === "fulfilled") {
-          const [key, content] = result.value;
-          nextResults[key] = content;
-        } else {
-          failedKeys.push("일부 LLM 산출물");
-        }
-      });
-
-      setLlmResults(nextResults);
-
-      if (failedKeys.length > 0) {
-        setLlmError("일부 LLM 결과 산출물을 불러오지 못했습니다.");
-      }
-    } catch (e) {
-      setLlmResults(EMPTY_LLM_RESULTS);
-      setLlmError(e?.message ?? "LLM 결과 산출물을 불러오지 못했습니다.");
-    } finally {
-      setLlmLoading(false);
-    }
-  };
-
   const refreshLlmResults = async () => {
     if (!runId) return;
 
     try {
-      const latestProgress = await getRunProgress(runId);
+      const response = await getRunProgress(runId);
+      const latestProgress = unwrapApiResponse(response);
+
       setProgress(latestProgress);
-      await loadLlmArtifacts(latestProgress);
+
+      loadedArtifactIdsRef.current.llm = {
+        scenarioSpecs: null,
+        subsystemSummaries: null,
+        apiDocs: null,
+        fileTreeDocs: null,
+      };
+
+      setLlmResults(EMPTY_LLM_RESULTS);
+
+      const artifactMap = {
+        scenarioSpecs:
+          latestProgress?.artifacts?.llmScenarioSpecsArtifactId ?? null,
+        subsystemSummaries:
+          latestProgress?.artifacts?.llmSubsystemSummariesArtifactId ?? null,
+        apiDocs: latestProgress?.artifacts?.llmApiDocsArtifactId ?? null,
+        fileTreeDocs:
+          latestProgress?.artifacts?.llmFileTreeDocsArtifactId ?? null,
+      };
+
+      const entries = Object.entries(artifactMap).filter(([, id]) => id);
+
+      if (entries.length === 0) return;
+
+      setLlmLoading(true);
+      setLlmError(null);
+
+      const settled = await Promise.allSettled(
+        entries.map(async ([key, artifactId]) => {
+          const artifactResponse = await getArtifactJson(artifactId);
+          const artifact = unwrapApiResponse(artifactResponse);
+          return [key, artifactId, artifact?.content ?? null];
+        })
+      );
+
+      let hasFailure = false;
+
+      settled.forEach((result) => {
+        if (result.status === "fulfilled") {
+          const [key, artifactId, content] = result.value;
+
+          loadedArtifactIdsRef.current.llm[key] = artifactId;
+
+          setLlmResults((prev) => ({
+            ...prev,
+            [key]: content,
+          }));
+        } else {
+          hasFailure = true;
+        }
+      });
+
+      if (hasFailure) {
+        setLlmError("일부 LLM 결과를 새로고침하지 못했습니다.");
+      }
     } catch (e) {
       setLlmError(e?.message ?? "LLM 결과를 새로고침하지 못했습니다.");
+    } finally {
+      setLlmLoading(false);
     }
   };
 
@@ -340,6 +439,7 @@ export default function AnalyPage() {
           Home
         </button>
 
+        {/* 1. 레포 프로필 */}
         <RepoInfoSection
           repo={repo}
           info={repoInfo}
@@ -347,6 +447,16 @@ export default function AnalyPage() {
           error={repoInfoError}
         />
 
+        {/* 2. 레포 디렉토리 구조 */}
+        <DirectoryStructureSection
+          tree={tree}
+          loading={treeLoading}
+          error={treeError}
+          expanded={expanded}
+          onToggle={toggleFolder}
+        />
+
+        {/* 3. 작업 프로세스 */}
         {progressError && (
           <div className="rounded-xl border border-red-500/20 bg-red-950/10 p-4 text-sm text-red-200">
             {progressError}
@@ -355,28 +465,20 @@ export default function AnalyPage() {
 
         <AnalyzeProgressPanel progress={progress} />
 
-        <div className="flex flex-col gap-8">
-          <LlmResultSection
-            results={llmResults}
-            loading={llmLoading}
-            error={llmError}
-            onRefresh={refreshLlmResults}
-          />
+        {/* 4. 클래스 다이어그램 */}
+        <ClassDiagramSection
+          classDiagram={classDiagram}
+          loading={classDiagramLoading}
+          error={classDiagramError || classMapFailed?.message}
+        />
 
-          <ClassDiagramSection
-            classDiagram={classDiagram}
-            loading={classDiagramLoading}
-            error={classDiagramError || classMapFailed?.message}
-          />
-
-          <DirectoryStructureSection
-            tree={tree}
-            loading={treeLoading}
-            error={treeError}
-            expanded={expanded}
-            onToggle={toggleFolder}
-          />
-        </div>
+        {/* 5. LLM Result */}
+        <LlmResultSection
+          results={llmResults}
+          loading={llmLoading}
+          error={llmError}
+          onRefresh={refreshLlmResults}
+        />
       </div>
     </div>
   );
