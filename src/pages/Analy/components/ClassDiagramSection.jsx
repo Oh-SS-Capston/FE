@@ -1819,7 +1819,7 @@ export default function ClassDiagramSection({
               아직 클래스다이어그램이 없습니다.
             </h3>
             <p className="mt-1 text-sm text-gray-500">
-              분석 완료 후 class_diagram.json이 표시됩니다.
+              분석 완료 후 클래스 다이어그램이 표시됩니다.
             </p>
           </div>
         </div>
