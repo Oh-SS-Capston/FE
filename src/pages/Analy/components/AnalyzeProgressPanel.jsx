@@ -1,36 +1,117 @@
-import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  Circle,
+  Clock,
+  Loader2,
+  TriangleAlert,
+} from "lucide-react";
 
-function statusText(status) {
-  switch (status) {
-    case "QUEUED":
-      return "대기 중";
-    case "RUNNING":
-      return "진행 중";
-    case "SUCCESS":
-      return "완료";
-    case "PARTIAL_SUCCESS":
-      return "일부 완료";
-    case "FAILED":
-      return "실패";
-    default:
-      return "-";
+const STAGE_LABEL = {
+  SNAPSHOT: "레포지토리 스냅샷 준비",
+  BUILD: "빌드 환경 분석",
+  EXTRACTION: "소스 코드와 바이트코드 분석",
+  GRAPHSTORE: "코드 구조 그래프 저장",
+  CLUSTER: "주요 모듈과 군집 분석",
+  CLASSMAP: "클래스 다이어그램 생성",
+  RULE: "규칙 후보 추출",
+  LLM: "LLM 분석 결과 생성",
+};
+
+const SUCCESS_MESSAGE = {
+  SNAPSHOT: "레포지토리 스냅샷 준비가 완료됐습니다.",
+  BUILD: "빌드 환경 분석이 완료됐습니다.",
+  EXTRACTION: "소스 코드와 바이트코드 분석이 완료됐습니다.",
+  GRAPHSTORE: "코드 구조 그래프 저장이 완료됐습니다.",
+  CLUSTER: "주요 모듈과 군집 분석이 완료됐습니다.",
+  CLASSMAP: "클래스 다이어그램 생성이 완료됐습니다.",
+  RULE: "규칙 후보 추출이 완료됐습니다.",
+  LLM: "LLM 분석 결과 생성이 완료됐습니다.",
+};
+
+const RUNNING_MESSAGE = {
+  SNAPSHOT: "레포지토리 스냅샷을 준비 중입니다.",
+  BUILD: "빌드 환경을 분석 중입니다.",
+  EXTRACTION: "소스 코드와 바이트코드를 분석 중입니다.",
+  GRAPHSTORE: "코드 구조 그래프를 저장 중입니다.",
+  CLUSTER: "주요 모듈과 군집을 분석 중입니다.",
+  CLASSMAP: "클래스 다이어그램을 생성 중입니다.",
+  RULE: "규칙 후보를 추출 중입니다.",
+  LLM: "LLM 분석 결과를 생성 중입니다.",
+};
+
+function getStepMessage(step) {
+  if (!step) return "";
+
+  if (step.status === "SUCCESS") {
+    return SUCCESS_MESSAGE[step.stage] ?? `${step.stage} 단계가 완료됐습니다.`;
   }
+
+  if (step.status === "FAILED") {
+    return (
+      step.errorMessage ??
+      step.message ??
+      `${STAGE_LABEL[step.stage] ?? step.stage} 단계에 실패했습니다.`
+    );
+  }
+
+  if (step.status === "SKIPPED") {
+    return (
+      step.message ?? `${STAGE_LABEL[step.stage] ?? step.stage} 단계를 건너뛰었습니다.`
+    );
+  }
+
+  if (step.status === "RUNNING") {
+    return RUNNING_MESSAGE[step.stage] ?? step.message ?? "작업을 진행 중입니다.";
+  }
+
+  return step.message ?? `${STAGE_LABEL[step.stage] ?? step.stage} 대기 중입니다.`;
+}
+
+function StepIcon({ status }) {
+  if (status === "SUCCESS") {
+    return <CheckCircle2 size={18} className="text-emerald-300" />;
+  }
+
+  if (status === "FAILED") {
+    return <TriangleAlert size={18} className="text-red-300" />;
+  }
+
+  if (status === "RUNNING") {
+    return <Loader2 size={18} className="animate-spin text-cyan-300" />;
+  }
+
+  if (status === "SKIPPED") {
+    return <Clock size={18} className="text-yellow-300" />;
+  }
+
+  return <Circle size={18} className="text-gray-600" />;
+}
+
+function stepBorderClass(status) {
+  if (status === "SUCCESS") return "border-emerald-400/20 bg-emerald-400/[0.04]";
+  if (status === "FAILED") return "border-red-400/20 bg-red-400/[0.04]";
+  if (status === "RUNNING") return "border-cyan-400/20 bg-cyan-400/[0.04]";
+  if (status === "SKIPPED") return "border-yellow-400/20 bg-yellow-400/[0.04]";
+  return "border-white/10 bg-white/[0.025]";
 }
 
 export default function AnalyzeProgressPanel({ progress }) {
-  const value = progress?.progress ?? 0;
-  const status = progress?.status;
-  const stage = progress?.stage;
-  const steps = progress?.steps ?? [];
-  const failedSteps = progress?.failedSteps ?? [];
+  if (!progress) {
+    return (
+      <section className="rounded-2xl border border-white/10 bg-[#0a0a1a]/60 p-6">
+        <div className="flex items-center gap-3 text-gray-400">
+          <Loader2 size={18} className="animate-spin" />
+          <span>분석 상태를 불러오는 중입니다.</span>
+        </div>
+      </section>
+    );
+  }
 
-  const isRunning = status === "QUEUED" || status === "RUNNING";
-  const isSuccess = status === "SUCCESS";
-  const isPartial = status === "PARTIAL_SUCCESS";
-  const isFailed = status === "FAILED";
+  const steps = progress.steps ?? [];
+  const progressValue = progress.progress ?? 0;
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl overflow-hidden">
+    <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl">
       <div
         className="h-1 opacity-60"
         style={{
@@ -40,95 +121,79 @@ export default function AnalyzeProgressPanel({ progress }) {
       />
 
       <div className="p-6">
-        <div className="flex items-center gap-3 mb-5">
-          {isRunning && (
-            <Loader2 size={22} className="animate-spin text-cyan-300" />
-          )}
-
-          {isSuccess && (
-            <CheckCircle2 size={22} className="text-emerald-300" />
-          )}
-
-          {isPartial && (
-            <AlertTriangle size={22} className="text-yellow-300" />
-          )}
-
-          {isFailed && (
-            <XCircle size={22} className="text-red-300" />
-          )}
-
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h3 className="text-lg font-bold text-gray-100">
-              {progress?.message ?? "분석 진행 상태를 확인 중입니다."}
-            </h3>
+            <h3 className="text-lg font-bold text-gray-100">작업 프로세스</h3>
+            <p className="mt-2 text-sm text-gray-500">
+              {progress.message ?? progress.stageLabel ?? "분석 작업을 진행하고 있습니다."}
+            </p>
+          </div>
 
-            <p className="text-sm text-gray-500 mt-1">
-              현재 단계: {stage ?? "-"} / 상태: {statusText(status)}
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+            <p className="text-[11px] uppercase tracking-wide text-gray-500">
+              Progress
+            </p>
+            <p className="mt-1 text-xl font-bold text-gray-100">
+              {progressValue}%
             </p>
           </div>
         </div>
 
-        <div className="w-full h-3 rounded-full bg-white/10 overflow-hidden">
+        <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.06]">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 transition-all duration-500"
-            style={{
-              width: `${Math.max(0, Math.min(100, value))}%`,
-            }}
+            className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-purple-400 transition-all duration-500"
+            style={{ width: `${Math.min(100, Math.max(0, progressValue))}%` }}
           />
         </div>
 
-        <div className="mt-2 flex justify-between text-xs text-gray-500">
-          <span>0%</span>
-          <span>{value}%</span>
-          <span>100%</span>
-        </div>
-
-        {steps.length > 0 && (
-          <div className="mt-6 grid md:grid-cols-2 gap-3">
-            {steps.map((step) => (
-              <div
-                key={step.stage}
-                className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
-              >
-                <div className="flex justify-between gap-3">
-                  <span className="text-sm font-semibold text-gray-200">
-                    {step.stage}
-                  </span>
-
-                  <span className="text-xs text-gray-500">
-                    {step.status}
-                  </span>
+        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {steps.map((step) => (
+            <article
+              key={step.stage}
+              className={`rounded-xl border p-4 transition ${stepBorderClass(
+                step.status
+              )}`}
+            >
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 shrink-0">
+                  <StepIcon status={step.status} />
                 </div>
 
-                <p className="text-xs text-gray-500 mt-1">
-                  {step.errorMessage || step.message}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="font-semibold text-gray-100">
+                      {STAGE_LABEL[step.stage] ?? step.stage}
+                    </h4>
 
-        {isPartial && failedSteps.length > 0 && (
-          <div className="mt-5 rounded-xl border border-yellow-400/20 bg-yellow-950/10 p-4">
-            <p className="text-sm font-semibold text-yellow-200 mb-2">
-              일부 분석 결과 생성에 실패했습니다.
+                    {!step.required && (
+                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] text-gray-400">
+                        선택
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="mt-2 text-sm leading-5 text-gray-400">
+                    {getStepMessage(step)}
+                  </p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {progress.failedSteps?.length > 0 && (
+          <div className="mt-5 rounded-xl border border-red-500/20 bg-red-950/10 p-4">
+            <p className="font-semibold text-red-200">
+              일부 작업에 실패했습니다.
             </p>
 
-            <ul className="space-y-1">
-              {failedSteps.map((step) => (
-                <li key={step.stage} className="text-sm text-yellow-100/80">
-                  - {step.message}
+            <ul className="mt-2 space-y-1 text-sm text-red-200/80">
+              {progress.failedSteps.map((step) => (
+                <li key={step.stage}>
+                  {STAGE_LABEL[step.stage] ?? step.stage}: {step.message}
                 </li>
               ))}
             </ul>
-          </div>
-        )}
-
-        {isFailed && (
-          <div className="mt-5 rounded-xl border border-red-500/20 bg-red-950/10 p-4">
-            <p className="text-sm text-red-200">
-              {progress?.failureMessage || "분석 중 오류가 발생했습니다."}
-            </p>
           </div>
         )}
       </div>

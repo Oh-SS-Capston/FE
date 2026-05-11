@@ -30,6 +30,15 @@ const GROUP_PADDING_BOTTOM = 40;
 const GROUP_GAP_X = 72;
 const GROUP_GAP_Y = 96;
 
+/*
+ * 주변 보기 전용 레이아웃 설정입니다.
+ * 선택 노드를 중앙에 두고, 들어오는 관계는 왼쪽, 나가는 관계는 오른쪽에 배치합니다.
+ */
+const NEIGHBOR_SIDE_GAP_X = 560;
+const NEIGHBOR_GAP_Y = 90;
+const NEIGHBOR_COLUMN_GAP_X = 90;
+const NEIGHBOR_PER_COLUMN = 4;
+
 const GROUP_MODE = {
   PACKAGE: "PACKAGE",
   LAYER: "LAYER",
@@ -486,8 +495,7 @@ function buildScopedGraph(
   );
 
   const scopedEdges = allVisibleEdges.filter(
-    (edge) =>
-      edge.source === selectedNodeId || edge.target === selectedNodeId
+    (edge) => edge.source === selectedNodeId || edge.target === selectedNodeId
   );
 
   return {
@@ -578,6 +586,104 @@ function buildChildNodesForGroup(
   };
 }
 
+function createNeighborhoodClassNode(
+  node,
+  position,
+  selectedNodeId,
+  neighborhoodNodeIds
+) {
+  const nodeId = String(node.symbolId);
+  const isSelected = selectedNodeId === nodeId;
+  const isRelatedToSelection = selectedNodeId && neighborhoodNodeIds.has(nodeId);
+
+  return {
+    id: nodeId,
+    type: "umlClass",
+    zIndex: isSelected ? 5 : 4,
+    position,
+    data: {
+      label: node.label,
+      access: node.access,
+      packageName: node.packageName,
+      qualifiedName: node.qualifiedName,
+      score: node.score,
+      badges: node.badges ?? [],
+      reasons: node.reasons ?? [],
+
+      /*
+       * 주변 보기는 좌우 배치가 핵심이므로 핸들도 좌우로 고정합니다.
+       */
+      handleDirection: "LR",
+
+      isEntryPoint: isEntryPoint(node),
+      isExtensionPoint: isExtensionPoint(node),
+      isSelected,
+      isRelatedToSelection,
+      isDimmed: false,
+    },
+  };
+}
+
+function sortNeighborhoodNodes(nodes) {
+  return [...nodes].sort((a, b) => {
+    const scoreDiff = (b.score ?? 0) - (a.score ?? 0);
+
+    if (scoreDiff !== 0) {
+      return scoreDiff;
+    }
+
+    return String(a.label ?? "").localeCompare(String(b.label ?? ""));
+  });
+}
+
+function layoutNeighborhoodStack(nodes, side) {
+  const sign = side === "left" ? -1 : 1;
+
+  return nodes.map((node, index) => {
+    const column = Math.floor(index / NEIGHBOR_PER_COLUMN);
+    const row = index % NEIGHBOR_PER_COLUMN;
+
+    const startIndex = column * NEIGHBOR_PER_COLUMN;
+    const rowsInColumn = Math.min(
+      NEIGHBOR_PER_COLUMN,
+      nodes.length - startIndex
+    );
+
+    const x =
+      sign *
+      (NEIGHBOR_SIDE_GAP_X +
+        column * (CLASS_NODE_WIDTH + NEIGHBOR_COLUMN_GAP_X));
+
+    const y =
+      (row - (rowsInColumn - 1) / 2) *
+      (CLASS_NODE_HEIGHT + NEIGHBOR_GAP_Y);
+
+    return {
+      node,
+      position: {
+        x,
+        y,
+      },
+    };
+  });
+}
+
+function layoutNeighborhoodBottom(nodes) {
+  return nodes.map((node, index) => {
+    const x =
+      (index - (nodes.length - 1) / 2) *
+      (CLASS_NODE_WIDTH + NEIGHBOR_COLUMN_GAP_X);
+
+    return {
+      node,
+      position: {
+        x,
+        y: CLASS_NODE_HEIGHT + 360,
+      },
+    };
+  });
+}
+
 function toFlowEdges(scopedEdges, selectedNodeId, viewMode) {
   return scopedEdges.map((edge) => {
     const meta = EDGE_META[edge.edgeType] ?? EDGE_META.PARAM;
@@ -629,6 +735,118 @@ function toFlowEdges(scopedEdges, selectedNodeId, viewMode) {
       },
     };
   });
+}
+
+function buildNeighborhoodLayout(
+  scopedNodes,
+  scopedEdges,
+  allVisibleEdges,
+  neighborhoodNodeIds,
+  selectedNodeId
+) {
+  const selectedNode = scopedNodes.find(
+    (node) => String(node.symbolId) === selectedNodeId
+  );
+
+  if (!selectedNode) {
+    return {
+      nodes: [],
+      edges: [],
+      groups: [],
+      scopedNodes,
+      scopedEdges,
+      allVisibleEdges,
+    };
+  }
+
+  const incomingIds = new Set();
+  const outgoingIds = new Set();
+
+  scopedEdges.forEach((edge) => {
+    if (edge.source === selectedNodeId) {
+      outgoingIds.add(edge.target);
+    }
+
+    if (edge.target === selectedNodeId) {
+      incomingIds.add(edge.source);
+    }
+  });
+
+  const relatedNodes = scopedNodes.filter(
+    (node) => String(node.symbolId) !== selectedNodeId
+  );
+
+  const incomingNodes = sortNeighborhoodNodes(
+    relatedNodes.filter((node) => {
+      const id = String(node.symbolId);
+      return incomingIds.has(id) && !outgoingIds.has(id);
+    })
+  );
+
+  const outgoingNodes = sortNeighborhoodNodes(
+    relatedNodes.filter((node) => {
+      const id = String(node.symbolId);
+      return outgoingIds.has(id);
+    })
+  );
+
+  const bottomNodes = sortNeighborhoodNodes(
+    relatedNodes.filter((node) => {
+      const id = String(node.symbolId);
+      return !incomingIds.has(id) && !outgoingIds.has(id);
+    })
+  );
+
+  const selectedFlowNode = createNeighborhoodClassNode(
+    selectedNode,
+    { x: 0, y: 0 },
+    selectedNodeId,
+    neighborhoodNodeIds
+  );
+
+  const incomingFlowNodes = layoutNeighborhoodStack(incomingNodes, "left").map(
+    ({ node, position }) =>
+      createNeighborhoodClassNode(
+        node,
+        position,
+        selectedNodeId,
+        neighborhoodNodeIds
+      )
+  );
+
+  const outgoingFlowNodes = layoutNeighborhoodStack(outgoingNodes, "right").map(
+    ({ node, position }) =>
+      createNeighborhoodClassNode(
+        node,
+        position,
+        selectedNodeId,
+        neighborhoodNodeIds
+      )
+  );
+
+  const bottomFlowNodes = layoutNeighborhoodBottom(bottomNodes).map(
+    ({ node, position }) =>
+      createNeighborhoodClassNode(
+        node,
+        position,
+        selectedNodeId,
+        neighborhoodNodeIds
+      )
+  );
+
+  return {
+    nodes: [
+      selectedFlowNode,
+      ...incomingFlowNodes,
+      ...outgoingFlowNodes,
+      ...bottomFlowNodes,
+    ],
+    edges: toFlowEdges(scopedEdges, selectedNodeId, VIEW_MODE.NEIGHBORHOOD),
+    groups: [],
+    scopedNodes,
+    scopedEdges,
+    allVisibleEdges,
+  };
 }
 
 function buildGroupEdges(scopedEdges, nodeToGroupMap) {
@@ -793,6 +1011,21 @@ function buildGroupedLayout(
     viewMode,
     selectedNodeId
   );
+
+  /*
+   * 핵심 변경:
+   * 주변 보기에서는 package/layer 그룹을 제거하고,
+   * 선택 노드 중심의 전용 레이아웃을 사용합니다.
+   */
+  if (viewMode === VIEW_MODE.NEIGHBORHOOD && selectedNodeId) {
+    return buildNeighborhoodLayout(
+      scopedNodes,
+      scopedEdges,
+      allVisibleEdges,
+      neighborhoodNodeIds,
+      selectedNodeId
+    );
+  }
 
   const groups = groupNodesByMode(scopedNodes, groupMode);
 
@@ -1186,7 +1419,9 @@ function SearchBox({
       {searchTerm.trim() && (
         <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-xl border border-white/10 bg-[#0b1020] shadow-2xl">
           {results.length === 0 ? (
-            <p className="px-3 py-3 text-sm text-gray-500">검색 결과가 없습니다.</p>
+            <p className="px-3 py-3 text-sm text-gray-500">
+              검색 결과가 없습니다.
+            </p>
           ) : (
             results.map((node) => (
               <button
@@ -1225,19 +1460,71 @@ function ViewportController({ request }) {
       return;
     }
 
-    const nodes =
+    const targetNodes =
       request.nodeIds?.length > 0
         ? request.nodeIds.map((id) => ({ id }))
         : undefined;
 
-    reactFlow.fitView({
-      nodes,
-      padding: request.padding,
-      duration: 550,
-      minZoom: request.minZoom,
-      maxZoom: request.maxZoom,
-    });
-  }, [nodesInitialized, reactFlow, request]);
+    const fitTimer = window.setTimeout(() => {
+      reactFlow.fitView({
+        nodes: targetNodes,
+        padding: request.padding,
+        duration: 500,
+        minZoom: request.minZoom,
+        maxZoom: request.maxZoom,
+      });
+    }, 80);
+
+    /*
+     * 주변 보기에서는 fitView 이후 선택 노드를 다시 중앙에 두고
+     * 읽기 쉬운 확대율까지 한 번 더 조정합니다.
+     */
+    const centerTimer = window.setTimeout(() => {
+      if (!request.centerNodeId || !request.focusZoom) {
+        return;
+      }
+
+      const node = reactFlow.getNode(request.centerNodeId);
+
+      if (!node) {
+        return;
+      }
+
+      const absolutePosition =
+        node.positionAbsolute ??
+        node.internals?.positionAbsolute ??
+        node.position;
+
+      const width = node.measured?.width ?? node.width ?? CLASS_NODE_WIDTH;
+      const height = node.measured?.height ?? node.height ?? CLASS_NODE_HEIGHT;
+
+      const centerX = absolutePosition.x + width / 2;
+      const centerY = absolutePosition.y + height / 2;
+
+      const currentZoom = reactFlow.getZoom();
+      const nextZoom = Math.max(currentZoom, request.focusZoom);
+
+      reactFlow.setCenter(centerX, centerY, {
+        zoom: nextZoom,
+        duration: 450,
+      });
+    }, 650);
+
+    return () => {
+      window.clearTimeout(fitTimer);
+      window.clearTimeout(centerTimer);
+    };
+  }, [
+    nodesInitialized,
+    reactFlow,
+    request?.key,
+    request?.nodeIds,
+    request?.padding,
+    request?.minZoom,
+    request?.maxZoom,
+    request?.centerNodeId,
+    request?.focusZoom,
+  ]);
 
   return null;
 }
@@ -1318,8 +1605,6 @@ function FlowCanvas({
           onInit={onInit}
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
-          fitView
-          fitViewOptions={{ padding: 0.1 }}
           nodesDraggable={false}
           nodesConnectable={false}
           elementsSelectable
@@ -1639,6 +1924,8 @@ export default function ClassDiagramSection({
       padding: options.padding ?? 0.16,
       minZoom: options.minZoom ?? 0.08,
       maxZoom: options.maxZoom ?? 1.15,
+      centerNodeId: options.centerNodeId ?? null,
+      focusZoom: options.focusZoom ?? null,
     }));
   }, []);
 
@@ -1647,15 +1934,40 @@ export default function ClassDiagramSection({
       return;
     }
 
+    const classNodeIds = nodes
+      .filter((node) => node.type === "umlClass")
+      .map((node) => node.id);
+
+    const allNodeIds = nodes.map((node) => node.id);
+
     if (viewMode === VIEW_MODE.NEIGHBORHOOD) {
-      requestFitView(
-        nodes.map((node) => node.id),
-        {
-          padding: 0.28,
-          minZoom: 0.18,
-          maxZoom: 1.15,
-        }
-      );
+      const targetIds = classNodeIds.length > 0 ? classNodeIds : allNodeIds;
+      const targetCount = targetIds.length;
+
+      const focusZoom =
+        targetCount <= 2
+          ? 1.05
+          : targetCount <= 5
+            ? 0.82
+            : targetCount <= 9
+              ? 0.66
+              : 0.52;
+
+      requestFitView(targetIds, {
+        padding: targetCount <= 5 ? 0.2 : 0.16,
+        minZoom:
+          targetCount <= 2
+            ? 0.85
+            : targetCount <= 5
+              ? 0.65
+              : targetCount <= 9
+                ? 0.5
+                : 0.38,
+        maxZoom: 1.25,
+        centerNodeId: selectedNodeId,
+        focusZoom,
+      });
+
       return;
     }
 
@@ -1663,11 +1975,12 @@ export default function ClassDiagramSection({
       requestFitView(
         entryPoints.map((node) => String(node.symbolId)),
         {
-          padding: 0.3,
-          minZoom: 0.08,
-          maxZoom: 0.95,
+          padding: 0.35,
+          minZoom: 0.25,
+          maxZoom: 1.05,
         }
       );
+
       return;
     }
 
@@ -1678,28 +1991,27 @@ export default function ClassDiagramSection({
       requestFitView(
         extensionPoints.map((node) => String(node.symbolId)),
         {
-          padding: 0.3,
-          minZoom: 0.08,
-          maxZoom: 0.95,
+          padding: 0.35,
+          minZoom: 0.25,
+          maxZoom: 1.05,
         }
       );
+
       return;
     }
 
-    requestFitView(
-      nodes.map((node) => node.id),
-      {
-        padding: 0.12,
-        minZoom: 0.06,
-        maxZoom: 0.9,
-      }
-    );
+    requestFitView(allNodeIds, {
+      padding: 0.12,
+      minZoom: 0.06,
+      maxZoom: 0.9,
+    });
   }, [
     nodes,
     viewMode,
     focusMode,
     entryPoints,
     extensionPoints,
+    selectedNodeId,
     requestFitView,
   ]);
 
@@ -1707,6 +2019,7 @@ export default function ClassDiagramSection({
     setViewMode(VIEW_MODE.OVERVIEW);
     setSelectedNodeId(null);
     setFocusMode(FOCUS_MODE.ALL);
+    setSearchTerm("");
   }, []);
 
   const enterNeighborhoodView = useCallback((node) => {
@@ -1731,29 +2044,17 @@ export default function ClassDiagramSection({
         return;
       }
 
-      if (
-        viewMode === VIEW_MODE.NEIGHBORHOOD &&
-        selectedNodeId === node.id
-      ) {
-        resetToOverview();
-        return;
-      }
-
       const originalNode = diagramNodes.find(
         (item) => String(item.symbolId) === node.id
       );
 
-      if (originalNode) {
-        enterNeighborhoodView(originalNode);
+      if (!originalNode) {
+        return;
       }
+
+      enterNeighborhoodView(originalNode);
     },
-    [
-      diagramNodes,
-      enterNeighborhoodView,
-      resetToOverview,
-      selectedNodeId,
-      viewMode,
-    ]
+    [diagramNodes, enterNeighborhoodView]
   );
 
   const handlePaneClick = useCallback(() => {
