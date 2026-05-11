@@ -7,24 +7,28 @@ import {
   MiniMap,
   Position,
   ReactFlow,
+  useNodesInitialized,
+  useReactFlow,
 } from "@xyflow/react";
 import dagre from "@dagrejs/dagre";
 import {
   Box,
   GitBranch,
   Loader2,
+  Search,
   TriangleAlert,
   Workflow,
+  X,
 } from "lucide-react";
 
-const CLASS_NODE_WIDTH = 260;
-const CLASS_NODE_HEIGHT = 150;
+const CLASS_NODE_WIDTH = 320;
+const CLASS_NODE_HEIGHT = 190;
 
-const GROUP_PADDING_X = 28;
-const GROUP_PADDING_TOP = 82;
-const GROUP_PADDING_BOTTOM = 28;
-const GROUP_GAP_X = 28;
-const GROUP_GAP_Y = 28;
+const GROUP_PADDING_X = 40;
+const GROUP_PADDING_TOP = 92;
+const GROUP_PADDING_BOTTOM = 40;
+const GROUP_GAP_X = 72;
+const GROUP_GAP_Y = 96;
 
 const GROUP_MODE = {
   PACKAGE: "PACKAGE",
@@ -35,6 +39,11 @@ const FOCUS_MODE = {
   ALL: "ALL",
   ENTRY_POINT: "ENTRY_POINT",
   EXTENSION_POINT: "EXTENSION_POINT",
+};
+
+const VIEW_MODE = {
+  OVERVIEW: "OVERVIEW",
+  NEIGHBORHOOD: "NEIGHBORHOOD",
 };
 
 const DEFAULT_VISIBLE_EDGE_TYPES = {
@@ -221,130 +230,6 @@ function isFocusedNode(node, focusMode) {
   return true;
 }
 
-function UmlClassNode({ data }) {
-  const badges = data.badges ?? [];
-  const isTopBottom = data.handleDirection === "TB";
-
-  const focusClassName = data.isSelected
-    ? "border-white shadow-[0_0_0_2px_rgba(255,255,255,0.85),0_0_36px_rgba(34,211,238,0.35)]"
-    : data.isDimmed
-      ? "border-white/10 opacity-25"
-      : data.isEntryPoint && data.isExtensionPoint
-        ? "border-fuchsia-300 shadow-[0_0_0_1px_rgba(216,180,254,0.6),0_0_28px_rgba(250,204,21,0.22),0_0_28px_rgba(192,132,252,0.28)]"
-        : data.isEntryPoint
-          ? "border-purple-300 shadow-[0_0_0_1px_rgba(216,180,254,0.55),0_0_28px_rgba(192,132,252,0.28)]"
-          : data.isExtensionPoint
-            ? "border-yellow-300 shadow-[0_0_0_1px_rgba(253,224,71,0.55),0_0_28px_rgba(250,204,21,0.25)]"
-            : "border-white/15";
-
-  return (
-    <div
-      className={`w-[260px] overflow-hidden rounded-xl border bg-[#0b1020]/95 transition-all duration-200 ${focusClassName}`}
-    >
-      <Handle
-        type="target"
-        position={isTopBottom ? Position.Top : Position.Left}
-        className="!h-2.5 !w-2.5 !border-0 !bg-cyan-300"
-      />
-      <Handle
-        type="source"
-        position={isTopBottom ? Position.Bottom : Position.Right}
-        className="!h-2.5 !w-2.5 !border-0 !bg-cyan-300"
-      />
-
-      <div className="border-b border-white/10 bg-white/[0.04] px-4 py-3">
-        <p
-          className="truncate text-[11px] text-gray-500"
-          title={data.packageName}
-        >
-          {shortPackageName(data.packageName)}
-        </p>
-
-        <div className="mt-1 flex items-center justify-between gap-3">
-          <h4
-            className="truncate text-base font-bold text-gray-100"
-            title={data.qualifiedName}
-          >
-            {data.label}
-          </h4>
-
-          <span className="shrink-0 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-200">
-            {data.access ?? "UNKNOWN"}
-          </span>
-        </div>
-      </div>
-
-      <div className="min-h-[52px] border-b border-white/10 px-4 py-3">
-        <div className="flex items-center justify-between gap-3 text-xs">
-          <span className="text-gray-500">score</span>
-          <span className="font-semibold text-gray-200">
-            {formatScore(data.score)}
-          </span>
-        </div>
-
-        {badges.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {badges.map((badge) => (
-              <span
-                key={badge}
-                className={`rounded-full border px-2 py-0.5 text-[10px] ${badgeClassName(
-                  badge
-                )}`}
-              >
-                {badgeLabel(badge)}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-2 text-[11px] text-gray-600">no role badge</p>
-        )}
-      </div>
-
-      <div className="px-4 py-3 text-[11px] text-gray-500">
-        <p>attributes / operations</p>
-        <p className="mt-1 text-gray-600">BE 확장 후 표시 가능</p>
-      </div>
-    </div>
-  );
-}
-
-function DiagramGroupNode({ data }) {
-  return (
-    <div
-      className="h-full w-full rounded-2xl border bg-white/[0.025] shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-      style={{
-        borderColor: `${data.accentColor}55`,
-      }}
-      title={data.fullName}
-    >
-      <div className="flex h-[58px] items-center justify-between rounded-t-2xl border-b border-white/10 bg-white/[0.04] px-5">
-        <div className="flex items-center gap-3">
-          <span
-            className="h-2.5 w-2.5 rounded-full"
-            style={{ backgroundColor: data.accentColor }}
-          />
-
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">
-              {data.groupMode === GROUP_MODE.PACKAGE ? "package" : "layer"}
-            </p>
-            <p className="font-semibold text-gray-200">{data.label}</p>
-          </div>
-        </div>
-
-        <div className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-gray-400">
-          {data.count} types
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const nodeTypes = {
-  umlClass: UmlClassNode,
-  diagramGroup: DiagramGroupNode,
-};
-
 function tokenize(text) {
   if (!text) {
     return [];
@@ -525,9 +410,104 @@ function groupNodesByMode(diagramNodes, groupMode) {
   });
 }
 
-function buildChildNodesForGroup(group, direction, focusMode, selectedNodeId) {
+function normalizeVisibleEdges(diagramEdges, visibleEdgeTypes, validNodeIds) {
+  return diagramEdges
+    .filter((edge) => visibleEdgeTypes[edge.edgeType])
+    .map((edge, index) => {
+      const source = String(edge.sourceSymbolId);
+      const target = String(edge.targetSymbolId);
+
+      return {
+        ...edge,
+        id: `${edge.edgeType}-${source}-${target}-${index}`,
+        source,
+        target,
+        _index: index,
+      };
+    })
+    .filter(
+      (edge) => validNodeIds.has(edge.source) && validNodeIds.has(edge.target)
+    );
+}
+
+function buildNeighborhoodNodeIds(normalizedEdges, selectedNodeId) {
+  const neighborhood = new Set();
+
+  if (!selectedNodeId) {
+    return neighborhood;
+  }
+
+  neighborhood.add(selectedNodeId);
+
+  normalizedEdges.forEach((edge) => {
+    if (edge.source === selectedNodeId) {
+      neighborhood.add(edge.target);
+    }
+
+    if (edge.target === selectedNodeId) {
+      neighborhood.add(edge.source);
+    }
+  });
+
+  return neighborhood;
+}
+
+function buildScopedGraph(
+  diagramNodes,
+  diagramEdges,
+  visibleEdgeTypes,
+  viewMode,
+  selectedNodeId
+) {
+  const allNodeIds = new Set(diagramNodes.map((node) => String(node.symbolId)));
+
+  const allVisibleEdges = normalizeVisibleEdges(
+    diagramEdges,
+    visibleEdgeTypes,
+    allNodeIds
+  );
+
+  if (viewMode !== VIEW_MODE.NEIGHBORHOOD || !selectedNodeId) {
+    return {
+      scopedNodes: diagramNodes,
+      scopedEdges: allVisibleEdges,
+      allVisibleEdges,
+      neighborhoodNodeIds: new Set(),
+    };
+  }
+
+  const neighborhoodNodeIds = buildNeighborhoodNodeIds(
+    allVisibleEdges,
+    selectedNodeId
+  );
+
+  const scopedNodes = diagramNodes.filter((node) =>
+    neighborhoodNodeIds.has(String(node.symbolId))
+  );
+
+  const scopedEdges = allVisibleEdges.filter(
+    (edge) =>
+      edge.source === selectedNodeId || edge.target === selectedNodeId
+  );
+
+  return {
+    scopedNodes,
+    scopedEdges,
+    allVisibleEdges,
+    neighborhoodNodeIds,
+  };
+}
+
+function buildChildNodesForGroup(
+  group,
+  direction,
+  focusMode,
+  viewMode,
+  selectedNodeId,
+  neighborhoodNodeIds
+) {
   const count = group.nodes.length;
-  const maxColumns = group.groupMode === GROUP_MODE.LAYER ? 4 : 3;
+  const maxColumns = group.groupMode === GROUP_MODE.LAYER ? 3 : 2;
 
   const columns = Math.min(
     maxColumns,
@@ -552,11 +532,23 @@ function buildChildNodesForGroup(group, direction, focusMode, selectedNodeId) {
     const row = Math.floor(index / columns);
     const nodeId = String(node.symbolId);
 
+    const isSelected = selectedNodeId === nodeId;
+    const isRelatedToSelection =
+      viewMode === VIEW_MODE.NEIGHBORHOOD &&
+      selectedNodeId &&
+      neighborhoodNodeIds.has(nodeId);
+
+    const isDimmedByFocusMode =
+      viewMode === VIEW_MODE.OVERVIEW &&
+      focusMode !== FOCUS_MODE.ALL &&
+      !isFocusedNode(node, focusMode);
+
     return {
       id: nodeId,
       type: "umlClass",
       parentId: group.id,
       extent: "parent",
+      zIndex: 3,
       position: {
         x: GROUP_PADDING_X + col * (CLASS_NODE_WIDTH + GROUP_GAP_X),
         y: GROUP_PADDING_TOP + row * (CLASS_NODE_HEIGHT + GROUP_GAP_Y),
@@ -572,11 +564,9 @@ function buildChildNodesForGroup(group, direction, focusMode, selectedNodeId) {
         handleDirection: direction,
         isEntryPoint: isEntryPoint(node),
         isExtensionPoint: isExtensionPoint(node),
-        isDimmed:
-          focusMode !== FOCUS_MODE.ALL &&
-          !isFocusedNode(node, focusMode) &&
-          selectedNodeId !== nodeId,
-        isSelected: selectedNodeId === nodeId,
+        isSelected,
+        isRelatedToSelection,
+        isDimmed: isDimmedByFocusMode,
       },
     };
   });
@@ -588,71 +578,64 @@ function buildChildNodesForGroup(group, direction, focusMode, selectedNodeId) {
   };
 }
 
-function toFlowEdges(diagramEdges, visibleEdgeTypes, validNodeIds) {
-  return diagramEdges
-    .filter((edge) => visibleEdgeTypes[edge.edgeType])
-    .map((edge, index) => {
-      const sourceId = String(edge.sourceSymbolId);
-      const targetId = String(edge.targetSymbolId);
+function toFlowEdges(scopedEdges, selectedNodeId, viewMode) {
+  return scopedEdges.map((edge) => {
+    const meta = EDGE_META[edge.edgeType] ?? EDGE_META.PARAM;
+    const isStructural =
+      edge.edgeType === "EXTENDS" || edge.edgeType === "IMPLEMENTS";
 
-      return {
-        ...edge,
-        sourceId,
-        targetId,
-        _index: index,
-      };
-    })
-    .filter(
-      (edge) =>
-        validNodeIds.has(edge.sourceId) && validNodeIds.has(edge.targetId)
-    )
-    .map((edge) => {
-      const meta = EDGE_META[edge.edgeType] ?? EDGE_META.PARAM;
-      const isStructural =
-        edge.edgeType === "EXTENDS" || edge.edgeType === "IMPLEMENTS";
+    const isNeighborhoodMode =
+      viewMode === VIEW_MODE.NEIGHBORHOOD && selectedNodeId;
 
-      return {
-        id: `${edge.edgeType}-${edge.sourceId}-${edge.targetId}-${edge._index}`,
-        source: edge.sourceId,
-        target: edge.targetId,
-        type: "smoothstep",
-        animated: false,
-        zIndex: 2,
-        label: meta.label,
-        labelStyle: {
-          fill: meta.stroke,
-          fontSize: 11,
-          fontWeight: 700,
-        },
-        labelBgStyle: {
-          fill: "#030712",
-          fillOpacity: 0.92,
-        },
-        labelBgPadding: [5, 3],
-        labelBgBorderRadius: 6,
-        style: {
-          stroke: meta.stroke,
-          strokeWidth: isStructural ? 2.4 : 1.8,
-          strokeDasharray: meta.dasharray,
-        },
-        markerEnd: {
-          type: meta.markerType,
-          color: meta.stroke,
-          width: isStructural ? 22 : 18,
-          height: isStructural ? 22 : 18,
-        },
-        data: {
-          original: edge,
-        },
-      };
-    });
+    return {
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      type: "smoothstep",
+      animated: false,
+      zIndex: 1,
+      style: {
+        stroke: meta.stroke,
+        strokeWidth: isNeighborhoodMode
+          ? isStructural
+            ? 3.4
+            : 2.6
+          : isStructural
+            ? 2.6
+            : 1.9,
+        strokeDasharray: meta.dasharray,
+      },
+      markerEnd: {
+        type: meta.markerType,
+        color: meta.stroke,
+        width: isNeighborhoodMode
+          ? isStructural
+            ? 28
+            : 21
+          : isStructural
+            ? 24
+            : 18,
+        height: isNeighborhoodMode
+          ? isStructural
+            ? 28
+            : 21
+          : isStructural
+            ? 24
+            : 18,
+      },
+      interactionWidth: 18,
+      data: {
+        original: edge,
+      },
+    };
+  });
 }
 
-function buildGroupEdges(flowEdges, nodeToGroupMap) {
+function buildGroupEdges(scopedEdges, nodeToGroupMap) {
   const seen = new Set();
   const groupEdges = [];
 
-  flowEdges.forEach((edge) => {
+  scopedEdges.forEach((edge) => {
     const sourceGroup = nodeToGroupMap.get(edge.source);
     const targetGroup = nodeToGroupMap.get(edge.target);
 
@@ -687,11 +670,11 @@ function layoutPackageGroups(groups, groupEdges, direction) {
   graph.setDefaultEdgeLabel(() => ({}));
   graph.setGraph({
     rankdir: direction,
-    ranksep: 140,
-    nodesep: 90,
-    edgesep: 40,
-    marginx: 40,
-    marginy: 40,
+    ranksep: 180,
+    nodesep: 120,
+    edgesep: 60,
+    marginx: 50,
+    marginy: 50,
   });
 
   groups.forEach((group) => {
@@ -732,7 +715,7 @@ function layoutLayerGroups(groups, direction) {
         y: currentY,
       };
 
-      currentY += group.height + 140;
+      currentY += group.height + 160;
 
       return positioned;
     });
@@ -748,7 +731,7 @@ function layoutLayerGroups(groups, direction) {
       y: (maxHeight - group.height) / 2,
     };
 
-    currentX += group.width + 140;
+    currentX += group.width + 160;
 
     return positioned;
   });
@@ -756,8 +739,8 @@ function layoutLayerGroups(groups, direction) {
 
 function buildFallbackGroupGrid(groups) {
   const columns = Math.max(1, Math.ceil(Math.sqrt(groups.length)));
-  const gapX = 120;
-  const gapY = 120;
+  const gapX = 140;
+  const gapY = 140;
 
   let currentY = 0;
   const rows = [];
@@ -795,9 +778,23 @@ function buildGroupedLayout(
   direction,
   groupMode,
   focusMode,
+  viewMode,
   selectedNodeId
 ) {
-  const groups = groupNodesByMode(diagramNodes, groupMode);
+  const {
+    scopedNodes,
+    scopedEdges,
+    allVisibleEdges,
+    neighborhoodNodeIds,
+  } = buildScopedGraph(
+    diagramNodes,
+    diagramEdges,
+    visibleEdgeTypes,
+    viewMode,
+    selectedNodeId
+  );
+
+  const groups = groupNodesByMode(scopedNodes, groupMode);
 
   const nodeToGroupMap = new Map();
 
@@ -807,18 +804,14 @@ function buildGroupedLayout(
     });
   });
 
-  const validNodeIds = new Set(
-    diagramNodes.map((node) => String(node.symbolId))
-  );
-
-  const flowEdges = toFlowEdges(diagramEdges, visibleEdgeTypes, validNodeIds);
-
   const groupsWithChildren = groups.map((group) => {
     const { width, height, children } = buildChildNodesForGroup(
       group,
       direction,
       focusMode,
-      selectedNodeId
+      viewMode,
+      selectedNodeId,
+      neighborhoodNodeIds
     );
 
     return {
@@ -829,7 +822,7 @@ function buildGroupedLayout(
     };
   });
 
-  const groupEdges = buildGroupEdges(flowEdges, nodeToGroupMap);
+  const groupEdges = buildGroupEdges(scopedEdges, nodeToGroupMap);
 
   const layoutedGroups =
     groupMode === GROUP_MODE.LAYER
@@ -843,6 +836,7 @@ function buildGroupedLayout(
       x: group.x,
       y: group.y,
     },
+    zIndex: 0,
     data: {
       label: group.label,
       fullName: group.fullName,
@@ -853,7 +847,6 @@ function buildGroupedLayout(
     style: {
       width: group.width,
       height: group.height,
-      zIndex: 0,
     },
     selectable: false,
     draggable: false,
@@ -871,10 +864,136 @@ function buildGroupedLayout(
 
   return {
     nodes: [...parentNodes, ...childNodes],
-    edges: flowEdges,
+    edges: toFlowEdges(scopedEdges, selectedNodeId, viewMode),
     groups: layoutedGroups,
+    scopedNodes,
+    scopedEdges,
+    allVisibleEdges,
   };
 }
+
+function UmlClassNode({ data }) {
+  const badges = data.badges ?? [];
+  const isTopBottom = data.handleDirection === "TB";
+
+  const focusClassName = data.isSelected
+    ? "border-white shadow-[0_0_0_2px_rgba(255,255,255,0.85),0_0_36px_rgba(34,211,238,0.35)]"
+    : data.isRelatedToSelection
+      ? "border-cyan-200 shadow-[0_0_0_1px_rgba(165,243,252,0.45),0_0_22px_rgba(34,211,238,0.18)]"
+      : data.isDimmed
+        ? "border-white/5 opacity-[0.08] grayscale"
+        : data.isEntryPoint && data.isExtensionPoint
+          ? "border-fuchsia-300 shadow-[0_0_0_1px_rgba(216,180,254,0.6),0_0_28px_rgba(250,204,21,0.22),0_0_28px_rgba(192,132,252,0.28)]"
+          : data.isEntryPoint
+            ? "border-purple-300 shadow-[0_0_0_1px_rgba(216,180,254,0.55),0_0_28px_rgba(192,132,252,0.28)]"
+            : data.isExtensionPoint
+              ? "border-yellow-300 shadow-[0_0_0_1px_rgba(253,224,71,0.55),0_0_28px_rgba(250,204,21,0.25)]"
+              : "border-white/15";
+
+  return (
+    <div
+      className={`relative z-[3] w-[320px] overflow-hidden rounded-xl border bg-[#0b1020]/95 transition-all duration-200 ${focusClassName}`}
+    >
+      <Handle
+        type="target"
+        position={isTopBottom ? Position.Top : Position.Left}
+        className="!h-2.5 !w-2.5 !border-0 !bg-cyan-300"
+      />
+      <Handle
+        type="source"
+        position={isTopBottom ? Position.Bottom : Position.Right}
+        className="!h-2.5 !w-2.5 !border-0 !bg-cyan-300"
+      />
+
+      <div className="border-b border-white/10 bg-white/[0.04] px-4 py-3">
+        <p className="text-[11px] text-gray-500" title={data.packageName}>
+          {shortPackageName(data.packageName)}
+        </p>
+
+        <div className="mt-1 flex min-h-[42px] items-start justify-between gap-3">
+          <h4
+            className="min-w-0 flex-1 whitespace-normal break-words text-[15px] font-bold leading-5 text-gray-100"
+            title={data.qualifiedName}
+          >
+            {data.label}
+          </h4>
+
+          <span className="mt-0.5 shrink-0 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-200">
+            {data.access ?? "UNKNOWN"}
+          </span>
+        </div>
+      </div>
+
+      <div className="min-h-[58px] border-b border-white/10 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="text-gray-500">score</span>
+          <span className="font-semibold text-gray-200">
+            {formatScore(data.score)}
+          </span>
+        </div>
+
+        {badges.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {badges.map((badge) => (
+              <span
+                key={badge}
+                className={`rounded-full border px-2 py-0.5 text-[10px] ${badgeClassName(
+                  badge
+                )}`}
+              >
+                {badgeLabel(badge)}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-[11px] text-gray-600">no role badge</p>
+        )}
+      </div>
+
+      <div className="px-4 py-3 text-[11px] text-gray-500">
+        <p>attributes / operations</p>
+        <p className="mt-1 text-gray-600">BE 확장 후 표시 가능</p>
+      </div>
+    </div>
+  );
+}
+
+function DiagramGroupNode({ data }) {
+  return (
+    <div
+      className="h-full w-full rounded-2xl border bg-white/[0.025] shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+      style={{
+        borderColor: `${data.accentColor}55`,
+      }}
+      title={data.fullName}
+    >
+      <div className="flex h-[58px] items-center justify-between rounded-t-2xl border-b border-white/10 bg-white/[0.04] px-5">
+        <div className="flex items-center gap-3">
+          <span
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: data.accentColor }}
+          />
+
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500">
+              {data.groupMode === GROUP_MODE.PACKAGE ? "package" : "layer"}
+            </p>
+            <p className="font-semibold text-gray-200">{data.label}</p>
+          </div>
+        </div>
+
+        <div className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-gray-400">
+          {data.count} types
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const nodeTypes = {
+  umlClass: UmlClassNode,
+  diagramGroup: DiagramGroupNode,
+};
 
 function LegendItem({ edgeType }) {
   const meta = EDGE_META[edgeType];
@@ -1028,7 +1147,110 @@ function FocusModeToggle({
   );
 }
 
-function FlowCanvas({ nodes, edges, nodeTypes, onInit }) {
+function SearchBox({
+  searchTerm,
+  onChange,
+  onClear,
+  results,
+  onSelect,
+  onSubmit,
+}) {
+  return (
+    <div className="relative w-full max-w-md">
+      <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+        <Search size={16} className="shrink-0 text-gray-500" />
+
+        <input
+          value={searchTerm}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              onSubmit();
+            }
+          }}
+          placeholder="클래스명 검색"
+          className="w-full bg-transparent text-sm text-gray-100 outline-none placeholder:text-gray-600"
+        />
+
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="rounded-md p-1 text-gray-500 transition hover:bg-white/5 hover:text-gray-300"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {searchTerm.trim() && (
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-xl border border-white/10 bg-[#0b1020] shadow-2xl">
+          {results.length === 0 ? (
+            <p className="px-3 py-3 text-sm text-gray-500">검색 결과가 없습니다.</p>
+          ) : (
+            results.map((node) => (
+              <button
+                key={`search-${node.symbolId}`}
+                type="button"
+                onClick={() => onSelect(node)}
+                className="flex w-full items-start justify-between gap-3 border-b border-white/5 px-3 py-3 text-left transition last:border-b-0 hover:bg-white/[0.05]"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-100">
+                    {node.label}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {shortPackageName(node.packageName)}
+                  </p>
+                </div>
+
+                <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] text-gray-400">
+                  {formatScore(node.score)}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ViewportController({ request }) {
+  const reactFlow = useReactFlow();
+  const nodesInitialized = useNodesInitialized();
+
+  useEffect(() => {
+    if (!nodesInitialized || !request) {
+      return;
+    }
+
+    const nodes =
+      request.nodeIds?.length > 0
+        ? request.nodeIds.map((id) => ({ id }))
+        : undefined;
+
+    reactFlow.fitView({
+      nodes,
+      padding: request.padding,
+      duration: 550,
+      minZoom: request.minZoom,
+      maxZoom: request.maxZoom,
+    });
+  }, [nodesInitialized, reactFlow, request]);
+
+  return null;
+}
+
+function FlowCanvas({
+  nodes,
+  edges,
+  nodeTypes,
+  onInit,
+  onNodeClick,
+  onPaneClick,
+  viewportRequest,
+}) {
   const containerRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
 
@@ -1094,6 +1316,8 @@ function FlowCanvas({ nodes, edges, nodeTypes, onInit }) {
           edges={edges}
           nodeTypes={nodeTypes}
           onInit={onInit}
+          onNodeClick={onNodeClick}
+          onPaneClick={onPaneClick}
           fitView
           fitViewOptions={{ padding: 0.1 }}
           nodesDraggable={false}
@@ -1101,8 +1325,12 @@ function FlowCanvas({ nodes, edges, nodeTypes, onInit }) {
           elementsSelectable
           minZoom={0.06}
           maxZoom={1.5}
+          elevateEdgesOnSelect={false}
+          zIndexMode="manual"
           proOptions={{ hideAttribution: true }}
         >
+          <ViewportController request={viewportRequest} />
+
           <Background gap={22} size={1} color="rgba(255,255,255,0.06)" />
           <MiniMap
             pannable
@@ -1132,7 +1360,7 @@ function FocusSidePanel({
         <div>
           <h4 className="text-sm font-bold text-gray-100">진입점 / 확장점</h4>
           <p className="mt-1 text-xs text-gray-500">
-            항목을 클릭하면 다이어그램에서 해당 클래스로 이동합니다.
+            항목을 클릭하면 해당 클래스의 주변 관계만 바로 보여줍니다.
           </p>
         </div>
 
@@ -1237,10 +1465,8 @@ function FocusListItem({ node, selected, accent, onClick }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-gray-100">
-            {node.label}
-          </p>
-          <p className="mt-1 truncate text-xs text-gray-500">
+          <p className="text-sm font-semibold text-gray-100">{node.label}</p>
+          <p className="mt-1 text-xs text-gray-500">
             {shortPackageName(node.packageName)}
           </p>
         </div>
@@ -1268,6 +1494,17 @@ function FocusListItem({ node, selected, accent, onClick }) {
   );
 }
 
+function SummaryCard({ label, value }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+      <p className="text-[11px] uppercase tracking-wide text-gray-500">
+        {label}
+      </p>
+      <p className="mt-1 text-lg font-bold text-gray-100">{value}</p>
+    </div>
+  );
+}
+
 export default function ClassDiagramSection({
   classDiagram,
   loading = false,
@@ -1279,8 +1516,11 @@ export default function ClassDiagramSection({
   const [layoutDirection, setLayoutDirection] = useState("TB");
   const [groupMode, setGroupMode] = useState(GROUP_MODE.PACKAGE);
   const [focusMode, setFocusMode] = useState(FOCUS_MODE.ALL);
+  const [viewMode, setViewMode] = useState(VIEW_MODE.OVERVIEW);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
+  const [viewportRequest, setViewportRequest] = useState(null);
 
   const diagramNodes = classDiagram?.nodes ?? [];
   const diagramEdges = classDiagram?.edges ?? [];
@@ -1301,6 +1541,38 @@ export default function ClassDiagramSection({
     [diagramNodes]
   );
 
+  const searchResults = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+
+    if (!keyword) {
+      return [];
+    }
+
+    return diagramNodes
+      .filter((node) => {
+        const label = node.label?.toLowerCase() ?? "";
+        const qualifiedName = node.qualifiedName?.toLowerCase() ?? "";
+        const packageName = node.packageName?.toLowerCase() ?? "";
+
+        return (
+          label.includes(keyword) ||
+          qualifiedName.includes(keyword) ||
+          packageName.includes(keyword)
+        );
+      })
+      .sort((a, b) => {
+        const aExact = a.label?.toLowerCase() === keyword ? 1 : 0;
+        const bExact = b.label?.toLowerCase() === keyword ? 1 : 0;
+
+        if (aExact !== bExact) {
+          return bExact - aExact;
+        }
+
+        return (b.score ?? 0) - (a.score ?? 0);
+      })
+      .slice(0, 7);
+  }, [diagramNodes, searchTerm]);
+
   const edgeTypeCounts = useMemo(() => {
     return diagramEdges.reduce(
       (acc, edge) => {
@@ -1316,7 +1588,14 @@ export default function ClassDiagramSection({
     );
   }, [diagramEdges]);
 
-  const { nodes, edges, groups } = useMemo(
+  const {
+    nodes,
+    edges,
+    groups,
+    scopedNodes,
+    scopedEdges,
+    allVisibleEdges,
+  } = useMemo(
     () =>
       buildGroupedLayout(
         diagramNodes,
@@ -1325,6 +1604,7 @@ export default function ClassDiagramSection({
         layoutDirection,
         groupMode,
         focusMode,
+        viewMode,
         selectedNodeId
       ),
     [
@@ -1334,14 +1614,166 @@ export default function ClassDiagramSection({
       layoutDirection,
       groupMode,
       focusMode,
+      viewMode,
       selectedNodeId,
     ]
   );
 
-  const visibleEdgeCount = edges.length;
+  const selectedNode = useMemo(
+    () =>
+      diagramNodes.find((node) => String(node.symbolId) === selectedNodeId) ??
+      null,
+    [diagramNodes, selectedNodeId]
+  );
+
+  const groupCount = groups.length;
+  const displayedEdgeCount = edges.length;
+  const activeVisibleEdgeCount = allVisibleEdges.length;
   const totalEdgeCount =
     classDiagram?.summary?.selectedEdgeCount ?? diagramEdges.length;
-  const groupCount = groups.length;
+
+  const requestFitView = useCallback((nodeIds, options = {}) => {
+    setViewportRequest((prev) => ({
+      key: (prev?.key ?? 0) + 1,
+      nodeIds,
+      padding: options.padding ?? 0.16,
+      minZoom: options.minZoom ?? 0.08,
+      maxZoom: options.maxZoom ?? 1.15,
+    }));
+  }, []);
+
+  useEffect(() => {
+    if (nodes.length === 0) {
+      return;
+    }
+
+    if (viewMode === VIEW_MODE.NEIGHBORHOOD) {
+      requestFitView(
+        nodes.map((node) => node.id),
+        {
+          padding: 0.28,
+          minZoom: 0.18,
+          maxZoom: 1.15,
+        }
+      );
+      return;
+    }
+
+    if (focusMode === FOCUS_MODE.ENTRY_POINT && entryPoints.length > 0) {
+      requestFitView(
+        entryPoints.map((node) => String(node.symbolId)),
+        {
+          padding: 0.3,
+          minZoom: 0.08,
+          maxZoom: 0.95,
+        }
+      );
+      return;
+    }
+
+    if (
+      focusMode === FOCUS_MODE.EXTENSION_POINT &&
+      extensionPoints.length > 0
+    ) {
+      requestFitView(
+        extensionPoints.map((node) => String(node.symbolId)),
+        {
+          padding: 0.3,
+          minZoom: 0.08,
+          maxZoom: 0.95,
+        }
+      );
+      return;
+    }
+
+    requestFitView(
+      nodes.map((node) => node.id),
+      {
+        padding: 0.12,
+        minZoom: 0.06,
+        maxZoom: 0.9,
+      }
+    );
+  }, [
+    nodes,
+    viewMode,
+    focusMode,
+    entryPoints,
+    extensionPoints,
+    requestFitView,
+  ]);
+
+  const resetToOverview = useCallback(() => {
+    setViewMode(VIEW_MODE.OVERVIEW);
+    setSelectedNodeId(null);
+    setFocusMode(FOCUS_MODE.ALL);
+  }, []);
+
+  const enterNeighborhoodView = useCallback((node) => {
+    const nodeId = String(node.symbolId);
+
+    setSelectedNodeId(nodeId);
+    setViewMode(VIEW_MODE.NEIGHBORHOOD);
+    setFocusMode(FOCUS_MODE.ALL);
+    setSearchTerm(node.label ?? "");
+  }, []);
+
+  const handleFocusNode = useCallback(
+    (node) => {
+      enterNeighborhoodView(node);
+    },
+    [enterNeighborhoodView]
+  );
+
+  const handleNodeClick = useCallback(
+    (_, node) => {
+      if (node.type !== "umlClass") {
+        return;
+      }
+
+      if (
+        viewMode === VIEW_MODE.NEIGHBORHOOD &&
+        selectedNodeId === node.id
+      ) {
+        resetToOverview();
+        return;
+      }
+
+      const originalNode = diagramNodes.find(
+        (item) => String(item.symbolId) === node.id
+      );
+
+      if (originalNode) {
+        enterNeighborhoodView(originalNode);
+      }
+    },
+    [
+      diagramNodes,
+      enterNeighborhoodView,
+      resetToOverview,
+      selectedNodeId,
+      viewMode,
+    ]
+  );
+
+  const handlePaneClick = useCallback(() => {
+    if (viewMode === VIEW_MODE.NEIGHBORHOOD) {
+      resetToOverview();
+    }
+  }, [resetToOverview, viewMode]);
+
+  const handleSearchSelect = useCallback(
+    (node) => {
+      enterNeighborhoodView(node);
+    },
+    [enterNeighborhoodView]
+  );
+
+  const handleSearchSubmit = useCallback(() => {
+    if (searchResults.length > 0) {
+      enterNeighborhoodView(searchResults[0]);
+    }
+  }, [enterNeighborhoodView, searchResults]);
 
   const toggleEdgeType = (edgeType) => {
     setVisibleEdgeTypes((prev) => ({
@@ -1349,35 +1781,6 @@ export default function ClassDiagramSection({
       [edgeType]: !prev[edgeType],
     }));
   };
-
-  const handleFocusNode = useCallback(
-    (node) => {
-      const nodeId = String(node.symbolId);
-
-      setSelectedNodeId(nodeId);
-
-      if (!reactFlowInstance) {
-        return;
-      }
-
-      const targetNode = nodes.find((item) => item.id === nodeId);
-
-      if (!targetNode) {
-        return;
-      }
-
-      requestAnimationFrame(() => {
-        reactFlowInstance.fitView({
-          nodes: [targetNode],
-          duration: 650,
-          padding: 0.6,
-          minZoom: 0.7,
-          maxZoom: 1.15,
-        });
-      });
-    },
-    [reactFlowInstance, nodes]
-  );
 
   if (loading) {
     return (
@@ -1445,29 +1848,30 @@ export default function ClassDiagramSection({
             </div>
 
             <p className="mt-2 text-sm text-gray-500">
-              {groupMode === GROUP_MODE.PACKAGE
-                ? "실제 패키지 구조 기준으로 클래스를 묶어 보여줍니다."
-                : "패키지명과 클래스명을 기준으로 추론한 레이어 구조로 묶어 보여줍니다."}
+              {viewMode === VIEW_MODE.NEIGHBORHOOD && selectedNode
+                ? `${selectedNode.label} 주변 관계만 다시 배치해서 보여주고 있습니다.`
+                : groupMode === GROUP_MODE.PACKAGE
+                  ? "실제 패키지 구조 기준으로 클래스를 묶어 보여줍니다."
+                  : "패키지명과 클래스명을 기준으로 추론한 레이어 구조로 묶어 보여줍니다."}
             </p>
 
             <p className="mt-2 text-xs text-gray-600">
-              현재 모드:{" "}
-              {groupMode === GROUP_MODE.PACKAGE ? "Package" : "Layer"} / 그룹:{" "}
-              {groupCount}개 / 현재 표시 관계선: {visibleEdgeCount} / 전체
-              관계선: {totalEdgeCount}
+              현재 보기:{" "}
+              {viewMode === VIEW_MODE.NEIGHBORHOOD ? "주변 보기" : "전체 구조"}{" "}
+              / 모드: {groupMode === GROUP_MODE.PACKAGE ? "Package" : "Layer"}{" "}
+              / 그룹: {groupCount}개 / 현재 표시 노드: {scopedNodes.length}개 /
+              현재 표시 관계선: {displayedEdgeCount}개 / 활성 관계선:{" "}
+              {activeVisibleEdgeCount}개 / 전체 관계선: {totalEdgeCount}개
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <SummaryCard
-              label="Nodes"
-              value={classDiagram?.summary?.selectedNodeCount ?? "-"}
-            />
+            <SummaryCard label="Nodes" value={scopedNodes.length} />
             <SummaryCard
               label={groupMode === GROUP_MODE.PACKAGE ? "Packages" : "Layers"}
               value={groupCount}
             />
-            <SummaryCard label="Visible Edges" value={visibleEdgeCount} />
+            <SummaryCard label="Visible Edges" value={displayedEdgeCount} />
             <SummaryCard
               label="Candidates"
               value={classDiagram?.summary?.candidateTypeCount ?? "-"}
@@ -1475,23 +1879,36 @@ export default function ClassDiagramSection({
           </div>
         </div>
 
-        <div className="mt-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap gap-2">
-            {Object.keys(EDGE_META).map((edgeType) => (
-              <EdgeToggle
-                key={edgeType}
-                edgeType={edgeType}
-                checked={visibleEdgeTypes[edgeType]}
-                count={edgeTypeCounts[edgeType] ?? 0}
-                onChange={toggleEdgeType}
-              />
-            ))}
+        <div className="mt-5 flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <SearchBox
+              searchTerm={searchTerm}
+              onChange={setSearchTerm}
+              onClear={() => setSearchTerm("")}
+              results={searchResults}
+              onSelect={handleSearchSelect}
+              onSubmit={handleSearchSubmit}
+            />
+
+            {viewMode === VIEW_MODE.NEIGHBORHOOD && (
+              <button
+                type="button"
+                onClick={resetToOverview}
+                className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/15"
+              >
+                전체 구조로 돌아가기
+              </button>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-3">
             <FocusModeToggle
               value={focusMode}
-              onChange={setFocusMode}
+              onChange={(mode) => {
+                setViewMode(VIEW_MODE.OVERVIEW);
+                setSelectedNodeId(null);
+                setFocusMode(mode);
+              }}
               entryPointCount={entryPoints.length}
               extensionPointCount={extensionPoints.length}
             />
@@ -1503,6 +1920,18 @@ export default function ClassDiagramSection({
               onChange={setLayoutDirection}
             />
           </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {Object.keys(EDGE_META).map((edgeType) => (
+            <EdgeToggle
+              key={edgeType}
+              edgeType={edgeType}
+              checked={visibleEdgeTypes[edgeType]}
+              count={edgeTypeCounts[edgeType] ?? 0}
+              onChange={toggleEdgeType}
+            />
+          ))}
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-4">
@@ -1520,6 +1949,9 @@ export default function ClassDiagramSection({
             edges={edges}
             nodeTypes={nodeTypes}
             onInit={setReactFlowInstance}
+            onNodeClick={handleNodeClick}
+            onPaneClick={handlePaneClick}
+            viewportRequest={viewportRequest}
           />
         </div>
 
@@ -1528,29 +1960,21 @@ export default function ClassDiagramSection({
           extensionPoints={extensionPoints}
           selectedNodeId={selectedNodeId}
           onFocusNode={handleFocusNode}
-          onChangeFocusMode={setFocusMode}
+          onChangeFocusMode={(mode) => {
+            setViewMode(VIEW_MODE.OVERVIEW);
+            setSelectedNodeId(null);
+            setFocusMode(mode);
+          }}
         />
       </div>
 
       <div className="flex items-start gap-3 border-t border-white/10 px-6 py-4 text-sm text-gray-500">
         <Workflow size={17} className="mt-0.5 shrink-0" />
         <p>
-          진입점은 처음 보면 좋은 타입 후보이고, 확장점은 구현·확장 관점에서
-          중요한 타입 후보입니다. Layer 모드는 현재 프론트에서 패키지명과
-          클래스명을 기반으로 추론한 결과입니다.
+          처음에는 전체 구조를 자동으로 맞춰 보여주고, 노드·검색 결과·진입점·확장점을
+          선택하면 해당 타입의 직접 연결 관계만 자동 재배치해서 보여줍니다.
         </p>
       </div>
     </section>
-  );
-}
-
-function SummaryCard({ label, value }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-      <p className="text-[11px] uppercase tracking-wide text-gray-500">
-        {label}
-      </p>
-      <p className="mt-1 text-lg font-bold text-gray-100">{value}</p>
-    </div>
   );
 }
