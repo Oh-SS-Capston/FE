@@ -6,8 +6,16 @@ import RepoInfoSection from "./components/RepoInfoSection";
 import ClassDiagramSection from "./components/ClassDiagramSection";
 import DirectoryStructureSection from "./components/DirectoryStructureSection";
 import AnalyzeProgressPanel from "./components/AnalyzeProgressPanel";
+import LlmResultSection from "./components/LlmResultSection";
 
 import { getArtifactJson, getRunProgress } from "../../features/run/api/runApi";
+
+const EMPTY_LLM_RESULTS = {
+  scenarioSpecs: null,
+  subsystemSummaries: null,
+  apiDocs: null,
+  fileTreeDocs: null,
+};
 
 export default function AnalyPage() {
   const navigate = useNavigate();
@@ -33,6 +41,10 @@ export default function AnalyPage() {
   const [classDiagram, setClassDiagram] = useState(null);
   const [classDiagramLoading, setClassDiagramLoading] = useState(false);
   const [classDiagramError, setClassDiagramError] = useState(null);
+
+  const [llmResults, setLlmResults] = useState(EMPTY_LLM_RESULTS);
+  const [llmLoading, setLlmLoading] = useState(false);
+  const [llmError, setLlmError] = useState(null);
 
   useEffect(() => {
     if (!repo) return;
@@ -92,10 +104,8 @@ export default function AnalyPage() {
   }, [repo]);
 
   /*
-   * 핵심:
-   * 프론트는 buildClassMap을 직접 호출하지 않습니다.
-   * 백엔드 pipeline이 classMap까지 자동 실행하고,
-   * 프론트는 progress API만 polling합니다.
+   * 프론트는 백엔드 자동 파이프라인 진행 상태만 polling합니다.
+   * 분석 완료 후 산출물 id를 이용해 결과 JSON을 읽어옵니다.
    */
   useEffect(() => {
     if (!runId) return;
@@ -147,6 +157,13 @@ export default function AnalyPage() {
   }, [runId]);
 
   const loadArtifacts = async (progressResult) => {
+    await Promise.allSettled([
+      loadClassDiagramArtifact(progressResult),
+      loadLlmArtifacts(progressResult),
+    ]);
+  };
+
+  const loadClassDiagramArtifact = async (progressResult) => {
     const classDiagramArtifactId =
       progressResult?.artifacts?.classDiagramArtifactId;
 
@@ -178,6 +195,76 @@ export default function AnalyPage() {
       );
     } finally {
       setClassDiagramLoading(false);
+    }
+  };
+
+  const loadLlmArtifacts = async (progressResult) => {
+    const artifactIds = {
+      scenarioSpecs:
+        progressResult?.artifacts?.llmScenarioSpecsArtifactId ?? null,
+      subsystemSummaries:
+        progressResult?.artifacts?.llmSubsystemSummariesArtifactId ?? null,
+      apiDocs: progressResult?.artifacts?.llmApiDocsArtifactId ?? null,
+      fileTreeDocs:
+        progressResult?.artifacts?.llmFileTreeDocsArtifactId ?? null,
+    };
+
+    const hasAnyLlmArtifactId = Object.values(artifactIds).some(Boolean);
+
+    if (!hasAnyLlmArtifactId) {
+      setLlmResults(EMPTY_LLM_RESULTS);
+      return;
+    }
+
+    try {
+      setLlmLoading(true);
+      setLlmError(null);
+
+      const settled = await Promise.allSettled(
+        Object.entries(artifactIds).map(async ([key, artifactId]) => {
+          if (!artifactId) {
+            return [key, null];
+          }
+
+          const artifact = await getArtifactJson(artifactId);
+          return [key, artifact?.content ?? null];
+        })
+      );
+
+      const nextResults = { ...EMPTY_LLM_RESULTS };
+      const failedKeys = [];
+
+      settled.forEach((result) => {
+        if (result.status === "fulfilled") {
+          const [key, content] = result.value;
+          nextResults[key] = content;
+        } else {
+          failedKeys.push("일부 LLM 산출물");
+        }
+      });
+
+      setLlmResults(nextResults);
+
+      if (failedKeys.length > 0) {
+        setLlmError("일부 LLM 결과 산출물을 불러오지 못했습니다.");
+      }
+    } catch (e) {
+      setLlmResults(EMPTY_LLM_RESULTS);
+      setLlmError(e?.message ?? "LLM 결과 산출물을 불러오지 못했습니다.");
+    } finally {
+      setLlmLoading(false);
+    }
+  };
+
+  const refreshLlmResults = async () => {
+    if (!runId) return;
+
+    try {
+      const latestProgress = await getRunProgress(runId);
+      setProgress(latestProgress);
+      await loadLlmArtifacts(latestProgress);
+    } catch (e) {
+      setLlmError(e?.message ?? "LLM 결과를 새로고침하지 못했습니다.");
     }
   };
 
@@ -269,6 +356,13 @@ export default function AnalyPage() {
         <AnalyzeProgressPanel progress={progress} />
 
         <div className="flex flex-col gap-8">
+          <LlmResultSection
+            results={llmResults}
+            loading={llmLoading}
+            error={llmError}
+            onRefresh={refreshLlmResults}
+          />
+
           <ClassDiagramSection
             classDiagram={classDiagram}
             loading={classDiagramLoading}
