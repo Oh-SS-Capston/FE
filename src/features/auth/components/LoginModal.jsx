@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { LogIn, X } from "lucide-react";
 import { useAuth } from "../model/AuthContext";
 
@@ -10,24 +11,30 @@ export default function LoginModal({ onClose }) {
       if (e.key === "Escape") onClose();
     };
 
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[9999] flex min-h-dvh items-center justify-center overflow-y-auto px-4 py-8"
       role="dialog"
       aria-modal="true"
       aria-labelledby="login-title"
     >
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden
       />
 
-      <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#0a0a1a]/90 shadow-[0_0_50px_rgba(0,0,0,0.4)] backdrop-blur-xl overflow-hidden">
+      <div className="relative my-auto w-full max-w-md rounded-2xl border border-white/10 bg-[#0a0a1a]/90 shadow-[0_0_50px_rgba(0,0,0,0.4)] backdrop-blur-xl overflow-hidden">
         <div
           className="absolute top-0 left-0 right-0 h-px opacity-60"
           style={{
@@ -69,6 +76,7 @@ export default function LoginModal({ onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
