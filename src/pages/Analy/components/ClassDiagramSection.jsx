@@ -1183,10 +1183,7 @@ function UmlClassNode({ data }) {
         )}
       </div>
 
-      <div className="px-4 py-3 text-[11px] text-gray-500">
-        <p>attributes / operations</p>
-        <p className="mt-1 text-gray-600">BE 확장 후 표시 가능</p>
-      </div>
+
     </div>
   );
 }
