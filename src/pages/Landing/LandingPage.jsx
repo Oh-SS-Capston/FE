@@ -4,13 +4,8 @@ import { Star } from "lucide-react";
 
 import SearchBar from "./components/SearchBar";
 import SearchHistory from "./components/SearchHistory";
-import {
-  addHistory,
-  clearHistory,
-  getHistory,
-} from "../../features/search/model/searchHistoryStore";
 import { useAuth } from "../../features/auth/model/AuthContext";
-import { createRepoRun } from "../../features/run/api/runApi";
+import { createRepoRun, getRecentRuns } from "../../features/run/api/runApi";
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -18,13 +13,45 @@ export default function LandingPage() {
 
   const [repoUrl, setRepoUrl] = useState("");
   const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
   const [analyzeError, setAnalyzeError] = useState(null);
+
   const analyzeDisabled = authLoading || !isAuthenticated;
 
   useEffect(() => {
-    setHistory(getHistory());
+    /*
+     * 이전 버전의 브라우저 단위 기록이 남아 있으면 제거합니다.
+     * 이제 Recent Explorations는 localStorage가 아니라 BE repo_run 기준입니다.
+     */
+    localStorage.removeItem("ohss_search_history");
   }, []);
+
+  useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setHistory([]);
+      return;
+    }
+
+    loadRecentRuns();
+  }, [authLoading, isAuthenticated]);
+
+  const loadRecentRuns = async () => {
+    try {
+      setHistoryLoading(true);
+
+      const recentRuns = await getRecentRuns();
+      setHistory(Array.isArray(recentRuns) ? recentRuns : []);
+    } catch {
+      setHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   const normalizeGithubRepo = (input) => {
     const trimmed = input.trim();
@@ -64,6 +91,7 @@ export default function LandingPage() {
 
   const handleAnalyze = async (raw) => {
     if (!isAuthenticated) {
+      setAnalyzeError("로그인 후 레포지토리 분석을 요청할 수 있습니다.");
       return;
     }
 
@@ -82,8 +110,11 @@ export default function LandingPage() {
         repoUrl: normalized.repoUrl,
       });
 
-      const next = addHistory(normalized.repo);
-      setHistory(next);
+      /*
+       * localStorage에 저장하지 않습니다.
+       * 분석 기록은 서버의 repo_run 테이블에서 사용자별로 다시 조회합니다.
+       */
+      await loadRecentRuns();
 
       navigate(
         `/analyze?runId=${encodeURIComponent(
@@ -100,6 +131,7 @@ export default function LandingPage() {
     } catch (error) {
       if (error.status === 401) {
         setAnalyzeError("로그인 후 레포지토리 분석을 요청할 수 있습니다.");
+        setHistory([]);
         return;
       }
 
@@ -110,6 +142,32 @@ export default function LandingPage() {
       setAnalyzeLoading(false);
     }
   };
+
+  const handleClickRecentRun = (item) => {
+  if (typeof item === "string") {
+    handleAnalyze(item);
+    return;
+  }
+
+  const repo = item.repoFullName || item.repoUrl;
+
+  if (!item.runId || !repo) {
+    return;
+  }
+
+  navigate(
+    `/analyze?runId=${encodeURIComponent(
+      item.runId
+    )}&repo=${encodeURIComponent(repo)}`,
+    {
+      state: {
+        repo,
+        repoUrl: item.repoUrl,
+        run: item,
+      },
+    }
+  );
+};
 
   return (
     <div className="relative z-10">
@@ -154,11 +212,9 @@ export default function LandingPage() {
         <div className="w-full grid md:grid-cols-2 gap-16">
           <SearchHistory
             items={history}
-            onClickItem={(repo) => handleAnalyze(repo)}
-            onClear={() => {
-              clearHistory();
-              setHistory([]);
-            }}
+            authenticated={isAuthenticated}
+            loading={historyLoading}
+            onClickItem={handleClickRecentRun}
           />
 
           <section>
@@ -173,30 +229,54 @@ export default function LandingPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-              {[
-                {
-                  name: "facebook/react",
-                  lang: "JavaScript",
-                  star: "220k",
-                  color: "from-blue-400 to-cyan-300",
-                },
-                {
-                  name: "spring-projects/spring-boot",
-                  lang: "Java",
-                  star: "72k",
-                  color: "from-green-400 to-emerald-300",
-                },
-                {
-                  name: "apache/kafka",
-                  lang: "Java",
-                  star: "28k",
-                  color: "from-orange-400 to-yellow-300",
-                },
-              ].map((item) => (
+{[
+  {
+    name: "apache/commons-cli",
+    lang: "Java Library",
+    star: "CLI",
+    color: "from-cyan-400 to-blue-300",
+    description: "명령행 옵션 파싱 라이브러리",
+  },
+  {
+    name: "apache/commons-lang",
+    lang: "Java Library",
+    star: "Utils",
+    color: "from-indigo-400 to-purple-300",
+    description: "문자열, 객체, 날짜 등 Java 유틸리티 라이브러리",
+  },
+  {
+    name: "google/guava",
+    lang: "Java Library",
+    star: "Core",
+    color: "from-green-400 to-emerald-300",
+    description: "컬렉션, 캐싱, 문자열, I/O 등을 제공하는 핵심 라이브러리",
+  },
+  {
+    name: "FasterXML/jackson-databind",
+    lang: "Java Library",
+    star: "JSON",
+    color: "from-orange-400 to-yellow-300",
+    description: "JSON 직렬화와 역직렬화를 담당하는 데이터 바인딩 라이브러리",
+  },
+  {
+    name: "square/okhttp",
+    lang: "Java Library",
+    star: "HTTP",
+    color: "from-sky-400 to-cyan-300",
+    description: "Java와 Android에서 사용하는 HTTP 클라이언트 라이브러리",
+  },
+  {
+    name: "mockito/mockito",
+    lang: "Java Library",
+    star: "Test",
+    color: "from-pink-400 to-rose-300",
+    description: "Java 단위 테스트를 위한 mocking 프레임워크",
+  },
+].map((item) => (
                 <button
                   key={item.name}
                   onClick={() => handleAnalyze(item.name)}
-                  disabled={analyzeLoading}
+                  disabled={analyzeLoading || analyzeDisabled}
                   className="group p-6 bg-gradient-to-br from-white/[0.03] to-transparent backdrop-blur-md border border-white/10 rounded-3xl hover:border-purple-500/40 hover:shadow-[0_0_30px_rgba(168,85,247,0.2)] transition-all text-left relative overflow-hidden disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -221,6 +301,10 @@ export default function LandingPage() {
                     />{" "}
                     {item.star} stars
                   </div>
+
+                  <p className="mt-3 text-sm text-gray-400 relative z-10">
+                    {item.description}
+                  </p>
                 </button>
               ))}
             </div>
