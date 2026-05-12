@@ -7,6 +7,7 @@ import ClassDiagramSection from "./components/ClassDiagramSection";
 import DirectoryStructureSection from "./components/DirectoryStructureSection";
 import AnalyzeProgressPanel from "./components/AnalyzeProgressPanel";
 import LlmResultSection from "./components/LlmResultSection";
+import PackageClassDocsSection from "./components/PackageClassDocsSection";
 
 import { getArtifactJson, getRunProgress } from "../../features/run/api/runApi";
 
@@ -470,6 +471,13 @@ export default function AnalyPage() {
           classDiagram={classDiagram}
           loading={classDiagramLoading}
           error={classDiagramError || classMapFailed?.message}
+        />
+
+        {/* 4-1. 패키지별 클래스/메서드 문서 */}
+        <PackageClassDocsSection
+          fileTreeDocs={llmResults.fileTreeDocs}
+          loading={llmLoading && !llmResults.fileTreeDocs}
+          error={llmError}
         />
 
         {/* 5. LLM Result */}
