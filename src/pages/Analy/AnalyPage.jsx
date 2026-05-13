@@ -473,12 +473,12 @@ export default function AnalyPage() {
           error={classDiagramError || classMapFailed?.message}
         />
 
-        {/* 4-1. 패키지별 클래스/메서드 문서 */}
+        {/* 4-1. 패키지별 클래스/메서드 문서
         <PackageClassDocsSection
           fileTreeDocs={llmResults.fileTreeDocs}
           loading={llmLoading && !llmResults.fileTreeDocs}
           error={llmError}
-        />
+        /> */}
 
         {/* 5. LLM Result */}
         <LlmResultSection
