@@ -239,3 +239,66 @@ html, body {
     0 0 44px rgba(168, 85, 247, 0.75);
   transform: translateY(-50%);
 }
+/* ================================
+   Global Space Scrollbar
+   - 전체 페이지/컴포넌트 스크롤바 우주 테마 적용
+================================ */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 85, 247, 0.75) rgba(3, 3, 6, 0.75);
+}
+
+/* Chrome, Edge, Safari */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(3, 3, 6, 0.95),
+      rgba(10, 11, 31, 0.95)
+    );
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  border: 2px solid rgba(3, 3, 6, 0.9);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(34, 211, 238, 0.85),
+      rgba(168, 85, 247, 0.9),
+      rgba(236, 72, 153, 0.75)
+    );
+  box-shadow:
+    0 0 8px rgba(34, 211, 238, 0.45),
+    0 0 14px rgba(168, 85, 247, 0.45);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(103, 232, 249, 1),
+      rgba(192, 132, 252, 1),
+      rgba(244, 114, 182, 0.95)
+    );
+  box-shadow:
+    0 0 12px rgba(34, 211, 238, 0.75),
+    0 0 22px rgba(168, 85, 247, 0.7);
+}
+
+*::-webkit-scrollbar-corner {
+  background: rgba(3, 3, 6, 0.95);
+}
+
+/* 스크롤바 때문에 레이아웃이 흔들리는 것 방지 */
+html {
+  scrollbar-gutter: stable;
+}
