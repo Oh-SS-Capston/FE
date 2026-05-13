@@ -1591,7 +1591,7 @@ function FlowCanvas({
         </div>
       ) : (
         <ReactFlow
-          className="h-full w-full"
+          className="class-diagram-flow h-full w-full"
           style={{
             width: "100%",
             height: "100%",
