@@ -15,6 +15,11 @@ const STAGE_LABEL = {
   CLASSMAP: "클래스 다이어그램 생성",
   RULE: "규칙 후보 추출",
   LLM: "LLM 분석 결과 생성",
+  LLM_REFINED_RULES: "LLM 정제 규칙 생성",
+  LLM_SCENARIO_SPECS: "LLM 시나리오 생성",
+  LLM_SUBSYSTEM_SUMMARIES: "LLM 서브시스템 요약 생성",
+  LLM_API_DOCS: "LLM API 문서 생성",
+  LLM_FILE_TREE_DOCS: "LLM 파일 트리 문서 생성",
 };
 
 const SUCCESS_MESSAGE = {
@@ -26,6 +31,11 @@ const SUCCESS_MESSAGE = {
   CLASSMAP: "클래스 다이어그램 생성이 완료됐습니다.",
   RULE: "규칙 후보 추출이 완료됐습니다.",
   LLM: "LLM 분석 결과 생성이 완료됐습니다.",
+  LLM_REFINED_RULES: "LLM 정제 규칙 생성이 완료됐습니다.",
+  LLM_SCENARIO_SPECS: "LLM 시나리오 생성이 완료됐습니다.",
+  LLM_SUBSYSTEM_SUMMARIES: "LLM 서브시스템 요약 생성이 완료됐습니다.",
+  LLM_API_DOCS: "LLM API 문서 생성이 완료됐습니다.",
+  LLM_FILE_TREE_DOCS: "LLM 파일 트리 문서 생성이 완료됐습니다.",
 };
 
 const RUNNING_MESSAGE = {
@@ -37,26 +47,50 @@ const RUNNING_MESSAGE = {
   CLASSMAP: "클래스 다이어그램을 생성 중입니다.",
   RULE: "규칙 후보를 추출 중입니다.",
   LLM: "LLM 분석 결과를 생성 중입니다.",
+  LLM_REFINED_RULES: "LLM 정제 규칙을 생성 중입니다.",
+  LLM_SCENARIO_SPECS: "LLM 시나리오를 생성 중입니다.",
+  LLM_SUBSYSTEM_SUMMARIES: "LLM 서브시스템 요약을 생성 중입니다.",
+  LLM_API_DOCS: "LLM API 문서를 생성 중입니다.",
+  LLM_FILE_TREE_DOCS: "LLM 파일 트리 문서를 생성 중입니다.",
 };
+
+function formatStageLabel(stage) {
+  if (!stage) {
+    return "-";
+  }
+
+  if (STAGE_LABEL[stage]) {
+    return STAGE_LABEL[stage];
+  }
+
+  if (stage.startsWith("LLM_")) {
+    return `LLM ${stage
+      .replace("LLM_", "")
+      .toLowerCase()
+      .replaceAll("_", " ")}`;
+  }
+
+  return stage;
+}
 
 function getStepMessage(step) {
   if (!step) return "";
 
   if (step.status === "SUCCESS") {
-    return SUCCESS_MESSAGE[step.stage] ?? `${step.stage} 단계가 완료됐습니다.`;
+    return SUCCESS_MESSAGE[step.stage] ?? `${formatStageLabel(step.stage)} 단계가 완료됐습니다.`;
   }
 
   if (step.status === "FAILED") {
     return (
       step.errorMessage ??
       step.message ??
-      `${STAGE_LABEL[step.stage] ?? step.stage} 단계에 실패했습니다.`
+      `${formatStageLabel(step.stage)} 단계에 실패했습니다.`
     );
   }
 
   if (step.status === "SKIPPED") {
     return (
-      step.message ?? `${STAGE_LABEL[step.stage] ?? step.stage} 단계를 건너뛰었습니다.`
+      step.message ?? `${formatStageLabel(step.stage)} 단계를 건너뛰었습니다.`
     );
   }
 
@@ -64,7 +98,7 @@ function getStepMessage(step) {
     return RUNNING_MESSAGE[step.stage] ?? step.message ?? "작업을 진행 중입니다.";
   }
 
-  return step.message ?? `${STAGE_LABEL[step.stage] ?? step.stage} 대기 중입니다.`;
+  return step.message ?? `${formatStageLabel(step.stage)} 대기 중입니다.`;
 }
 
 function StepIcon({ status }) {
@@ -162,7 +196,7 @@ export default function AnalyzeProgressPanel({ progress }) {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h4 className="font-semibold text-gray-100">
-                      {STAGE_LABEL[step.stage] ?? step.stage}
+                      {formatStageLabel(step.stage)}
                     </h4>
 
                     {!step.required && (
@@ -190,7 +224,7 @@ export default function AnalyzeProgressPanel({ progress }) {
             <ul className="mt-2 space-y-1 text-sm text-red-200/80">
               {progress.failedSteps.map((step) => (
                 <li key={step.stage}>
-                  {STAGE_LABEL[step.stage] ?? step.stage}: {step.message}
+                  {formatStageLabel(step.stage)}: {step.message}
                 </li>
               ))}
             </ul>

@@ -11,12 +11,267 @@ import PackageClassDocsSection from "./components/PackageClassDocsSection";
 
 import { getArtifactJson, getRunProgress } from "../../features/run/api/runApi";
 
-const EMPTY_LLM_RESULTS = {
-  scenarioSpecs: null,
-  subsystemSummaries: null,
-  apiDocs: null,
-  fileTreeDocs: null,
+const LLM_RESULT_KEYS = [
+  "scenarioSpecs",
+  "subsystemSummaries",
+  "apiDocs",
+  "fileTreeDocs",
+  "refinedRules",
+];
+
+const LLM_ARTIFACT_TYPE_TOKEN = {
+  scenarioSpecs: ["LLM_SCENARIO_SPECS", "SCENARIO_SPECS"],
+  subsystemSummaries: ["LLM_SUBSYSTEM_SUMMARIES", "SUBSYSTEM_SUMMARIES"],
+  apiDocs: ["LLM_API_DOCS", "API_DOCS"],
+  fileTreeDocs: ["LLM_FILE_TREE_DOCS", "FILE_TREE_DOCS"],
+  refinedRules: ["LLM_REFINED_RULES", "REFINED_RULES", "LLM_RULES"],
 };
+
+const LLM_DIRECT_ARTIFACT_FIELDS = {
+  scenarioSpecs: [
+    "llmScenarioSpecsArtifactId",
+    "scenarioSpecsArtifactId",
+    "llmScenarioSpecsId",
+    "scenarioSpecsId",
+  ],
+  subsystemSummaries: [
+    "llmSubsystemSummariesArtifactId",
+    "subsystemSummariesArtifactId",
+    "llmSubsystemSummariesId",
+    "subsystemSummariesId",
+  ],
+  apiDocs: [
+    "llmApiDocsArtifactId",
+    "apiDocsArtifactId",
+    "llmApiDocsId",
+    "apiDocsId",
+  ],
+  fileTreeDocs: [
+    "llmFileTreeDocsArtifactId",
+    "fileTreeDocsArtifactId",
+    "llmFileTreeDocsId",
+    "fileTreeDocsId",
+  ],
+  refinedRules: [
+    "llmRefinedRulesArtifactId",
+    "refinedRulesArtifactId",
+    "llmRulesArtifactId",
+    "rulesArtifactId",
+  ],
+};
+
+const LLM_NESTED_ARTIFACT_FIELDS = {
+  scenarioSpecs: [
+    "scenarioSpecsArtifactId",
+    "scenarioSpecsId",
+    "scenarioSpecs",
+    "scenario_specs_artifact_id",
+  ],
+  subsystemSummaries: [
+    "subsystemSummariesArtifactId",
+    "subsystemSummariesId",
+    "subsystemSummaries",
+    "subsystem_summaries_artifact_id",
+  ],
+  apiDocs: ["apiDocsArtifactId", "apiDocsId", "apiDocs", "api_docs_artifact_id"],
+  fileTreeDocs: [
+    "fileTreeDocsArtifactId",
+    "fileTreeDocsId",
+    "fileTreeDocs",
+    "file_tree_docs_artifact_id",
+  ],
+  refinedRules: [
+    "refinedRulesArtifactId",
+    "refinedRulesId",
+    "refinedRules",
+    "refined_rules_artifact_id",
+    "rulesArtifactId",
+  ],
+};
+
+const CLASS_DIAGRAM_ARTIFACT_FIELDS = [
+  "classDiagramArtifactId",
+  "classMapArtifactId",
+  "classDiagramId",
+];
+
+function createEmptyLlmResultMap() {
+  return LLM_RESULT_KEYS.reduce((acc, key) => {
+    acc[key] = null;
+    return acc;
+  }, {});
+}
+
+function createEmptyLlmArtifactIdMap() {
+  return LLM_RESULT_KEYS.reduce((acc, key) => {
+    acc[key] = null;
+    return acc;
+  }, {});
+}
+
+const EMPTY_LLM_RESULTS = createEmptyLlmResultMap();
+
+function firstNonEmptyString(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+
+    if (typeof value === "bigint") {
+      return String(value);
+    }
+  }
+
+  return null;
+}
+
+function normalizeArtifactToken(value) {
+  return String(value ?? "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+function getArtifactList(progressArtifacts, progress) {
+  if (Array.isArray(progressArtifacts)) {
+    return progressArtifacts;
+  }
+
+  if (Array.isArray(progressArtifacts?.items)) {
+    return progressArtifacts.items;
+  }
+
+  if (Array.isArray(progressArtifacts?.artifacts)) {
+    return progressArtifacts.artifacts;
+  }
+
+  if (Array.isArray(progress?.artifactList)) {
+    return progress.artifactList;
+  }
+
+  return [];
+}
+
+function artifactIdFromRecord(record) {
+  if (!record || typeof record !== "object") {
+    return null;
+  }
+
+  return firstNonEmptyString(
+    record.artifactId,
+    record.id,
+    record.value,
+    record.artifact?.artifactId,
+    record.artifact?.id,
+    record.artifact?.value
+  );
+}
+
+function findArtifactIdFromList(records, tokenCandidates) {
+  if (!Array.isArray(records) || records.length === 0) {
+    return null;
+  }
+
+  const normalizedCandidates = new Set(
+    tokenCandidates.map((token) => normalizeArtifactToken(token))
+  );
+
+  for (const record of records) {
+    const labels = [
+      record?.artifactType,
+      record?.type,
+      record?.kind,
+      record?.name,
+      record?.key,
+      record?.stage,
+      record?.artifact?.artifactType,
+      record?.artifact?.type,
+      record?.artifact?.kind,
+      record?.artifact?.name,
+      record?.artifact?.key,
+      record?.artifact?.stage,
+    ];
+
+    const matched = labels.some((label) =>
+      normalizedCandidates.has(normalizeArtifactToken(label))
+    );
+
+    if (!matched) {
+      continue;
+    }
+
+    const artifactId = artifactIdFromRecord(record);
+    if (artifactId) {
+      return artifactId;
+    }
+  }
+
+  return null;
+}
+
+function normalizeArtifactContent(content) {
+  if (typeof content !== "string") {
+    return content ?? null;
+  }
+
+  const trimmed = content.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return content;
+  }
+}
+
+function resolveClassDiagramArtifactId(progress) {
+  const artifacts = progress?.artifacts;
+  const artifactList = getArtifactList(artifacts, progress);
+
+  return (
+    firstNonEmptyString(
+      ...CLASS_DIAGRAM_ARTIFACT_FIELDS.map((field) => artifacts?.[field]),
+      artifacts?.classDiagram?.artifactId,
+      artifacts?.classDiagram?.id,
+      artifacts?.artifactIds?.CLASS_DIAGRAM,
+      artifacts?.artifactIds?.classDiagram,
+      progress?.artifactIds?.CLASS_DIAGRAM,
+      progress?.artifactIds?.classDiagram,
+      progress?.classDiagramArtifactId
+    ) || findArtifactIdFromList(artifactList, ["CLASS_DIAGRAM", "CLASS_MAP"])
+  );
+}
+
+function resolveLlmArtifactMap(progress) {
+  const artifacts = progress?.artifacts;
+  const llmArtifacts = artifacts?.llm ?? progress?.llmArtifacts ?? null;
+  const artifactList = getArtifactList(artifacts, progress);
+  const artifactIds = artifacts?.artifactIds ?? progress?.artifactIds ?? null;
+  const resolved = createEmptyLlmArtifactIdMap();
+
+  LLM_RESULT_KEYS.forEach((key) => {
+    const directId = firstNonEmptyString(
+      ...LLM_DIRECT_ARTIFACT_FIELDS[key].map((field) => artifacts?.[field]),
+      ...LLM_NESTED_ARTIFACT_FIELDS[key].map((field) => llmArtifacts?.[field])
+    );
+
+    const tokenBasedId = firstNonEmptyString(
+      ...(LLM_ARTIFACT_TYPE_TOKEN[key] ?? []).map((token) => artifactIds?.[token])
+    );
+
+    resolved[key] =
+      directId ??
+      tokenBasedId ??
+      findArtifactIdFromList(artifactList, LLM_ARTIFACT_TYPE_TOKEN[key] ?? []);
+  });
+
+  return resolved;
+}
 
 function unwrapApiResponse(response) {
   return response?.result ?? response;
@@ -33,12 +288,7 @@ export default function AnalyPage() {
 
   const loadedArtifactIdsRef = useRef({
     classDiagram: null,
-    llm: {
-      scenarioSpecs: null,
-      subsystemSummaries: null,
-      apiDocs: null,
-      fileTreeDocs: null,
-    },
+    llm: createEmptyLlmArtifactIdMap(),
   });
 
   const [repoInfo, setRepoInfo] = useState(null);
@@ -125,27 +375,22 @@ export default function AnalyPage() {
 
     loadedArtifactIdsRef.current = {
       classDiagram: null,
-      llm: {
-        scenarioSpecs: null,
-        subsystemSummaries: null,
-        apiDocs: null,
-        fileTreeDocs: null,
-      },
+      llm: createEmptyLlmArtifactIdMap(),
     };
 
     setClassDiagram(null);
     setClassDiagramError(null);
-    setLlmResults(EMPTY_LLM_RESULTS);
+    setLlmResults(createEmptyLlmResultMap());
     setLlmError(null);
 
     const loadArtifactContent = async (artifactId) => {
       const response = await getArtifactJson(artifactId);
       const artifact = unwrapApiResponse(response);
-      return artifact?.content ?? null;
+      return normalizeArtifactContent(artifact?.content ?? null);
     };
 
     const loadClassDiagramIfReady = async (nextProgress) => {
-      const artifactId = nextProgress?.artifacts?.classDiagramArtifactId;
+      const artifactId = resolveClassDiagramArtifactId(nextProgress);
 
       const classMapFailed = nextProgress?.failedSteps?.find(
         (step) => step.stage === "CLASSMAP"
@@ -190,15 +435,7 @@ export default function AnalyPage() {
     };
 
     const loadLlmArtifactsIfReady = async (nextProgress) => {
-      const artifactMap = {
-        scenarioSpecs:
-          nextProgress?.artifacts?.llmScenarioSpecsArtifactId ?? null,
-        subsystemSummaries:
-          nextProgress?.artifacts?.llmSubsystemSummariesArtifactId ?? null,
-        apiDocs: nextProgress?.artifacts?.llmApiDocsArtifactId ?? null,
-        fileTreeDocs:
-          nextProgress?.artifacts?.llmFileTreeDocsArtifactId ?? null,
-      };
+      const artifactMap = resolveLlmArtifactMap(nextProgress);
 
       const pendingEntries = Object.entries(artifactMap).filter(
         ([key, artifactId]) =>
@@ -308,23 +545,12 @@ export default function AnalyPage() {
       setProgress(latestProgress);
 
       loadedArtifactIdsRef.current.llm = {
-        scenarioSpecs: null,
-        subsystemSummaries: null,
-        apiDocs: null,
-        fileTreeDocs: null,
+        ...createEmptyLlmArtifactIdMap(),
       };
 
-      setLlmResults(EMPTY_LLM_RESULTS);
+      setLlmResults(createEmptyLlmResultMap());
 
-      const artifactMap = {
-        scenarioSpecs:
-          latestProgress?.artifacts?.llmScenarioSpecsArtifactId ?? null,
-        subsystemSummaries:
-          latestProgress?.artifacts?.llmSubsystemSummariesArtifactId ?? null,
-        apiDocs: latestProgress?.artifacts?.llmApiDocsArtifactId ?? null,
-        fileTreeDocs:
-          latestProgress?.artifacts?.llmFileTreeDocsArtifactId ?? null,
-      };
+      const artifactMap = resolveLlmArtifactMap(latestProgress);
 
       const entries = Object.entries(artifactMap).filter(([, id]) => id);
 
@@ -337,7 +563,7 @@ export default function AnalyPage() {
         entries.map(async ([key, artifactId]) => {
           const artifactResponse = await getArtifactJson(artifactId);
           const artifact = unwrapApiResponse(artifactResponse);
-          return [key, artifactId, artifact?.content ?? null];
+          return [key, artifactId, normalizeArtifactContent(artifact?.content)];
         })
       );
 

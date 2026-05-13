@@ -1,12 +1,176 @@
 import { useMemo, useState } from "react";
 import { Layers3, Network, Loader2 } from "lucide-react";
-import { buildClassMap, getArtifactJson } from "../../../features/classmap/api/classMapApi";
+import {
+  getArtifactJson,
+  getRunProgress,
+} from "../../../features/run/api/runApi";
 import ClassDiagramSection from "./ClassDiagramSection";
 
 const OVERVIEW_KEY = "OVERVIEW";
 
 function sortSubsystems(subsystems) {
   return [...subsystems].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+}
+
+function firstNonEmptyString(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+
+    if (typeof value === "bigint") {
+      return String(value);
+    }
+  }
+
+  return null;
+}
+
+function normalizeArtifactToken(value) {
+  return String(value ?? "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+function parseMaybeJson(value) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+}
+
+function getArtifactList(progressArtifacts, progress) {
+  if (Array.isArray(progressArtifacts)) {
+    return progressArtifacts;
+  }
+
+  if (Array.isArray(progressArtifacts?.items)) {
+    return progressArtifacts.items;
+  }
+
+  if (Array.isArray(progressArtifacts?.artifacts)) {
+    return progressArtifacts.artifacts;
+  }
+
+  if (Array.isArray(progress?.artifactList)) {
+    return progress.artifactList;
+  }
+
+  return [];
+}
+
+function artifactIdFromRecord(record) {
+  if (!record || typeof record !== "object") {
+    return null;
+  }
+
+  return firstNonEmptyString(
+    record.artifactId,
+    record.id,
+    record.value,
+    record.artifact?.artifactId,
+    record.artifact?.id,
+    record.artifact?.value
+  );
+}
+
+function extractArtifactContent(payload) {
+  const parsed = parseMaybeJson(payload);
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return parsed;
+  }
+
+  if (parsed.content != null) {
+    return parseMaybeJson(parsed.content);
+  }
+
+  if (parsed.result != null) {
+    return parseMaybeJson(parsed.result);
+  }
+
+  return parsed;
+}
+
+function resolveSubsystemClassDiagramArtifactId(progress, subsystemId) {
+  const artifacts = progress?.artifacts;
+  const key = String(subsystemId);
+
+  const direct = firstNonEmptyString(
+    artifacts?.subsystemClassDiagramArtifactIds?.[key],
+    artifacts?.subsystemClassMapArtifactIds?.[key],
+    artifacts?.classDiagramArtifactsBySubsystem?.[key],
+    artifacts?.subsystemArtifacts?.[key]?.classDiagramArtifactId,
+    artifacts?.subsystems?.[key]?.classDiagramArtifactId,
+    progress?.subsystemArtifacts?.[key]?.classDiagramArtifactId
+  );
+
+  if (direct) {
+    return direct;
+  }
+
+  const list = getArtifactList(artifacts, progress);
+  const typeTokens = new Set([
+    "CLASSDIAGRAM",
+    "CLASSMAP",
+    "SUBSYSTEMCLASSDIAGRAM",
+    "SUBSYSTEMCLASSMAP",
+  ]);
+
+  for (const record of list) {
+    const typeLabel = firstNonEmptyString(
+      record?.artifactType,
+      record?.type,
+      record?.kind,
+      record?.name,
+      record?.key,
+      record?.stage,
+      record?.artifact?.artifactType,
+      record?.artifact?.type,
+      record?.artifact?.kind,
+      record?.artifact?.name,
+      record?.artifact?.key,
+      record?.artifact?.stage
+    );
+
+    if (!typeLabel || !typeTokens.has(normalizeArtifactToken(typeLabel))) {
+      continue;
+    }
+
+    const recordSubsystemId = firstNonEmptyString(
+      record?.subsystemId,
+      record?.scopeId,
+      record?.clusterId,
+      record?.groupId,
+      record?.artifact?.subsystemId,
+      record?.artifact?.scopeId,
+      record?.artifact?.clusterId,
+      record?.artifact?.groupId
+    );
+
+    if (recordSubsystemId && String(recordSubsystemId) === key) {
+      const artifactId = artifactIdFromRecord(record);
+      if (artifactId) {
+        return artifactId;
+      }
+    }
+  }
+
+  return null;
 }
 
 export default function ClassMapWorkspace({
@@ -54,23 +218,20 @@ export default function ClassMapWorkspace({
 
     try {
       setLoadingKey(key);
+      if (!runId) {
+        throw new Error("runId가 없어 군집 상세 다이어그램을 조회할 수 없습니다.");
+      }
 
-      const buildResult = await buildClassMap({
-        runId,
-        scope: "SUBSYSTEM",
-        subsystemId: key,
-        maxNodes: 40,
-        maxEdges: 120,
-        startHereTopN: 5,
-      });
+      const progress = await getRunProgress(runId);
+      const artifactId = resolveSubsystemClassDiagramArtifactId(progress, key);
 
-      const artifactId = buildResult?.classDiagramArtifactId;
       if (!artifactId) {
-        throw new Error("subsystem classDiagramArtifactId가 응답에 없습니다.");
+        throw new Error("선택한 군집의 classDiagram artifactId가 progress 응답에 없습니다.");
       }
 
       const artifact = await getArtifactJson(artifactId);
-      const diagram = artifact?.content;
+      const diagram = extractArtifactContent(artifact);
+
       if (!diagram) {
         throw new Error("subsystem class diagram content가 없습니다.");
       }
