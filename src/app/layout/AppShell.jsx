@@ -9,17 +9,35 @@ const seededRandom = (seed) => {
   return () => next() / 0xffffffff;
 };
 
+const SHOOTING_STARS = [
+  { left: "-18%", top: "12%", width: "180px", delay: "0.2s", duration: "7.5s" },
+  { left: "-22%", top: "28%", width: "130px", delay: "2.4s", duration: "8.8s" },
+  { left: "-16%", top: "48%", width: "210px", delay: "4.8s", duration: "9.6s" },
+  { left: "-24%", top: "68%", width: "150px", delay: "7.1s", duration: "10.4s" },
+];
+
 const TWINKLE_STARS = [
   { left: "12%", top: "22%", d: "delay-1" },
   { left: "88%", top: "18%", d: "delay-2" },
   { left: "45%", top: "35%", d: "delay-3" },
   { left: "72%", top: "55%", d: "delay-4" },
-  { left: "8%",  top: "70%", d: "delay-5" },
+  { left: "8%", top: "70%", d: "delay-5" },
   { left: "92%", top: "78%", d: "delay-6" },
   { left: "28%", top: "85%", d: "delay-7" },
   { left: "55%", top: "12%", d: "delay-8" },
   { left: "35%", top: "62%", d: "delay-9" },
   { left: "78%", top: "42%", d: "delay-10" },
+
+  { left: "18%", top: "8%", d: "delay-11", size: "w-0.5 h-0.5" },
+  { left: "64%", top: "9%", d: "delay-12", size: "w-1.5 h-1.5" },
+  { left: "5%", top: "35%", d: "delay-13", size: "w-1 h-1" },
+  { left: "96%", top: "33%", d: "delay-14", size: "w-0.5 h-0.5" },
+  { left: "24%", top: "48%", d: "delay-15", size: "w-1.5 h-1.5" },
+  { left: "61%", top: "72%", d: "delay-16", size: "w-1 h-1" },
+  { left: "14%", top: "92%", d: "delay-17", size: "w-0.5 h-0.5" },
+  { left: "84%", top: "90%", d: "delay-18", size: "w-1.5 h-1.5" },
+  { left: "42%", top: "18%", d: "delay-19", size: "w-1 h-1" },
+  { left: "67%", top: "44%", d: "delay-20", size: "w-0.5 h-0.5" },
 ];
 
 export function AppShell() {
@@ -60,6 +78,22 @@ export function AppShell() {
         aria-hidden
       />
 
+      {/* 레이어 1.5: 배경을 가로지르는 별똥별 */}
+      <div className="fixed inset-0 pointer-events-none z-[2] overflow-hidden" aria-hidden>
+        {SHOOTING_STARS.map((star, i) => (
+          <span
+            key={i}
+            className="shooting-star"
+            style={{
+              left: star.left,
+              top: star.top,
+              "--shooting-star-width": star.width,
+              "--shooting-star-delay": star.delay,
+              "--shooting-star-duration": star.duration,
+            }}
+          />
+        ))}
+      </div>
       {/* 레이어 2: 은하수 */}
       <div className="absolute pointer-events-none -z-10 w-[140%] h-[50%] -left-[20%] top-[15%] opacity-40 animate-nebula-drift">
         <div
@@ -120,7 +154,7 @@ export function AppShell() {
         {TWINKLE_STARS.map((s, i) => (
           <div
             key={i}
-            className={`absolute w-1 h-1 rounded-full bg-white star-twinkle ${s.d}`}
+            className={`absolute ${s.size ?? "w-1 h-1"} rounded-full bg-white star-twinkle ${s.d}`}
             style={{ left: s.left, top: s.top }}
             aria-hidden
           />
