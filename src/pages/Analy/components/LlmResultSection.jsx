@@ -395,6 +395,21 @@ function buildDirectoriesFromCoreMethods(coreMethods) {
         symbolId,
         name: methodDisplayName(method),
         summary: method?.whatItDoes || method?.summary || null,
+        summaryPreview:
+          method?.whatItDoesPreview ||
+          method?.summaryPreview ||
+          method?.whatItDoes ||
+          method?.summary ||
+          null,
+        summaryFull:
+          method?.whatItDoesFull ||
+          method?.summaryFull ||
+          method?.whatItDoes ||
+          method?.summary ||
+          null,
+        summaryTruncated: Boolean(
+          method?.whatItDoesTruncated ?? method?.summaryTruncated
+        ),
         estimated: Boolean(method?.estimated),
         relatedRules: safeArray(method?.relatedRules || method?.ruleIds),
         relatedScenarios: safeArray(
@@ -423,6 +438,49 @@ function buildDirectoriesFromCoreMethods(coreMethods) {
     path,
     files: Array.from(filesMap.values()),
   }));
+}
+
+function ExpandableText({
+  preview,
+  full,
+  truncated,
+  className = "mt-1 text-sm text-gray-300",
+  buttonClassName = "mt-1 text-xs text-cyan-300 hover:text-cyan-200",
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const previewText = typeof preview === "string" ? preview.trim() : "";
+  const fullText = typeof full === "string" ? full.trim() : "";
+
+  const resolvedPreview = previewText || fullText;
+  const resolvedFull = fullText || previewText;
+
+  const canExpand =
+    Boolean(truncated) &&
+    resolvedPreview.length > 0 &&
+    resolvedFull.length > 0 &&
+    resolvedPreview !== resolvedFull;
+
+  const visibleText = expanded ? resolvedFull : resolvedPreview;
+
+  if (!visibleText) {
+    return null;
+  }
+
+  return (
+    <>
+      <p className={className}>{visibleText}</p>
+      {canExpand && (
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          className={buttonClassName}
+        >
+          {expanded ? "접기" : "더보기"}
+        </button>
+      )}
+    </>
+  );
 }
 
 function FileTreePanel({ data }) {
@@ -555,10 +613,23 @@ function FileTreePanel({ data }) {
                                             )}
                                           </div>
 
-                                          {method?.summary && (
-                                            <p className="mt-1 text-sm text-gray-400">
-                                              {method.summary}
-                                            </p>
+                                          {(method?.summary ||
+                                            method?.summaryPreview ||
+                                            method?.summaryFull) && (
+                                            <ExpandableText
+                                              preview={
+                                                method?.summaryPreview ||
+                                                method?.summary ||
+                                                method?.summaryFull
+                                              }
+                                              full={
+                                                method?.summaryFull ||
+                                                method?.summary ||
+                                                method?.summaryPreview
+                                              }
+                                              truncated={method?.summaryTruncated}
+                                              className="mt-1 text-sm text-gray-400"
+                                            />
                                           )}
 
                                           {(safeArray(method?.relatedRules)
@@ -991,10 +1062,13 @@ function ApiDocsPanel({ data }) {
                 {entry?.fqn || "-"}
               </h4>
 
-              {entry?.summary && (
-                <p className="mt-2 text-sm leading-6 text-gray-300">
-                  {entry.summary}
-                </p>
+              {(entry?.summary || entry?.summaryPreview || entry?.summaryFull) && (
+                <ExpandableText
+                  preview={entry?.summaryPreview || entry?.summary || entry?.summaryFull}
+                  full={entry?.summaryFull || entry?.summary || entry?.summaryPreview}
+                  truncated={entry?.summaryTruncated}
+                  className="mt-2 text-sm leading-6 text-gray-300"
+                />
               )}
             </article>
           ))}
@@ -1014,8 +1088,23 @@ function ApiDocsPanel({ data }) {
                   {method?.fqn || `${method?.classFqn || ""}.${method?.methodName || ""}`}
                 </p>
 
-                {method?.whatItDoes && (
-                  <p className="mt-1 text-sm text-gray-300">{method.whatItDoes}</p>
+                {(method?.whatItDoes ||
+                  method?.whatItDoesPreview ||
+                  method?.whatItDoesFull) && (
+                  <ExpandableText
+                    preview={
+                      method?.whatItDoesPreview ||
+                      method?.whatItDoes ||
+                      method?.whatItDoesFull
+                    }
+                    full={
+                      method?.whatItDoesFull ||
+                      method?.whatItDoes ||
+                      method?.whatItDoesPreview
+                    }
+                    truncated={method?.whatItDoesTruncated}
+                    className="mt-1 text-sm text-gray-300"
+                  />
                 )}
 
                 {method?.whenToUse && (
@@ -1381,6 +1470,8 @@ export default function LlmResultSection({
     </section>
   );
 }
+
+
 
 
 
