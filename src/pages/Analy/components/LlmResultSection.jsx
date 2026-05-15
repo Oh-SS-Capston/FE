@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
   Bot,
@@ -159,7 +159,8 @@ function hasApiData(data) {
 function hasFileTreeData(data) {
   return (
     countOf(pickFirst(data, ["directories"])) > 0 ||
-    countOf(pickFirst(data, ["evidenceLocations", "evidence_locations"])) > 0
+    countOf(pickFirst(data, ["evidenceLocations", "evidence_locations"])) > 0 ||
+    countOf(pickFirst(data, ["coreMethods", "core_methods"])) > 0
   );
 }
 
@@ -263,15 +264,240 @@ function buildDirectoriesFromEvidence(evidenceLocations) {
   }));
 }
 
+function methodClassName(method) {
+  if (!method) {
+    return "(UnknownClass)";
+  }
+
+  if (method.classFqn) {
+    return method.classFqn;
+  }
+
+  if (method.class_fqn) {
+    return method.class_fqn;
+  }
+
+  if (method.ownerTypeFqn) {
+    return method.ownerTypeFqn;
+  }
+
+  if (method.owner_type_fqn) {
+    return method.owner_type_fqn;
+  }
+
+  if (typeof method.fqn === "string") {
+    const hashIdx = method.fqn.indexOf("#");
+    if (hashIdx > 0) {
+      return method.fqn.slice(0, hashIdx);
+    }
+
+    const dotIdx = method.fqn.lastIndexOf(".");
+    if (dotIdx > 0) {
+      return method.fqn.slice(0, dotIdx);
+    }
+  }
+
+  return "(UnknownClass)";
+}
+
+function methodDisplayName(method) {
+  if (!method) {
+    return "-";
+  }
+
+  if (method.methodName) {
+    return method.methodName;
+  }
+
+  if (method.name) {
+    return method.name;
+  }
+
+  if (typeof method.fqn === "string") {
+    const hashIdx = method.fqn.lastIndexOf("#");
+    if (hashIdx >= 0 && hashIdx < method.fqn.length - 1) {
+      return method.fqn.slice(hashIdx + 1);
+    }
+
+    const dotIdx = method.fqn.lastIndexOf(".");
+    if (dotIdx >= 0 && dotIdx < method.fqn.length - 1) {
+      return method.fqn.slice(dotIdx + 1);
+    }
+
+    return method.fqn;
+  }
+
+  return "-";
+}
+
+function methodSourcePath(method) {
+  const evidence = isRecord(method?.evidence) ? method.evidence : null;
+
+  return (
+    method?.sourceFile ||
+    method?.source_file ||
+    method?.filePath ||
+    method?.path ||
+    evidence?.filePath ||
+    evidence?.path ||
+    null
+  );
+}
+
+function buildDirectoriesFromCoreMethods(coreMethods) {
+  const byDirectory = new Map();
+
+  for (const method of safeArray(coreMethods)) {
+    const className = methodClassName(method);
+    const sourcePath = methodSourcePath(method);
+    const normalizedPath = sourcePath
+      ? normalizePath(sourcePath)
+      : `(unknown-source)/${className.replace(/[^a-zA-Z0-9_.$-]/g, "_")}.java`;
+    const directoryPath = extractDirectoryPath(normalizedPath);
+
+    if (!byDirectory.has(directoryPath)) {
+      byDirectory.set(directoryPath, new Map());
+    }
+
+    const filesMap = byDirectory.get(directoryPath);
+    if (!filesMap.has(normalizedPath)) {
+      filesMap.set(normalizedPath, {
+        path: normalizedPath,
+        classes: [],
+        evidences: [],
+      });
+    }
+
+    const fileEntry = filesMap.get(normalizedPath);
+    let classEntry = fileEntry.classes.find((clazz) => clazz?.name === className);
+
+    if (!classEntry) {
+      classEntry = {
+        name: className,
+        summary: null,
+        methods: [],
+      };
+      fileEntry.classes.push(classEntry);
+    }
+
+    const symbolId =
+      method?.symbolId ||
+      method?.symbol_id ||
+      method?.fqn ||
+      `${className}.${methodDisplayName(method)}`;
+
+    const alreadyAdded = classEntry.methods.some(
+      (existing) => existing?.symbolId === symbolId
+    );
+
+    if (!alreadyAdded) {
+      classEntry.methods.push({
+        symbolId,
+        name: methodDisplayName(method),
+        summary: method?.whatItDoes || method?.summary || null,
+        summaryPreview:
+          method?.whatItDoesPreview ||
+          method?.summaryPreview ||
+          method?.whatItDoes ||
+          method?.summary ||
+          null,
+        summaryFull:
+          method?.whatItDoesFull ||
+          method?.summaryFull ||
+          method?.whatItDoes ||
+          method?.summary ||
+          null,
+        summaryTruncated: Boolean(
+          method?.whatItDoesTruncated ?? method?.summaryTruncated
+        ),
+        estimated: Boolean(method?.estimated),
+        relatedRules: safeArray(method?.relatedRules || method?.ruleIds),
+        relatedScenarios: safeArray(
+          method?.relatedScenarios || method?.scenarioIds
+        ),
+      });
+    }
+
+    const evidence = isRecord(method?.evidence) ? method.evidence : {};
+    const startLine =
+      method?.startLine ?? method?.start_line ?? evidence?.startLine ?? evidence?.start_line;
+    const endLine =
+      method?.endLine ?? method?.end_line ?? evidence?.endLine ?? evidence?.end_line;
+
+    fileEntry.evidences.push({
+      kind: "CORE_METHOD",
+      evidenceId: symbolId,
+      fqn: method?.fqn || symbolId,
+      startLine,
+      endLine,
+      snippet: method?.whatItDoes || method?.summary || method?.whenToUse || null,
+    });
+  }
+
+  return Array.from(byDirectory.entries()).map(([path, filesMap]) => ({
+    path,
+    files: Array.from(filesMap.values()),
+  }));
+}
+
+function ExpandableText({
+  preview,
+  full,
+  truncated,
+  className = "mt-1 text-sm text-gray-300",
+  buttonClassName = "mt-1 text-xs text-cyan-300 hover:text-cyan-200",
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const previewText = typeof preview === "string" ? preview.trim() : "";
+  const fullText = typeof full === "string" ? full.trim() : "";
+
+  const resolvedPreview = previewText || fullText;
+  const resolvedFull = fullText || previewText;
+
+  const canExpand =
+    Boolean(truncated) &&
+    resolvedPreview.length > 0 &&
+    resolvedFull.length > 0 &&
+    resolvedPreview !== resolvedFull;
+
+  const visibleText = expanded ? resolvedFull : resolvedPreview;
+
+  if (!visibleText) {
+    return null;
+  }
+
+  return (
+    <>
+      <p className={className}>{visibleText}</p>
+      {canExpand && (
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          className={buttonClassName}
+        >
+          {expanded ? "접기" : "더보기"}
+        </button>
+      )}
+    </>
+  );
+}
+
 function FileTreePanel({ data }) {
   const evidenceLocations = safeArray(
     pickFirst(data, ["evidenceLocations", "evidence_locations"])
   );
+  const coreMethods = safeArray(pickFirst(data, ["coreMethods", "core_methods"]));
   const rawDirectories = safeArray(pickFirst(data, ["directories"]));
+  const directoriesFromEvidence = buildDirectoriesFromEvidence(evidenceLocations);
+  const directoriesFromCoreMethods = buildDirectoriesFromCoreMethods(coreMethods);
+
   const directories =
     rawDirectories.length > 0
       ? rawDirectories
-      : buildDirectoriesFromEvidence(evidenceLocations);
+      : directoriesFromCoreMethods.length > 0
+      ? directoriesFromCoreMethods
+      : directoriesFromEvidence;
 
   const [expanded, setExpanded] = useState({});
 
@@ -387,10 +613,23 @@ function FileTreePanel({ data }) {
                                             )}
                                           </div>
 
-                                          {method?.summary && (
-                                            <p className="mt-1 text-sm text-gray-400">
-                                              {method.summary}
-                                            </p>
+                                          {(method?.summary ||
+                                            method?.summaryPreview ||
+                                            method?.summaryFull) && (
+                                            <ExpandableText
+                                              preview={
+                                                method?.summaryPreview ||
+                                                method?.summary ||
+                                                method?.summaryFull
+                                              }
+                                              full={
+                                                method?.summaryFull ||
+                                                method?.summary ||
+                                                method?.summaryPreview
+                                              }
+                                              truncated={method?.summaryTruncated}
+                                              className="mt-1 text-sm text-gray-400"
+                                            />
                                           )}
 
                                           {(safeArray(method?.relatedRules)
@@ -823,10 +1062,13 @@ function ApiDocsPanel({ data }) {
                 {entry?.fqn || "-"}
               </h4>
 
-              {entry?.summary && (
-                <p className="mt-2 text-sm leading-6 text-gray-300">
-                  {entry.summary}
-                </p>
+              {(entry?.summary || entry?.summaryPreview || entry?.summaryFull) && (
+                <ExpandableText
+                  preview={entry?.summaryPreview || entry?.summary || entry?.summaryFull}
+                  full={entry?.summaryFull || entry?.summary || entry?.summaryPreview}
+                  truncated={entry?.summaryTruncated}
+                  className="mt-2 text-sm leading-6 text-gray-300"
+                />
               )}
             </article>
           ))}
@@ -846,8 +1088,23 @@ function ApiDocsPanel({ data }) {
                   {method?.fqn || `${method?.classFqn || ""}.${method?.methodName || ""}`}
                 </p>
 
-                {method?.whatItDoes && (
-                  <p className="mt-1 text-sm text-gray-300">{method.whatItDoes}</p>
+                {(method?.whatItDoes ||
+                  method?.whatItDoesPreview ||
+                  method?.whatItDoesFull) && (
+                  <ExpandableText
+                    preview={
+                      method?.whatItDoesPreview ||
+                      method?.whatItDoes ||
+                      method?.whatItDoesFull
+                    }
+                    full={
+                      method?.whatItDoesFull ||
+                      method?.whatItDoes ||
+                      method?.whatItDoesPreview
+                    }
+                    truncated={method?.whatItDoesTruncated}
+                    className="mt-1 text-sm text-gray-300"
+                  />
                 )}
 
                 {method?.whenToUse && (
@@ -999,6 +1256,7 @@ export default function LlmResultSection({
   const llm = useMemo(() => normalizeLlmResults(results), [results]);
 
   const [activeTab, setActiveTab] = useState(TAB.SCENARIO);
+  const [userSelectedTab, setUserSelectedTab] = useState(false);
 
   const counts = useMemo(
     () => ({
@@ -1014,7 +1272,8 @@ export default function LlmResultSection({
             "evidenceLocations",
             "evidence_locations",
           ])
-        ),
+        ) ||
+        countOf(pickFirst(llm?.fileTreeDocs, ["coreMethods", "core_methods"])),
       refinedRules:
         countOf(pickFirst(llm?.refinedRules, ["rules"])) ||
         countOf(pickFirst(llm?.refinedRules, ["cautions"])),
@@ -1034,6 +1293,10 @@ export default function LlmResultSection({
   );
 
   useEffect(() => {
+    if (userSelectedTab) {
+      return;
+    }
+
     if (tabHasData[activeTab]) {
       return;
     }
@@ -1051,7 +1314,7 @@ export default function LlmResultSection({
     if (next) {
       setActiveTab(next);
     }
-  }, [activeTab, tabHasData]);
+  }, [activeTab, tabHasData, userSelectedTab]);
 
   const hasResult = hasAnyLlmResult(llm);
 
@@ -1165,7 +1428,10 @@ export default function LlmResultSection({
                   <button
                     key={tab.key}
                     type="button"
-                    onClick={() => setActiveTab(tab.key)}
+                    onClick={() => {
+                      setUserSelectedTab(true);
+                      setActiveTab(tab.key);
+                    }}
                     className={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${
                       active
                         ? "border-yellow-300/30 bg-yellow-300/10 text-yellow-100"
@@ -1204,3 +1470,12 @@ export default function LlmResultSection({
     </section>
   );
 }
+
+
+
+
+
+
+
+
+
