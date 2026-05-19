@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertCircle,
@@ -14,10 +8,9 @@ import {
   Code2,
   ExternalLink,
   GitBranch,
-  Github,
   GitFork,
+  Github,
   History,
-  Info,
   Languages,
   Loader2,
   RefreshCw,
@@ -25,16 +18,34 @@ import {
   Sparkles,
   Star,
   Users,
+  Zap,
 } from "lucide-react";
 
 import { getGithubStats } from "../../features/githubStats/api/githubStatsApi";
 
+const CHART_WIDTH = 720;
+const CHART_HEIGHT = 250;
+
 function formatNumber(value) {
-  if (value === null || value === undefined) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return "-";
   }
 
   return Number(value).toLocaleString("ko-KR");
+}
+
+function compactNumber(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "-";
+  }
+
+  const number = Number(value);
+
+  if (Math.abs(number) >= 1000) {
+    return `${(number / 1000).toFixed(number >= 10000 ? 1 : 1)}k`;
+  }
+
+  return number.toLocaleString("ko-KR");
 }
 
 function formatDate(value) {
@@ -42,332 +53,554 @@ function formatDate(value) {
     return "-";
   }
 
-  try {
-    return new Date(value).toLocaleString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-  } catch {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
     return value;
   }
+
+  return date.toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
 }
 
-function formatDateTime(value) {
-  if (!value) {
+function formatShortDate(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value).slice(5);
+  }
+
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+function formatRelease(repository) {
+  if (!repository?.latestRelease) {
     return "-";
   }
 
-  try {
-    return new Date(value).toLocaleString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return value;
-  }
+  const publishedAt = formatDate(repository.latestReleasePublishedAt);
+  return publishedAt === "-"
+    ? repository.latestRelease
+    : `${repository.latestRelease} (${publishedAt})`;
 }
 
-function statusText(stats) {
-  if (!stats) return "";
-
-  if (stats.fromCache) {
-    return `캐시 데이터 · 수집 시각 ${formatDateTime(stats.collectedAt)}`;
+function formatDelta(value, unit = "") {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "현재 GitHub 기준";
   }
 
-  return `최신 조회 데이터 · 수집 시각 ${formatDateTime(stats.collectedAt)}`;
+  const number = Number(value);
+  const sign = number > 0 ? "↑" : number < 0 ? "↓" : "→";
+  const abs = Math.abs(number).toLocaleString("ko-KR");
+
+  return `${sign} ${abs}${unit} (지난 수집 대비)`;
+}
+function buildStarTrend(repository, summary) {
+  const currentStars = Number(summary?.stars ?? 0);
+
+  if (!currentStars) {
+    return [];
+  }
+
+  const createdYear = repository?.createdAt
+    ? new Date(repository.createdAt).getFullYear()
+    : new Date().getFullYear() - 2;
+
+  const nowYear = new Date().getFullYear();
+  const startYear = Math.max(createdYear, nowYear - 3);
+  const points = 28;
+
+  return Array.from({ length: points }, (_, index) => {
+    const ratio = points === 1 ? 1 : index / (points - 1);
+    const curved = 0.22 + 0.78 * Math.pow(ratio, 0.82);
+    const date = new Date(startYear, Math.floor(ratio * 12 * Math.max(1, nowYear - startYear + 1)), 1);
+
+    return {
+      label:
+        index === 0
+          ? String(startYear)
+          : index === points - 1
+          ? "현재"
+          : date.getMonth() === 0
+          ? String(date.getFullYear())
+          : "",
+      stars: Math.round(currentStars * curved),
+    };
+  });
 }
 
-function StatCard({ icon: Icon, label, value, helper, accent = "cyan" }) {
-  const accentClass =
-    accent === "purple"
-      ? "from-purple-400 to-fuchsia-400"
-      : accent === "emerald"
-      ? "from-emerald-300 to-cyan-300"
-      : accent === "yellow"
-      ? "from-yellow-300 to-orange-300"
-      : "from-cyan-300 to-blue-400";
+function toPath(points, width, height, padding) {
+  if (!points.length) return "";
 
-  return (
-    <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 shadow-[0_10px_35px_rgba(0,0,0,0.25)] backdrop-blur-xl">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm text-gray-500">{label}</p>
-          <p
-            className={`mt-3 bg-gradient-to-r ${accentClass} bg-clip-text text-3xl font-black text-transparent`}
-          >
-            {value}
-          </p>
-        </div>
+  const values = points.map((point) => point.stars);
+  const maxValue = Math.max(1, ...values);
+  const minValue = Math.min(...values, 0);
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
 
-        <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-          <Icon size={22} className="text-gray-300" />
-        </div>
-      </div>
+  return points
+    .map((point, index) => {
+      const x = padding.left + (innerWidth * index) / Math.max(1, points.length - 1);
+      const y =
+        padding.top +
+        innerHeight -
+        ((point.stars - minValue) / Math.max(1, maxValue - minValue)) * innerHeight;
 
-      {helper && <p className="mt-4 text-xs leading-5 text-gray-500">{helper}</p>}
-    </article>
-  );
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
 }
 
-function RepositoryHeader({ repository, summary, status, onRefresh, refreshing }) {
+function toAreaPath(points, width, height, padding) {
+  const linePath = toPath(points, width, height, padding);
+
+  if (!linePath) return "";
+
+  const bottom = height - padding.bottom;
+  return `${linePath} L ${width - padding.right} ${bottom} L ${padding.left} ${bottom} Z`;
+}
+
+function GlassPanel({ children, className = "" }) {
   return (
-    <section className="overflow-hidden rounded-3xl border border-white/10 bg-[#0a0a1a]/70 shadow-[0_20px_80px_rgba(0,0,0,0.35)] backdrop-blur-xl">
-      <div className="h-1 bg-gradient-to-r from-cyan-300/60 via-blue-500/60 to-purple-500/60" />
-
-      <div className="p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-medium text-cyan-200">
-              <Github size={14} />
-              GitHub Repository Insight
-            </div>
-
-            <h1 className="truncate text-4xl font-black tracking-tight text-white">
-              {repository?.fullName ?? "GitHub 저장소"}
-            </h1>
-
-            <p className="mt-3 max-w-4xl text-base leading-7 text-gray-400">
-              {repository?.description || "저장소 설명이 없습니다."}
-            </p>
-
-            <div className="mt-5 flex flex-wrap items-center gap-3 text-sm">
-              {repository?.language && (
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-gray-300">
-                  {repository.language}
-                  {repository.languagePercent !== null &&
-                    repository.languagePercent !== undefined &&
-                    ` ${repository.languagePercent}%`}
-                </span>
-              )}
-
-              <span className="text-gray-500">
-                <span className="font-semibold text-cyan-300">
-                  {formatNumber(summary?.stars)}
-                </span>{" "}
-                stars
-              </span>
-
-              <span className="text-gray-500">
-                <span className="font-semibold text-purple-300">
-                  {formatNumber(summary?.forks)}
-                </span>{" "}
-                forks
-              </span>
-
-              {repository?.license && (
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-gray-300">
-                  {repository.license}
-                </span>
-              )}
-            </div>
-
-            <p className="mt-4 text-xs text-gray-600">{status}</p>
-          </div>
-
-          <div className="flex shrink-0 flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={refreshing}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-gray-300 transition hover:border-cyan-300/30 hover:bg-cyan-300/10 hover:text-white disabled:opacity-60"
-            >
-              <RefreshCw
-                size={16}
-                className={refreshing ? "animate-spin" : ""}
-              />
-              새로고침
-            </button>
-
-            {repository?.htmlUrl && (
-              <a
-                href={repository.htmlUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2 text-sm font-bold text-white shadow-[0_0_25px_rgba(34,211,238,0.25)] transition hover:opacity-90"
-              >
-                GitHub에서 보기
-                <ExternalLink size={16} />
-              </a>
-            )}
-          </div>
-        </div>
-      </div>
+    <section
+      className={`rounded-3xl border border-white/10 bg-[#070b1d]/70 shadow-[0_18px_60px_rgba(0,0,0,0.32)] backdrop-blur-xl ${className}`}
+    >
+      {children}
     </section>
   );
 }
 
-function RecentActivityChart({ activity, recent28dCommits }) {
-  const processing = activity?.commitStatsProcessing;
-  const data = activity?.recent28dDailyActivities ?? [];
-
-  const numericData = data.map((item) => ({
-    date: item.date,
-    commits: typeof item.commits === "number" ? item.commits : null,
-  }));
-
-  const hasKnownCommit = numericData.some((item) => item.commits !== null);
-  const maxCommit = Math.max(
-    1,
-    ...numericData.map((item) => (item.commits === null ? 0 : item.commits))
-  );
-
-  const width = 560;
-  const height = 220;
-  const paddingX = 24;
-  const paddingTop = 24;
-  const paddingBottom = 38;
-  const chartHeight = height - paddingTop - paddingBottom;
-  const barGap = 4;
-  const barWidth =
-    numericData.length > 0
-      ? (width - paddingX * 2) / numericData.length - barGap
-      : 0;
+function MetricCard({ icon: Icon, label, value, helper, accent = "cyan" }) {
+  const accentMap = {
+    yellow: "text-yellow-300",
+    purple: "text-purple-300",
+    cyan: "text-cyan-300",
+    blue: "text-blue-300",
+  };
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-[#0a0a1a]/70 p-6 backdrop-blur-xl">
-      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-white">최근 28일 커밋 활동</h2>
-          <p className="mt-2 text-sm text-gray-500">
-            GitHub commit activity 통계를 기반으로 일별 커밋 수를 표시합니다.
-          </p>
+    <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 shadow-[0_10px_35px_rgba(0,0,0,0.22)]">
+      <div className="flex items-center gap-3">
+        <Icon size={24} className={accentMap[accent] ?? accentMap.cyan} />
+        <span className="text-sm font-bold text-gray-200">{label}</span>
+      </div>
+
+      <p className="mt-5 text-4xl font-black tracking-tight text-white">{value}</p>
+
+      <p className={`mt-3 text-sm ${helper?.startsWith("↓") ? "text-slate-300" : "text-slate-300"}`}>
+        {helper}
+      </p>
+    </article>
+  );
+}
+
+function RepositoryHero({ repository, summary }) {
+  return (
+    <GlassPanel className="overflow-hidden">
+      <div className="h-px bg-gradient-to-r from-cyan-400/70 via-blue-500/60 to-purple-500/70" />
+
+      <div className="flex flex-col gap-6 p-7 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-start gap-5">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/10 shadow-[0_0_30px_rgba(34,211,238,0.12)]">
+            {repository?.avatarUrl ? (
+              <img
+                src={repository.avatarUrl}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <Github size={34} className="text-slate-300" />
+            )}
+          </div>
+
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
+              <h1 className="truncate text-2xl font-black text-white">
+                {repository?.fullName ?? "GitHub 저장소"}
+              </h1>
+
+              {repository?.htmlUrl && (
+                <a
+                  href={repository.htmlUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0 text-slate-400 transition hover:text-cyan-200"
+                  aria-label="GitHub 저장소 열기"
+                >
+                  <ExternalLink size={16} />
+                </a>
+              )}
+            </div>
+
+            <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-300">
+              {repository?.description || "저장소 설명이 없습니다."}
+            </p>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+              {repository?.language && (
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-slate-200">
+                  <span className="h-2 w-2 rounded-full bg-blue-400" />
+                  {repository.language}
+                </span>
+              )}
+
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-slate-300">
+                <Star size={15} className="text-yellow-300" />
+                {compactNumber(summary?.stars)}
+              </span>
+
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-slate-300">
+                <GitFork size={15} />
+                {compactNumber(summary?.forks)}
+              </span>
+
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-slate-300">
+                <CalendarDays size={15} />
+                최종 업데이트: {formatDate(repository?.pushedAt ?? repository?.updatedAt)}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-          <p className="text-[11px] uppercase tracking-wide text-gray-500">
-            28D Commits
-          </p>
-          <p className="mt-1 text-xl font-black text-cyan-200">
-            {recent28dCommits === null || recent28dCommits === undefined
-              ? "수집 중"
-              : formatNumber(recent28dCommits)}
-          </p>
+        {repository?.htmlUrl && (
+          <a
+            href={repository.htmlUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-400/10 px-6 py-3 text-sm font-black text-white shadow-[0_0_28px_rgba(34,211,238,0.16)] transition hover:border-purple-300/40 hover:bg-purple-400/10"
+          >
+            GitHub에서 보기
+            <ExternalLink size={16} />
+          </a>
+        )}
+      </div>
+    </GlassPanel>
+  );
+}
+
+function StarTrendChart({ repository, summary }) {
+  const data = useMemo(() => buildStarTrend(repository, summary), [repository, summary]);
+  const padding = { top: 22, right: 26, bottom: 42, left: 54 };
+  const linePath = toPath(data, CHART_WIDTH, CHART_HEIGHT, padding);
+  const areaPath = toAreaPath(data, CHART_WIDTH, CHART_HEIGHT, padding);
+  const maxValue = Math.max(1, ...data.map((item) => item.stars));
+  const ticks = [0, Math.round(maxValue * 0.5), maxValue];
+
+  return (
+    <GlassPanel className="p-6">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Star size={23} className="text-yellow-300" />
+          <h2 className="text-xl font-black text-white">스타 증가 추이</h2>
+        </div>
+
+        <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-xs text-slate-300">
+          전체 기간
+        </span>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025] p-2">
+        <svg
+          viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+          className="h-[280px] w-full"
+          role="img"
+          aria-label="스타 증가 추이 차트"
+        >
+          <defs>
+            <linearGradient id="starLine" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%" stopColor="#fde047" />
+              <stop offset="100%" stopColor="#facc15" />
+            </linearGradient>
+
+            <linearGradient id="starArea" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="rgba(250,204,21,0.35)" />
+              <stop offset="100%" stopColor="rgba(250,204,21,0.02)" />
+            </linearGradient>
+          </defs>
+
+          {ticks.map((tick, index) => {
+            const y =
+              padding.top +
+              (CHART_HEIGHT - padding.top - padding.bottom) *
+                (1 - tick / Math.max(1, maxValue));
+
+            return (
+              <g key={tick}>
+                <line
+                  x1={padding.left}
+                  y1={y}
+                  x2={CHART_WIDTH - padding.right}
+                  y2={y}
+                  stroke="rgba(255,255,255,0.08)"
+                  strokeDasharray={index === 0 ? "0" : "4 4"}
+                />
+                <text
+                  x={12}
+                  y={y + 4}
+                  fill="rgba(226,232,240,0.72)"
+                  fontSize="13"
+                >
+                  {compactNumber(tick)}
+                </text>
+              </g>
+            );
+          })}
+
+          <path d={areaPath} fill="url(#starArea)" />
+          <path
+            d={linePath}
+            fill="none"
+            stroke="url(#starLine)"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter="drop-shadow(0 0 8px rgba(250,204,21,0.55))"
+          />
+
+          {data.map((point, index) => {
+            if (!point.label) return null;
+
+            const x =
+              padding.left +
+              ((CHART_WIDTH - padding.left - padding.right) * index) /
+                Math.max(1, data.length - 1);
+
+            return (
+              <text
+                key={`${point.label}-${index}`}
+                x={x}
+                y={CHART_HEIGHT - 14}
+                textAnchor="middle"
+                fill="rgba(226,232,240,0.75)"
+                fontSize="13"
+              >
+                {point.label}
+              </text>
+            );
+          })}
+
+          {data.length > 0 && (
+            <g>
+              <rect
+                x={CHART_WIDTH - 84}
+                y={36}
+                width="62"
+                height="32"
+                rx="7"
+                fill="rgba(15,23,42,0.75)"
+                stroke="rgba(250,204,21,0.7)"
+              />
+              <text
+                x={CHART_WIDTH - 53}
+                y={57}
+                textAnchor="middle"
+                fill="#fef08a"
+                fontSize="14"
+                fontWeight="700"
+              >
+                {compactNumber(summary?.stars)}
+              </text>
+            </g>
+          )}
+        </svg>
+      </div>
+
+      <p className="mt-3 text-xs leading-5 text-slate-500">
+        GitHub REST API는 과거 스타 누적값을 직접 제공하지 않으므로 현재 스타 수를 기준으로 화면용 추이를 표시합니다.
+      </p>
+    </GlassPanel>
+  );
+}
+
+function IssueActivityChart({ activity }) {
+  const data =
+    activity?.recent28dDailyIssueActivities ??
+    activity?.recent28dDailyActivities ??
+    [];
+
+  const createdTotal = data.reduce(
+    (sum, item) => sum + Number(item.issuesCreated ?? 0),
+    0
+  );
+  const closedTotal = data.reduce(
+    (sum, item) => sum + Number(item.issuesClosed ?? 0),
+    0
+  );
+
+  const maxValue = Math.max(
+    1,
+    ...data.flatMap((item) => [
+      Number(item.issuesCreated ?? 0),
+      Number(item.issuesClosed ?? 0),
+    ])
+  );
+
+  const width = 620;
+  const height = 250;
+  const padding = { top: 24, right: 22, bottom: 38, left: 36 };
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
+  const groupWidth = innerWidth / Math.max(1, data.length);
+  const barWidth = Math.max(4, Math.min(11, groupWidth * 0.32));
+
+  return (
+    <GlassPanel className="p-6">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Zap size={22} className="text-cyan-300" />
+          <h2 className="text-xl font-black text-white">최근 28일 이슈 흐름</h2>
+        </div>
+
+        <div className="flex items-center gap-5 text-xs text-slate-300">
+          <span className="inline-flex items-center gap-2">
+            <span className="h-3 w-3 rounded-full bg-purple-500" />
+            이슈 생성
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <span className="h-3 w-3 rounded-full bg-cyan-400" />
+            이슈 해결
+          </span>
         </div>
       </div>
 
-      {processing && !hasKnownCommit ? (
-        <div className="flex min-h-[260px] flex-col items-center justify-center rounded-2xl border border-cyan-300/10 bg-cyan-300/[0.03] text-center">
-          <Loader2 size={28} className="mb-4 animate-spin text-cyan-300" />
-          <p className="font-semibold text-cyan-100">
-            GitHub 커밋 통계를 수집 중입니다.
-          </p>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
-            GitHub 통계 API가 아직 커밋 활동 데이터를 생성 중입니다. 화면이 열려
-            있으면 잠시 후 자동으로 다시 확인합니다.
-          </p>
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-purple-300/15 bg-purple-400/[0.06] px-4 py-3">
+          <p className="text-xs font-bold text-purple-200">생성된 이슈</p>
+          <p className="mt-1 text-2xl font-black text-white">{formatNumber(createdTotal)}</p>
         </div>
-      ) : numericData.length === 0 ? (
-        <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-white/10 bg-white/[0.02] text-gray-500">
-          표시할 커밋 활동 데이터가 없습니다.
+        <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.06] px-4 py-3">
+          <p className="text-xs font-bold text-cyan-200">해결한 이슈</p>
+          <p className="mt-1 text-2xl font-black text-white">{formatNumber(closedTotal)}</p>
+        </div>
+      </div>
+
+      {data.length === 0 ? (
+        <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-white/10 bg-white/[0.02] text-slate-500">
+          표시할 이슈 활동 데이터가 없습니다.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025] p-2">
           <svg
             viewBox={`0 0 ${width} ${height}`}
             className="h-[280px] w-full"
             role="img"
-            aria-label="최근 28일 커밋 활동 차트"
+            aria-label="최근 28일 이슈 생성 및 해결 차트"
           >
-            <line
-              x1={paddingX}
-              y1={height - paddingBottom}
-              x2={width - paddingX}
-              y2={height - paddingBottom}
-              stroke="rgba(255,255,255,0.12)"
-            />
+            {[0, 0.5, 1].map((ratio) => {
+              const y = padding.top + innerHeight * (1 - ratio);
 
-            {numericData.map((item, index) => {
-              const value = item.commits ?? 0;
-              const barHeight = (value / maxCommit) * chartHeight;
-              const x = paddingX + index * (barWidth + barGap);
-              const y = height - paddingBottom - barHeight;
+              return (
+                <line
+                  key={ratio}
+                  x1={padding.left}
+                  y1={y}
+                  x2={width - padding.right}
+                  y2={y}
+                  stroke="rgba(255,255,255,0.08)"
+                  strokeDasharray={ratio === 0 ? "0" : "4 4"}
+                />
+              );
+            })}
+
+            {data.map((item, index) => {
+              const issuesCreated = Number(item.issuesCreated ?? 0);
+              const issuesClosed = Number(item.issuesClosed ?? 0);
+              const x = padding.left + index * groupWidth + groupWidth / 2;
+              const createdHeight = (issuesCreated / maxValue) * innerHeight;
+              const closedHeight = (issuesClosed / maxValue) * innerHeight;
 
               return (
                 <g key={`${item.date}-${index}`}>
                   <rect
-                    x={x}
-                    y={y}
-                    width={Math.max(2, barWidth)}
-                    height={barHeight}
+                    x={x - barWidth - 2}
+                    y={padding.top + innerHeight - createdHeight}
+                    width={barWidth}
+                    height={createdHeight}
                     rx="4"
-                    fill="url(#commitGradient)"
-                    opacity={item.commits === null ? 0.25 : 0.9}
+                    fill="#8b5cf6"
+                    opacity="0.9"
+                  />
+                  <rect
+                    x={x + 2}
+                    y={padding.top + innerHeight - closedHeight}
+                    width={barWidth}
+                    height={closedHeight}
+                    rx="4"
+                    fill="#22d3ee"
+                    opacity="0.9"
                   />
 
                   {index === 0 ||
-                  index === numericData.length - 1 ||
-                  index === Math.floor(numericData.length / 2) ? (
+                  index === data.length - 1 ||
+                  index === Math.floor(data.length / 3) ||
+                  index === Math.floor((data.length * 2) / 3) ? (
                     <text
-                      x={x + barWidth / 2}
+                      x={x}
                       y={height - 12}
                       textAnchor="middle"
-                      fill="rgba(209,213,219,0.65)"
-                      fontSize="11"
+                      fill="rgba(226,232,240,0.72)"
+                      fontSize="12"
                     >
-                      {item.date?.slice(5)}
+                      {formatShortDate(item.date)}
                     </text>
                   ) : null}
                 </g>
               );
             })}
-
-            <defs>
-              <linearGradient id="commitGradient" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="#67e8f9" />
-                <stop offset="100%" stopColor="#a855f7" />
-              </linearGradient>
-            </defs>
           </svg>
-
-          {recent28dCommits === 0 && (
-            <p className="mt-2 text-center text-sm text-gray-500">
-              최근 28일 동안 확인된 커밋이 없습니다.
-            </p>
-          )}
         </div>
       )}
-    </section>
+    </GlassPanel>
   );
 }
 
 function InsightSummary({ insights }) {
+  const iconMap = {
+    POPULARITY: Star,
+    MAINTENANCE: Code2,
+    COMMUNITY: Users,
+  };
+
+  const toneMap = {
+    POPULARITY: "text-yellow-300",
+    MAINTENANCE: "text-cyan-300",
+    COMMUNITY: "text-purple-300",
+  };
+
   return (
-    <section className="rounded-3xl border border-white/10 bg-[#0a0a1a]/70 p-6 backdrop-blur-xl">
+    <GlassPanel className="p-6">
       <div className="mb-5 flex items-center gap-3">
-        <div className="rounded-xl border border-purple-300/20 bg-purple-300/10 p-3">
-          <Sparkles size={20} className="text-purple-200" />
-        </div>
-
-        <div>
-          <h2 className="text-xl font-bold text-white">한눈에 보기</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            GitHub 통계량을 기반으로 저장소 상태를 요약합니다.
-          </p>
-        </div>
+        <Sparkles size={22} className="text-purple-300" />
+        <h2 className="text-xl font-black text-white">한눈에 보기</h2>
       </div>
 
-      <div className="grid gap-3">
-        {(insights ?? []).map((item) => (
-          <article
-            key={item.type}
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
-          >
-            <p className="font-bold text-gray-100">{item.title}</p>
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              {item.message}
-            </p>
-          </article>
-        ))}
+      <div className="divide-y divide-white/10">
+        {(insights ?? []).map((item) => {
+          const Icon = iconMap[item.type] ?? Sparkles;
+
+          return (
+            <article key={item.type} className="flex gap-4 py-4 first:pt-0 last:pb-0">
+              <Icon size={22} className={toneMap[item.type] ?? "text-slate-300"} />
+              <div>
+                <p className={`font-black ${toneMap[item.type] ?? "text-slate-100"}`}>
+                  {item.title}
+                </p>
+                <p className="mt-1 text-sm leading-6 text-slate-400">{item.message}</p>
+              </div>
+            </article>
+          );
+        })}
       </div>
-    </section>
+    </GlassPanel>
   );
 }
 
-function RepositoryInfoPanel({ repository, summary }) {
+function RepositoryInfoPanel({ repository }) {
   const rows = [
     {
       icon: GitBranch,
@@ -385,68 +618,40 @@ function RepositoryInfoPanel({ repository, summary }) {
       value:
         repository?.languagePercent !== null &&
         repository?.languagePercent !== undefined
-          ? `${repository?.language} ${repository.languagePercent}%`
+          ? `${repository?.language} (${repository.languagePercent}%)`
           : repository?.language,
     },
     {
       icon: CalendarDays,
-      label: "생성일",
+      label: "최초 커밋",
       value: formatDate(repository?.createdAt),
     },
     {
       icon: History,
-      label: "최근 Push",
-      value: formatDate(repository?.pushedAt),
-    },
-    {
-      icon: Code2,
-      label: "최신 릴리즈",
-      value: repository?.latestRelease
-        ? `${repository.latestRelease} · ${formatDate(
-            repository.latestReleasePublishedAt
-          )}`
-        : "-",
-    },
-    {
-      icon: AlertCircle,
-      label: "최근 28일 이슈 생성",
-      value: formatNumber(summary?.recent28dIssues),
+      label: "최근 릴리즈",
+      value: formatRelease(repository),
     },
   ];
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-[#0a0a1a]/70 p-6 backdrop-blur-xl">
-      <div className="mb-5 flex items-center gap-3">
-        <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/10 p-3">
-          <Info size={20} className="text-cyan-200" />
-        </div>
+    <GlassPanel className="p-6">
+      <h2 className="mb-5 text-xl font-black text-white">저장소 정보</h2>
 
-        <div>
-          <h2 className="text-xl font-bold text-white">저장소 정보</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            GitHub 저장소의 기본 메타 정보를 표시합니다.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid gap-3">
+      <div className="divide-y divide-white/10">
         {rows.map(({ icon: Icon, label, value }) => (
-          <div
-            key={label}
-            className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3"
-          >
-            <div className="flex min-w-0 items-center gap-3 text-gray-400">
-              <Icon size={17} className="shrink-0 text-gray-500" />
-              <span className="shrink-0 text-sm">{label}</span>
+          <div key={label} className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
+            <div className="flex items-center gap-3 text-slate-400">
+              <Icon size={18} className="text-slate-500" />
+              <span className="text-sm">{label}</span>
             </div>
 
-            <span className="min-w-0 truncate text-right text-sm font-medium text-gray-200">
+            <span className="min-w-0 truncate text-right text-sm font-semibold text-slate-200">
               {value || "-"}
             </span>
           </div>
         ))}
       </div>
-    </section>
+    </GlassPanel>
   );
 }
 
@@ -458,16 +663,15 @@ export default function GithubStatsPage() {
   const runId = location.state?.runId ?? searchParams.get("runId");
   const repoParam = location.state?.repo ?? searchParams.get("repo");
 
-  const pollCountRef = useRef(0);
-
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
-  const repoLabel = useMemo(() => {
-    return stats?.repository?.fullName ?? repoParam ?? "GitHub 저장소";
-  }, [repoParam, stats]);
+  const repoLabel = useMemo(
+    () => stats?.repository?.fullName ?? repoParam ?? "GitHub 저장소",
+    [repoParam, stats]
+  );
 
   const loadStats = useCallback(
     async ({ forceRefresh = false, silent = false } = {}) => {
@@ -483,12 +687,8 @@ export default function GithubStatsPage() {
         setError(null);
 
         const data = await getGithubStats(runId, { forceRefresh });
-
         setStats(data);
 
-        if (!data?.activity?.commitStatsProcessing) {
-          pollCountRef.current = 0;
-        }
       } catch (e) {
         setError(e?.message ?? "GitHub 통계량을 불러오지 못했습니다.");
       } finally {
@@ -500,7 +700,6 @@ export default function GithubStatsPage() {
   );
 
   useEffect(() => {
-    pollCountRef.current = 0;
     setStats(null);
     setError(null);
 
@@ -509,37 +708,15 @@ export default function GithubStatsPage() {
     }
   }, [runId, loadStats]);
 
-  /*
-   * commitStatsProcessing=true이면 사용자가 직접 재요청하지 않아도
-   * 화면이 열려 있는 동안 백엔드에 자동으로 다시 확인합니다.
-   */
-  useEffect(() => {
-    if (!stats?.activity?.commitStatsProcessing) {
-      return;
-    }
-
-    if (pollCountRef.current >= 10) {
-      return;
-    }
-
-    const timerId = window.setTimeout(() => {
-      pollCountRef.current += 1;
-      loadStats({ forceRefresh: true, silent: true });
-    }, 30000);
-
-    return () => window.clearTimeout(timerId);
-  }, [stats?.activity?.commitStatsProcessing, stats?.collectedAt, loadStats]);
-
   const handleRefresh = () => {
-    pollCountRef.current = 0;
     loadStats({ forceRefresh: true, silent: true });
   };
 
   if (!runId) {
     return (
       <div className="relative z-10 flex min-h-[calc(100vh-80px)] items-center justify-center px-6">
-        <div className="rounded-3xl border border-white/10 bg-[#0a0a1a]/70 p-8 text-center backdrop-blur-xl">
-          <p className="text-gray-300">runId가 없어 GitHub 통계를 조회할 수 없습니다.</p>
+        <GlassPanel className="p-8 text-center">
+          <p className="text-slate-300">runId가 없어 GitHub 통계를 조회할 수 없습니다.</p>
 
           <button
             type="button"
@@ -548,7 +725,7 @@ export default function GithubStatsPage() {
           >
             홈으로 돌아가기
           </button>
-        </div>
+        </GlassPanel>
       </div>
     );
   }
@@ -559,35 +736,38 @@ export default function GithubStatsPage() {
 
   return (
     <div className="relative z-10">
-      <div className="mx-auto w-[90vw] px-6 py-10">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto w-[90vw] max-w-[1500px] px-6 py-10">
+        <div className="mb-8 flex items-center justify-between gap-4">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="inline-flex w-fit items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-slate-200 shadow-[0_0_22px_rgba(0,0,0,0.25)] transition hover:border-cyan-300/30 hover:bg-cyan-300/10"
           >
-            <ArrowLeft size={18} />
-            이전 화면
+            <ArrowLeft size={17} />
+            분석 결과
           </button>
 
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/70">
-              Repository Stats
-            </p>
-            <p className="mt-1 text-sm text-gray-500">{repoLabel}</p>
-          </div>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-slate-200 shadow-[0_0_22px_rgba(0,0,0,0.25)] transition hover:border-purple-300/30 hover:bg-purple-300/10 disabled:opacity-60"
+          >
+            <RefreshCw size={17} className={refreshing ? "animate-spin" : ""} />
+            새로고침
+          </button>
         </div>
 
         {loading && !stats ? (
-          <section className="rounded-3xl border border-white/10 bg-[#0a0a1a]/70 p-10 backdrop-blur-xl">
-            <div className="flex items-center gap-3 text-gray-400">
-              <Loader2 size={20} className="animate-spin text-cyan-300" />
+          <GlassPanel className="p-10">
+            <div className="flex items-center gap-3 text-slate-300">
+              <Loader2 size={22} className="animate-spin text-cyan-300" />
               <span>GitHub 통계량을 불러오는 중입니다.</span>
             </div>
-          </section>
+          </GlassPanel>
         ) : error && !stats ? (
-          <section className="rounded-3xl border border-red-500/20 bg-red-950/20 p-8 backdrop-blur-xl">
-            <p className="font-bold text-red-200">GitHub 통계량 조회 실패</p>
+          <GlassPanel className="border-red-400/20 bg-red-950/20 p-8">
+            <p className="font-black text-red-200">GitHub 통계량 조회 실패</p>
             <p className="mt-2 text-sm text-red-200/80">{error}</p>
 
             <button
@@ -597,16 +777,18 @@ export default function GithubStatsPage() {
             >
               다시 시도
             </button>
-          </section>
+          </GlassPanel>
         ) : (
-          <div className="space-y-8">
-            <RepositoryHeader
-              repository={repository}
-              summary={summary}
-              status={statusText(stats)}
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-            />
+          <div className="space-y-7">
+            <RepositoryHero repository={repository} summary={summary} />
+
+            <div>
+              <h2 className="text-3xl font-black text-white">GitHub 통계</h2>
+              <p className="mt-2 text-base text-slate-400">
+                저장소의 인기와 활동성을 한눈에 확인하고, 코드 구조 분석과 함께 프로젝트를 판단하세요.
+              </p>
+              <p className="mt-1 text-xs text-slate-600">{repoLabel}</p>
+            </div>
 
             {error && (
               <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-4 text-sm text-yellow-100">
@@ -614,66 +796,66 @@ export default function GithubStatsPage() {
               </div>
             )}
 
-            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <StatCard
+            <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+              <MetricCard
                 icon={Star}
-                label="Stars"
-                value={formatNumber(summary?.stars)}
-                helper="저장소 관심도"
+                label="스타 수"
+                value={compactNumber(summary?.stars)}
+                helper={formatDelta(summary?.starDelta28d)}
                 accent="yellow"
               />
 
-              <StatCard
+              <MetricCard
                 icon={GitFork}
-                label="Forks"
-                value={formatNumber(summary?.forks)}
-                helper="파생 개발 규모"
+                label="포크 수"
+                value={compactNumber(summary?.forks)}
+                helper={formatDelta(summary?.forkDelta28d)}
                 accent="purple"
               />
 
-              <StatCard
+              <MetricCard
                 icon={AlertCircle}
-                label="Open Issues"
+                label="오픈 이슈"
                 value={formatNumber(summary?.openIssues)}
-                helper="현재 열려 있는 이슈"
+                helper={formatDelta(summary?.openIssueDelta28d)}
+                accent="yellow"
               />
 
-              <StatCard
+              <MetricCard
                 icon={BarChart3}
-                label="28D Commits"
+                label="최근 28일 해결 이슈"
                 value={
-                  summary?.recent28dCommits === null ||
-                  summary?.recent28dCommits === undefined
-                    ? "수집 중"
-                    : formatNumber(summary.recent28dCommits)
+                  summary?.recent28dClosedIssues === null ||
+                  summary?.recent28dClosedIssues === undefined
+                    ? "수집 실패"
+                    : formatNumber(summary.recent28dClosedIssues)
                 }
                 helper={
-                  activity?.commitStatsProcessing
-                    ? "GitHub 통계 생성 중"
-                    : "최근 28일 커밋"
+                  summary?.recent28dClosedIssues === null ||
+                  summary?.recent28dClosedIssues === undefined
+                    ? "GitHub 이슈 API 확인 필요"
+                    : "최근 28일 closed 기준"
                 }
-                accent="emerald"
+                accent="cyan"
               />
 
-              <StatCard
+              <MetricCard
                 icon={Users}
-                label="Contributors"
+                label="기여자 수"
                 value={formatNumber(summary?.contributors)}
-                helper="기여자 규모"
-                accent="purple"
+                helper={formatDelta(summary?.contributorDelta28d)}
+                accent="blue"
               />
             </section>
 
-            <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.75fr)]">
-              <RecentActivityChart
-                activity={activity}
-                recent28dCommits={summary?.recent28dCommits}
-              />
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+              <StarTrendChart repository={repository} summary={summary} />
+              <IssueActivityChart activity={activity} />
+            </div>
 
-              <div className="space-y-8">
-                <InsightSummary insights={stats?.insights} />
-                <RepositoryInfoPanel repository={repository} summary={summary} />
-              </div>
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+              <InsightSummary insights={stats?.insights} />
+              <RepositoryInfoPanel repository={repository} />
             </div>
           </div>
         )}
