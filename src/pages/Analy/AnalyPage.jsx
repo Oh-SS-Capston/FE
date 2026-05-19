@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, BarChart3 } from "lucide-react";
 
 import RepoInfoSection from "./components/RepoInfoSection";
 import ClassDiagramSection from "./components/ClassDiagramSection";
@@ -655,16 +655,51 @@ export default function AnalyPage() {
     (step) => step.stage === "CLASSMAP"
   );
 
+  const moveToGithubStats = () => {
+    if (!runId) {
+      alert("runId가 없어 GitHub 통계를 조회할 수 없습니다.");
+      return;
+    }
+
+    const query = new URLSearchParams();
+    query.set("runId", runId);
+
+    if (repo) {
+      query.set("repo", repo);
+    }
+
+    navigate(`/github-stats?${query.toString()}`, {
+      state: {
+        runId,
+        repo,
+        run,
+      },
+    });
+  };
+
   return (
     <div className="relative z-10">
       <div className="w-[90vw] mx-auto px-6 py-10 space-y-8">
-        <button
-          onClick={() => navigate("/")}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/5"
-        >
-          <ArrowLeft size={18} />
-          Home
-        </button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            onClick={() => navigate("/")}
+            className="flex w-fit items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+          >
+            <ArrowLeft size={18} />
+            Home
+          </button>
+
+          {runId && (
+            <button
+              type="button"
+              onClick={moveToGithubStats}
+              className="flex w-fit items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-sm font-bold text-cyan-100 transition hover:border-cyan-300/40 hover:bg-cyan-300/20"
+            >
+              <BarChart3 size={18} />
+              GitHub 통계량 보기
+            </button>
+          )}
+        </div>
 
         {/* 1. 레포 프로필 */}
         <RepoInfoSection
