@@ -9,7 +9,11 @@ import AnalyzeProgressPanel from "./components/AnalyzeProgressPanel";
 import LlmResultSection from "./components/LlmResultSection";
 import PackageClassDocsSection from "./components/PackageClassDocsSection";
 
-import { getArtifactJson, getRunProgress } from "../../features/run/api/runApi";
+import {
+  createRepoRun,
+  getArtifactJson,
+  getRunProgress,
+} from "../../features/run/api/runApi";
 
 const LLM_RESULT_KEYS = [
   "scenarioSpecs",
@@ -310,6 +314,7 @@ export default function AnalyPage() {
   const [llmResults, setLlmResults] = useState(EMPTY_LLM_RESULTS);
   const [llmLoading, setLlmLoading] = useState(false);
   const [llmError, setLlmError] = useState(null);
+  const [rebuildLoading, setRebuildLoading] = useState(false);
 
   useEffect(() => {
     if (!repo) return;
@@ -594,6 +599,54 @@ export default function AnalyPage() {
     }
   };
 
+  const handleForceRebuild = async () => {
+    const repoUrlForRequest =
+      location.state?.repoUrl ||
+      run?.repoUrl ||
+      (repo ? `https://github.com/${repo}` : null);
+
+    if (!repoUrlForRequest) {
+      setLlmError("재생성 요청에 필요한 레포지토리 URL을 찾지 못했습니다.");
+      return;
+    }
+
+    const refForRequest =
+      run?.resolvedRef || run?.ref || run?.requestedRef || run?.branch || null;
+
+    try {
+      setRebuildLoading(true);
+      setLlmError(null);
+
+      const nextRun = await createRepoRun({
+        repoUrl: repoUrlForRequest,
+        ref: refForRequest,
+        forceRebuild: true,
+      });
+
+      const nextRepo =
+        repo ||
+        firstNonEmptyString(run?.repoFullName, run?.repoName) ||
+        null;
+
+      const repoQuery = nextRepo ? `&repo=${encodeURIComponent(nextRepo)}` : "";
+
+      navigate(
+        `/analyze?runId=${encodeURIComponent(nextRun.runId)}${repoQuery}`,
+        {
+          state: {
+            repo: nextRepo,
+            repoUrl: repoUrlForRequest,
+            run: nextRun,
+          },
+        }
+      );
+    } catch (e) {
+      setLlmError(e?.message ?? "재생성 요청에 실패했습니다.");
+    } finally {
+      setRebuildLoading(false);
+    }
+  };
+
   const toggleFolder = async (path) => {
     if (!repo) return;
 
@@ -747,6 +800,9 @@ export default function AnalyPage() {
           loading={llmLoading}
           error={llmError}
           onRefresh={refreshLlmResults}
+          onRegenerate={handleForceRebuild}
+          regenerating={rebuildLoading}
+          showCachedNotice={Boolean(run?.cacheHit)}
         />
       </div>
     </div>

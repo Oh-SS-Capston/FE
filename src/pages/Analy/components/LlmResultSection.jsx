@@ -1252,8 +1252,12 @@ export default function LlmResultSection({
   loading = false,
   error = null,
   onRefresh,
+  onRegenerate,
+  regenerating = false,
+  showCachedNotice = false,
 }) {
   const llm = useMemo(() => normalizeLlmResults(results), [results]);
+  const [showRegenerateModal, setShowRegenerateModal] = useState(false);
 
   const [activeTab, setActiveTab] = useState(TAB.SCENARIO);
   const [userSelectedTab, setUserSelectedTab] = useState(false);
@@ -1362,8 +1366,31 @@ export default function LlmResultSection({
       ? llm?.fileTreeDocs
       : llm?.refinedRules;
 
+  const handleOpenRegenerateModal = () => {
+    if (!onRegenerate || regenerating) {
+      return;
+    }
+    setShowRegenerateModal(true);
+  };
+
+  const handleCloseRegenerateModal = () => {
+    if (regenerating) {
+      return;
+    }
+    setShowRegenerateModal(false);
+  };
+
+  const handleConfirmRegenerate = async () => {
+    if (!onRegenerate || regenerating) {
+      return;
+    }
+
+    await onRegenerate();
+    setShowRegenerateModal(false);
+  };
+
   return (
-    <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl">
+    <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl">
       <div
         className="h-1 opacity-60"
         style={{
@@ -1386,16 +1413,39 @@ export default function LlmResultSection({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={!onRefresh}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-gray-300 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <RefreshCw size={15} />
-            LLM 결과 새로고침
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={!onRefresh || regenerating}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-gray-300 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+              LLM 결과 새로고침
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenRegenerateModal}
+              disabled={!onRegenerate || regenerating}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCw size={15} className={regenerating ? "animate-spin" : ""} />
+              {regenerating ? "재생성 요청 중..." : "재생성"}
+            </button>
+          </div>
         </div>
+
+        {showCachedNotice && (
+          <div className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-50">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p>이미 분석된 동일 커밋 결과를 먼저 보여드리고 있어요.</p>
+              <span className="rounded-full border border-cyan-300/30 bg-cyan-400/15 px-2 py-0.5 text-[11px] font-semibold text-cyan-100">
+                기존 분석 결과
+              </span>
+            </div>
+          </div>
+        )}
 
         {loading && (
           <div className="mt-5 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-4 text-sm text-gray-300">
@@ -1467,6 +1517,44 @@ export default function LlmResultSection({
           </>
         )}
       </div>
+
+      {showRegenerateModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4 backdrop-blur-[1px]">
+          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#101426] p-5 shadow-2xl shadow-black/40">
+            <h4 className="text-lg font-bold text-gray-100">새로 분석하시겠어요?</h4>
+
+            <div className="mt-4 space-y-2 text-sm text-gray-300">
+              <p>이미 분석된 결과 대신 새 분석을 진행합니다.</p>
+              <p>신규 분석은 코드 규모와 빌드 환경에 따라 시간이 오래 걸릴 수 있습니다.</p>
+              <p className="flex items-center gap-2 text-yellow-200">
+                <TriangleAlert size={14} className="shrink-0" />
+                추가 요금이 발생할 수 있습니다.
+              </p>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleCloseRegenerateModal}
+                disabled={regenerating}
+                className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-gray-300 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                취소
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmRegenerate}
+                disabled={regenerating}
+                className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-400/15 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/25 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <RefreshCw size={14} className={regenerating ? "animate-spin" : ""} />
+                새로 분석하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
