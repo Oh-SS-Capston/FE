@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, BarChart3 } from "lucide-react";
 
@@ -9,7 +9,11 @@ import AnalyzeProgressPanel from "./components/AnalyzeProgressPanel";
 import LlmResultSection from "./components/LlmResultSection";
 import PackageClassDocsSection from "./components/PackageClassDocsSection";
 
-import { getArtifactJson, getRunProgress } from "../../features/run/api/runApi";
+import {
+  createRepoRun,
+  getArtifactJson,
+  getRunProgress,
+} from "../../features/run/api/runApi";
 
 const LLM_RESULT_KEYS = [
   "scenarioSpecs",
@@ -310,6 +314,7 @@ export default function AnalyPage() {
   const [llmResults, setLlmResults] = useState(EMPTY_LLM_RESULTS);
   const [llmLoading, setLlmLoading] = useState(false);
   const [llmError, setLlmError] = useState(null);
+  const [rebuildLoading, setRebuildLoading] = useState(false);
 
   useEffect(() => {
     if (!repo) return;
@@ -502,9 +507,9 @@ export default function AnalyPage() {
         setProgressError(null);
 
         /*
-         * 핵심 변경:
+         * 동작 변경
          * 전체 파이프라인 SUCCESS를 기다리지 않고,
-         * artifact id가 생기는 순간 바로 결과를 조회합니다.
+         * artifact id가 생기는 즉시 결과를 조회합니다.
          */
         await Promise.allSettled([
           loadClassDiagramIfReady(nextProgress),
@@ -594,6 +599,54 @@ export default function AnalyPage() {
     }
   };
 
+  const handleForceRebuild = async () => {
+    const repoUrlForRequest =
+      location.state?.repoUrl ||
+      run?.repoUrl ||
+      (repo ? `https://github.com/${repo}` : null);
+
+    if (!repoUrlForRequest) {
+      setLlmError("재생성 요청에 필요한 레포지토리 URL을 찾지 못했습니다.");
+      return;
+    }
+
+    const refForRequest =
+      run?.resolvedRef || run?.ref || run?.requestedRef || run?.branch || null;
+
+    try {
+      setRebuildLoading(true);
+      setLlmError(null);
+
+      const nextRun = await createRepoRun({
+        repoUrl: repoUrlForRequest,
+        ref: refForRequest,
+        forceRebuild: true,
+      });
+
+      const nextRepo =
+        repo ||
+        firstNonEmptyString(run?.repoFullName, run?.repoName) ||
+        null;
+
+      const repoQuery = nextRepo ? `&repo=${encodeURIComponent(nextRepo)}` : "";
+
+      navigate(
+        `/analyze?runId=${encodeURIComponent(nextRun.runId)}${repoQuery}`,
+        {
+          state: {
+            repo: nextRepo,
+            repoUrl: repoUrlForRequest,
+            run: nextRun,
+          },
+        }
+      );
+    } catch (e) {
+      setLlmError(e?.message ?? "재생성 요청에 실패했습니다.");
+    } finally {
+      setRebuildLoading(false);
+    }
+  };
+
   const toggleFolder = async (path) => {
     if (!repo) return;
 
@@ -630,7 +683,7 @@ export default function AnalyPage() {
         })
       );
     } catch {
-      // 디렉토리 펼치기 실패는 전체 분석 실패로 처리하지 않습니다.
+      // 디렉터리 펼치기 실패는 전체 분석 실패로 처리하지 않습니다.
     }
   };
 
@@ -644,7 +697,7 @@ export default function AnalyPage() {
             onClick={() => navigate("/")}
             className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
           >
-            랜딩으로 돌아가기
+            홈으로 돌아가기
           </button>
         </div>
       </div>
@@ -696,7 +749,7 @@ export default function AnalyPage() {
               className="flex w-fit items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-sm font-bold text-cyan-100 transition hover:border-cyan-300/40 hover:bg-cyan-300/20"
             >
               <BarChart3 size={18} />
-              GitHub 통계량 보기
+              GitHub 통계 보기
             </button>
           )}
         </div>
@@ -709,7 +762,7 @@ export default function AnalyPage() {
           error={repoInfoError}
         />
 
-        {/* 2. 레포 디렉토리 구조 */}
+        {/* 2. 레포 디렉터리 구조 */}
         <DirectoryStructureSection
           tree={tree}
           loading={treeLoading}
@@ -734,7 +787,7 @@ export default function AnalyPage() {
           error={classDiagramError || classMapFailed?.message}
         />
 
-        {/* 4-1. 패키지별 클래스/메서드 문서
+        {/* 4-1. 패키지별 클래스 메서드 문서
         <PackageClassDocsSection
           fileTreeDocs={llmResults.fileTreeDocs}
           loading={llmLoading && !llmResults.fileTreeDocs}
@@ -747,8 +800,13 @@ export default function AnalyPage() {
           loading={llmLoading}
           error={llmError}
           onRefresh={refreshLlmResults}
+          onRegenerate={handleForceRebuild}
+          regenerating={rebuildLoading}
+          showCachedNotice={Boolean(run?.cacheHit)}
+          cachedAnalyzedAt={run?.updatedAt ?? run?.createdAt ?? progress?.updatedAt ?? progress?.createdAt ?? null}
         />
       </div>
     </div>
   );
 }
+

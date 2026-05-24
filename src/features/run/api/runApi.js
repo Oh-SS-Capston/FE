@@ -29,13 +29,19 @@ function toArtifactId(value) {
   return Number.isFinite(num) && num > 0 ? num : null;
 }
 
-export function createRepoRun({ repoUrl, ref }) {
+export function createRepoRun({ repoUrl, ref, forceRebuild = false }) {
+  const body = {
+    repoUrl,
+    ref: ref || null,
+  };
+
+  if (forceRebuild) {
+    body.forceRebuild = true;
+  }
+
   return apiClient("/api/v1/runs", {
     method: "POST",
-    body: {
-      repoUrl,
-      ref: ref || null,
-    },
+    body,
   });
 }
 
