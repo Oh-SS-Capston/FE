@@ -1247,6 +1247,35 @@ function RawFallback({ data }) {
   );
 }
 
+function formatRelativeAnalyzedTime(value) {
+  if (!value) {
+    return "방금 전";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "방금 전";
+  }
+
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 60_000) {
+    return "방금 전";
+  }
+
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 60) {
+    return `${minutes}분 전`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours}시간 전`;
+  }
+
+  const days = Math.floor(hours / 24);
+  return `${days}일 전`;
+}
+
 export default function LlmResultSection({
   results,
   loading = false,
@@ -1255,8 +1284,13 @@ export default function LlmResultSection({
   onRegenerate,
   regenerating = false,
   showCachedNotice = false,
+  cachedAnalyzedAt = null,
 }) {
   const llm = useMemo(() => normalizeLlmResults(results), [results]);
+  const cachedAnalyzedTimeLabel = useMemo(
+    () => formatRelativeAnalyzedTime(cachedAnalyzedAt),
+    [cachedAnalyzedAt]
+  );
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
 
   const [activeTab, setActiveTab] = useState(TAB.SCENARIO);
@@ -1439,7 +1473,7 @@ export default function LlmResultSection({
         {showCachedNotice && (
           <div className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-50">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p>이미 분석된 동일 커밋 결과를 먼저 보여드리고 있어요.</p>
+              <p>기존 분석 결과 · 최근 분석 {cachedAnalyzedTimeLabel}</p>
               <span className="rounded-full border border-cyan-300/30 bg-cyan-400/15 px-2 py-0.5 text-[11px] font-semibold text-cyan-100">
                 기존 분석 결과
               </span>
