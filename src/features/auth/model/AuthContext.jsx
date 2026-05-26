@@ -1,30 +1,57 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  deleteAccount as deleteAccountRequest,
   getCurrentUser,
   logout as logoutRequest,
   redirectToGoogleLogin,
   redirectToGoogleSignup,
+  updateNickname as updateNicknameRequest,
 } from "../api/authApi";
+import { getMyMembership } from "../../membership/api/membershipApi";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [membership, setMembership] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+
+  const refreshMembership = useCallback(async () => {
+    try {
+      const nextMembership = await getMyMembership();
+      setMembership(nextMembership);
+      return nextMembership;
+    } catch {
+      setMembership(null);
+      return null;
+    }
+  }, []);
 
   const refreshMe = useCallback(async () => {
     try {
       setAuthLoading(true);
+
       const currentUser = await getCurrentUser();
       setUser(currentUser);
+
+      await refreshMembership();
+
       return currentUser;
     } catch {
       setUser(null);
+      setMembership(null);
       return null;
     } finally {
       setAuthLoading(false);
     }
-  }, []);
+  }, [refreshMembership]);
 
   useEffect(() => {
     refreshMe();
@@ -43,21 +70,53 @@ export function AuthProvider({ children }) {
       await logoutRequest();
     } finally {
       setUser(null);
-      window.location.replace("/"); // 로그아웃 후 화면갱신용으로 메인으로 보냄
+      setMembership(null);
+      window.location.replace("/");
     }
+  }, []);
+
+  const updateNickname = useCallback(async (nickname) => {
+    const updatedUser = await updateNicknameRequest(nickname);
+    setUser(updatedUser);
+    return updatedUser;
+  }, []);
+
+  const deleteAccount = useCallback(async () => {
+    await deleteAccountRequest();
+    setUser(null);
+    setMembership(null);
+    window.location.replace("/");
   }, []);
 
   const value = useMemo(
     () => ({
       user,
+      membership,
       authLoading,
       isAuthenticated: Boolean(user),
+
       loginWithGoogle,
       signupWithGoogle,
       logout,
+
+      updateNickname,
+      deleteAccount,
+
       refreshMe,
+      refreshMembership,
     }),
-    [user, authLoading, loginWithGoogle, signupWithGoogle, logout, refreshMe]
+    [
+      user,
+      membership,
+      authLoading,
+      loginWithGoogle,
+      signupWithGoogle,
+      logout,
+      updateNickname,
+      deleteAccount,
+      refreshMe,
+      refreshMembership,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
