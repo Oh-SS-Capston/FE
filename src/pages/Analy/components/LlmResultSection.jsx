@@ -870,6 +870,77 @@ function ExpandableText({
   );
 }
 
+function compactText(value, maxLength = 200) {
+  if (typeof value !== "string") {
+    return "";
+  }
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return "";
+  }
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxLength).trim()}...`;
+}
+
+function GuideDisclosureCard({
+  title,
+  badges = null,
+  preview = "",
+  children,
+  raw = null,
+  defaultExpanded = false,
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [showRaw, setShowRaw] = useState(false);
+  const previewText = compactText(preview, 220);
+  const hasRaw = raw != null;
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-black/20">
+      <div className="p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="break-all text-sm font-semibold text-gray-100">{title || "-"}</p>
+          {badges}
+        </div>
+
+        {previewText && <p className="mt-2 text-sm leading-6 text-gray-300">{previewText}</p>}
+
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setExpanded((prev) => !prev)}
+            className="rounded-full border border-cyan-400/25 bg-cyan-400/10 px-2.5 py-1 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-400/15"
+          >
+            {expanded ? "상세 접기" : "상세 보기"}
+          </button>
+
+          {hasRaw && (
+            <button
+              type="button"
+              onClick={() => setShowRaw((prev) => !prev)}
+              className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-gray-200 hover:bg-white/10"
+            >
+              {showRaw ? "원문 접기" : "원문 보기"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {expanded && <div className="border-t border-white/10 p-3">{children}</div>}
+
+      {showRaw && hasRaw && (
+        <div className="border-t border-white/10 p-3">
+          <pre className="max-h-80 overflow-auto rounded-lg border border-white/10 bg-black/30 p-3 text-xs leading-6 text-gray-300">
+            {JSON.stringify(raw, null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function normalizeGuideSlots(value) {
   if (!isRecord(value)) {
     return null;
@@ -1160,36 +1231,39 @@ function FileTreePanel({ data }) {
                                       <div className="mt-3 space-y-2">
                                         {safeArray(clazz.methods).map(
                                           (method, methodIndex) => (
-                                            <div
+                                            <GuideDisclosureCard
                                               key={`${method?.symbolId || method?.name || "method"}-${methodIndex}`}
-                                              className="rounded-lg border border-white/5 bg-black/20 px-3 py-2"
+                                              title={method?.name || "-"}
+                                              preview={
+                                                method?.guideNarrative ||
+                                                method?.summaryFull ||
+                                                method?.summaryPreview ||
+                                                method?.summary
+                                              }
+                                              raw={method}
+                                              badges={
+                                                <>
+                                                  {Number.isFinite(
+                                                    Number(method?.actionabilityScore)
+                                                  ) && (
+                                                    <span
+                                                      className={
+                                                        Number(method?.actionabilityScore) >= 70
+                                                          ? "rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200"
+                                                          : "rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[10px] font-semibold text-yellow-100"
+                                                      }
+                                                    >
+                                                      실행 가능성 {formatScore(method?.actionabilityScore)}
+                                                    </span>
+                                                  )}
+                                                  {method?.estimated && (
+                                                    <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[10px] text-yellow-200">
+                                                      estimated
+                                                    </span>
+                                                  )}
+                                                </>
+                                              }
                                             >
-                                              <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-sm font-medium text-cyan-100">
-                                                  {method?.name || "-"}
-                                                </span>
-
-                                                {Number.isFinite(
-                                                  Number(method?.actionabilityScore)
-                                                ) && (
-                                                  <span
-                                                    className={
-                                                      Number(method?.actionabilityScore) >= 70
-                                                        ? "rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200"
-                                                        : "rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[10px] font-semibold text-yellow-100"
-                                                    }
-                                                  >
-                                                    실행 가능성 {formatScore(method?.actionabilityScore)}
-                                                  </span>
-                                                )}
-
-                                                {method?.estimated && (
-                                                  <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[10px] text-yellow-200">
-                                                    estimated
-                                                  </span>
-                                                )}
-                                              </div>
-
                                               {(method?.summary ||
                                                 method?.summaryPreview ||
                                                 method?.summaryFull) && (
@@ -1264,7 +1338,7 @@ function FileTreePanel({ data }) {
                                                   )}
                                                 </div>
                                               )}
-                                            </div>
+                                            </GuideDisclosureCard>
                                           )
                                         )}
                                       </div>
@@ -1681,31 +1755,34 @@ function ApiDocsPanel({ data }) {
       {apiEntries.length > 0 && (
         <div className="space-y-3">
           {apiEntries.map((entry, idx) => (
-            <article
+            <GuideDisclosureCard
               key={`${entry?.fqn || "entry"}-${idx}`}
-              className="rounded-xl border border-white/10 bg-white/[0.025] p-5"
+              title={entry?.fqn || "-"}
+              preview={
+                entry?.guideNarrative ||
+                entry?.summaryFull ||
+                entry?.summaryPreview ||
+                entry?.summary
+              }
+              raw={entry}
+              badges={
+                <>
+                  {entry?.subsystem && (
+                    <span className="rounded-full border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 text-[11px] text-purple-200">
+                      {entry.subsystem}
+                    </span>
+                  )}
+                  {safeArray(entry?.relatedScenarios).map((scenario) => (
+                    <span
+                      key={scenario}
+                      className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[11px] text-cyan-200"
+                    >
+                      {scenario}
+                    </span>
+                  ))}
+                </>
+              }
             >
-              <div className="flex flex-wrap items-center gap-2">
-                {entry?.subsystem && (
-                  <span className="rounded-full border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 text-[11px] text-purple-200">
-                    {entry.subsystem}
-                  </span>
-                )}
-
-                {safeArray(entry?.relatedScenarios).map((scenario) => (
-                  <span
-                    key={scenario}
-                    className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[11px] text-cyan-200"
-                  >
-                    {scenario}
-                  </span>
-                ))}
-              </div>
-
-              <h4 className="mt-3 break-all text-sm font-bold text-gray-100">
-                {entry?.fqn || "-"}
-              </h4>
-
               {(entry?.guideNarrative ||
                 entry?.summary ||
                 entry?.summaryPreview ||
@@ -1757,7 +1834,7 @@ function ApiDocsPanel({ data }) {
                   />
                 </div>
               )}
-            </article>
+            </GuideDisclosureCard>
           ))}
         </div>
       )}
@@ -1781,21 +1858,27 @@ function ApiDocsPanel({ data }) {
                   : "rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[10px] font-semibold text-yellow-100";
 
               return (
-                <div
+                <GuideDisclosureCard
                   key={`${method?.fqn || method?.methodName || "method"}-${idx}`}
-                  className="rounded-lg border border-white/10 bg-black/20 p-3"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="break-all text-sm font-semibold text-gray-100">
-                      {method?.fqn || `${method?.classFqn || ""}.${method?.methodName || ""}`}
-                    </p>
-                    {Number.isFinite(qualityScore) && (
+                  title={
+                    method?.fqn || `${method?.classFqn || ""}.${method?.methodName || ""}`
+                  }
+                  preview={
+                    method?.guideNarrative ||
+                    method?.whatItDoesFull ||
+                    method?.whatItDoesPreview ||
+                    method?.summaryNarrative ||
+                    method?.whatItDoes
+                  }
+                  raw={method}
+                  badges={
+                    Number.isFinite(qualityScore) ? (
                       <span className={scoreBadgeClass}>
                         실행 가능성 {formatScore(qualityScore)}
                       </span>
-                    )}
-                  </div>
-
+                    ) : null
+                  }
+                >
                   {(method?.guideNarrative ||
                     method?.whatItDoes ||
                     method?.summaryNarrative ||
@@ -1865,18 +1948,35 @@ function ApiDocsPanel({ data }) {
                     </div>
                   )}
 
-                  {method?.whenToUse && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      언제 사용: {method.whenToUse}
-                    </p>
-                  )}
+                  {(() => {
+                    const metaRows = [
+                      { label: "언제 사용", value: firstText([method?.whenToUse]) },
+                      { label: "입력", value: firstText([method?.inputs]) },
+                      { label: "반환", value: firstText([method?.returns]) },
+                    ].filter((row) => row.value);
 
-                  {(method?.inputs || method?.returns) && (
-                    <div className="mt-2 space-y-1 text-xs text-gray-400">
-                      {method?.inputs && <p>입력: {method.inputs}</p>}
-                      {method?.returns && <p>반환: {method.returns}</p>}
-                    </div>
-                  )}
+                    if (metaRows.length === 0) {
+                      return null;
+                    }
+
+                    return (
+                      <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+                        <div className="space-y-2">
+                          {metaRows.map((row) => (
+                            <div
+                              key={row.label}
+                              className="grid gap-1 sm:grid-cols-[88px_1fr] sm:gap-3"
+                            >
+                              <span className="text-[11px] font-semibold tracking-wide text-cyan-200">
+                                {row.label}
+                              </span>
+                              <p className="text-sm leading-6 text-gray-300">{row.value}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {safeArray(method?.cautions).length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1897,7 +1997,7 @@ function ApiDocsPanel({ data }) {
                       {lineText(method.evidence?.startLine, method.evidence?.endLine)}
                     </p>
                   )}
-                </div>
+                </GuideDisclosureCard>
               );
             })}
           </div>
@@ -1924,30 +2024,26 @@ function RefinedRulesPanel({ data }) {
             {rules.map((rule, idx) => {
               const slots = fallbackRuleGuideSlots(rule);
               return (
-                <div
+                <GuideDisclosureCard
                   key={`${rule?.ruleId || rule?.name || "rule"}-${idx}`}
-                  className="rounded-lg border border-white/10 bg-black/20 p-3"
+                  title={rule?.name || rule?.ruleId || "규칙"}
+                  preview={rule?.description || slots.doCall}
+                  raw={rule}
+                  badges={
+                    <>
+                      {rule?.ruleId && (
+                        <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[11px] text-cyan-100">
+                          {rule.ruleId}
+                        </span>
+                      )}
+                      {rule?.classification && (
+                        <span className="rounded-full border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 text-[11px] text-purple-100">
+                          {rule.classification}
+                        </span>
+                      )}
+                    </>
+                  }
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    {rule?.ruleId && (
-                      <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[11px] text-cyan-100">
-                        {rule.ruleId}
-                      </span>
-                    )}
-
-                    {rule?.classification && (
-                      <span className="rounded-full border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 text-[11px] text-purple-100">
-                        {rule.classification}
-                      </span>
-                    )}
-                  </div>
-
-                  {rule?.name && (
-                    <p className="mt-2 text-sm font-semibold text-gray-100">
-                      {rule.name}
-                    </p>
-                  )}
-
                   <div className="mt-2 grid gap-2 md:grid-cols-2">
                     <GuideSlotItem label="적용 상황" text={slots.beforeCall} />
                     <GuideSlotItem label="핵심 내용" text={slots.doCall} />
@@ -1955,7 +2051,7 @@ function RefinedRulesPanel({ data }) {
                     <GuideSlotItem label="실패 영향" text={slots.failureSymptom} />
                     <GuideSlotItem label="다음 조치" text={slots.nextAction} />
                   </div>
-                </div>
+                </GuideDisclosureCard>
               );
             })}
           </div>
@@ -1969,14 +2065,12 @@ function RefinedRulesPanel({ data }) {
             {cautions.map((caution, idx) => {
               const slots = fallbackCautionGuideSlots(caution);
               return (
-                <div
+                <GuideDisclosureCard
                   key={`${caution?.cautionId || caution?.title || "caution"}-${idx}`}
-                  className="rounded-lg border border-yellow-400/20 bg-yellow-400/5 p-3"
+                  title={caution?.title || caution?.cautionId || "주의"}
+                  preview={caution?.message || slots.doCall}
+                  raw={caution}
                 >
-                  <p className="text-sm font-semibold text-yellow-100">
-                    {caution?.title || caution?.cautionId || "주의"}
-                  </p>
-
                   <div className="mt-2 grid gap-2 md:grid-cols-2">
                     <GuideSlotItem
                       label="언제 점검"
@@ -1988,7 +2082,7 @@ function RefinedRulesPanel({ data }) {
                     <GuideSlotItem label="실패 증상" text={slots.failureSymptom} />
                     <GuideSlotItem label="다음 조치" text={slots.nextAction} />
                   </div>
-                </div>
+                </GuideDisclosureCard>
               );
             })}
           </div>
