@@ -214,6 +214,53 @@ function extractDirectoryPath(filePath) {
   return normalized.slice(0, idx);
 }
 
+function isEntryRoleToken(value) {
+  if (typeof value !== "string") {
+    return false;
+  }
+  const normalized = value.trim().toUpperCase();
+  return normalized === "PRIMARY" || normalized === "SECONDARY";
+}
+
+function getEntryRoleGuide(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.trim().toUpperCase();
+  if (normalized === "PRIMARY") {
+    return {
+      code: "PRIMARY",
+      label: "주요 진입점",
+      description: "공개 API 사용 흐름에서 사용자가 직접 시작할 가능성이 높은 진입점 후보입니다.",
+    };
+  }
+  if (normalized === "SECONDARY") {
+    return {
+      code: "SECONDARY",
+      label: "보조 사용 지점",
+      description:
+        "공개 API가 반환해 이어서 사용하는 타입으로, 일반적으로 직접 시작점으로 선택되지는 않습니다.",
+    };
+  }
+  return null;
+}
+
+function resolveClassRoleGuide(clazz) {
+  const roleToken =
+    (typeof clazz?.role === "string" && clazz.role.trim()) ||
+    (typeof clazz?.summary === "string" && clazz.summary.trim()) ||
+    "";
+  return getEntryRoleGuide(roleToken);
+}
+
+function resolveClassSummary(clazz) {
+  const roleGuide = resolveClassRoleGuide(clazz);
+  if (roleGuide) {
+    return roleGuide.description;
+  }
+  return typeof clazz?.summary === "string" ? clazz.summary.trim() : "";
+}
+
 function lineText(startLine, endLine) {
   if (startLine == null && endLine == null) {
     return "";
@@ -342,6 +389,318 @@ function methodSourcePath(method) {
     evidence?.path ||
     null
   );
+}
+
+function classIdentityKey(clazz) {
+  const raw =
+    (typeof clazz?.name === "string" && clazz.name.trim()) ||
+    (typeof clazz?.classFqn === "string" && clazz.classFqn.trim()) ||
+    (typeof clazz?.fqn === "string" && clazz.fqn.trim()) ||
+    "";
+  if (!raw) {
+    return "";
+  }
+  const simple = raw.includes(".") ? raw.slice(raw.lastIndexOf(".") + 1) : raw;
+  return simple.toLowerCase();
+}
+
+function methodIdentityKey(method) {
+  const raw =
+    (typeof method?.symbolId === "string" && method.symbolId.trim()) ||
+    (typeof method?.symbol_id === "string" && method.symbol_id.trim()) ||
+    (typeof method?.fqn === "string" && method.fqn.trim()) ||
+    methodDisplayName(method);
+  return typeof raw === "string" ? raw.trim().toLowerCase() : "";
+}
+
+function mergeStringArray(left, right) {
+  return Array.from(new Set([...safeArray(left), ...safeArray(right)].filter(Boolean)));
+}
+
+function mergeMethodWithCore(rawMethod, coreMethod) {
+  const raw = isRecord(rawMethod) ? rawMethod : {};
+  const core = isRecord(coreMethod) ? coreMethod : {};
+  const merged = { ...raw, ...core };
+
+  const symbolId =
+    (typeof core?.symbolId === "string" && core.symbolId.trim()) ||
+    (typeof raw?.symbolId === "string" && raw.symbolId.trim()) ||
+    (typeof core?.fqn === "string" && core.fqn.trim()) ||
+    (typeof raw?.fqn === "string" && raw.fqn.trim()) ||
+    "";
+  if (symbolId) {
+    merged.symbolId = symbolId;
+  }
+
+  const name = firstText([core?.name, core?.methodName, raw?.name, raw?.methodName]);
+  if (name) {
+    merged.name = name;
+  }
+
+  const summary = firstText([
+    core?.guideNarrative,
+    core?.summaryFull,
+    core?.summaryPreview,
+    core?.summaryNarrative,
+    core?.summary,
+    raw?.guideNarrative,
+    raw?.summaryFull,
+    raw?.summaryPreview,
+    raw?.summaryNarrative,
+    raw?.summary,
+  ]);
+
+  merged.guideNarrative = firstText([core?.guideNarrative, raw?.guideNarrative, summary]);
+  merged.summary = firstText([summary, merged.guideNarrative]);
+  merged.summaryPreview = firstText([
+    core?.summaryPreview,
+    core?.summaryFull,
+    raw?.summaryPreview,
+    raw?.summaryFull,
+    summary,
+  ]);
+  merged.summaryFull = firstText([
+    core?.summaryFull,
+    core?.summaryPreview,
+    raw?.summaryFull,
+    raw?.summaryPreview,
+    summary,
+  ]);
+  merged.summaryTruncated = Boolean(
+    core?.summaryTruncated ?? raw?.summaryTruncated ?? false
+  );
+
+  const resolvedGuideSlots = resolveMethodGuideSlots(merged);
+  if (hasGuideSlots(resolvedGuideSlots)) {
+    merged.guideSlots = resolvedGuideSlots;
+  }
+
+  merged.slotEvidence = isRecord(core?.slotEvidence)
+    ? core.slotEvidence
+    : isRecord(raw?.slotEvidence)
+    ? raw.slotEvidence
+    : null;
+  merged.guideQuality = isRecord(core?.guideQuality)
+    ? core.guideQuality
+    : isRecord(raw?.guideQuality)
+    ? raw.guideQuality
+    : null;
+  merged.actionabilityScore = Number.isFinite(Number(core?.actionabilityScore))
+    ? Number(core.actionabilityScore)
+    : raw?.actionabilityScore;
+  merged.relatedRules = mergeStringArray(raw?.relatedRules || raw?.ruleIds, core?.relatedRules || core?.ruleIds);
+  merged.relatedScenarios = mergeStringArray(
+    raw?.relatedScenarios || raw?.scenarioIds,
+    core?.relatedScenarios || core?.scenarioIds
+  );
+  merged.estimated = Boolean(raw?.estimated) || Boolean(core?.estimated);
+
+  return merged;
+}
+
+function mergeMethodsWithCore(rawMethods, coreMethods) {
+  const coreByIdentity = new Map();
+  const coreByName = new Map();
+  for (const coreMethod of safeArray(coreMethods)) {
+    const identityKey = methodIdentityKey(coreMethod);
+    if (identityKey && !coreByIdentity.has(identityKey)) {
+      coreByIdentity.set(identityKey, coreMethod);
+    }
+    const nameKey = methodDisplayName(coreMethod).toLowerCase();
+    if (nameKey && !coreByName.has(nameKey)) {
+      coreByName.set(nameKey, coreMethod);
+    }
+  }
+
+  const usedCoreMethods = new Set();
+  const merged = [];
+
+  for (const rawMethod of safeArray(rawMethods)) {
+    const identityKey = methodIdentityKey(rawMethod);
+    const nameKey = methodDisplayName(rawMethod).toLowerCase();
+    const coreMatch =
+      (identityKey && coreByIdentity.get(identityKey)) ||
+      (nameKey && coreByName.get(nameKey)) ||
+      null;
+    if (coreMatch) {
+      usedCoreMethods.add(coreMatch);
+    }
+    merged.push(mergeMethodWithCore(rawMethod, coreMatch));
+  }
+
+  for (const coreMethod of safeArray(coreMethods)) {
+    if (usedCoreMethods.has(coreMethod)) {
+      continue;
+    }
+    merged.push(mergeMethodWithCore(null, coreMethod));
+  }
+
+  return merged;
+}
+
+function mergeClassWithCore(rawClass, coreClass) {
+  const raw = isRecord(rawClass) ? rawClass : {};
+  const core = isRecord(coreClass) ? coreClass : {};
+  const rawSummary = typeof raw?.summary === "string" ? raw.summary.trim() : "";
+  const coreSummary = typeof core?.summary === "string" ? core.summary.trim() : "";
+
+  const merged = { ...raw, ...core };
+  merged.name = firstText([raw?.name, core?.name, raw?.classFqn, core?.classFqn]) || "-";
+  merged.role = firstText([
+    core?.role,
+    raw?.role,
+    isEntryRoleToken(rawSummary) ? rawSummary : "",
+    isEntryRoleToken(coreSummary) ? coreSummary : "",
+  ]);
+  merged.summary = firstText([
+    isEntryRoleToken(coreSummary) ? "" : coreSummary,
+    isEntryRoleToken(rawSummary) ? "" : rawSummary,
+  ]);
+  merged.estimated = Boolean(raw?.estimated) || Boolean(core?.estimated);
+  merged.methods = mergeMethodsWithCore(raw?.methods, core?.methods);
+  return merged;
+}
+
+function mergeClassesWithCore(rawClasses, coreClasses) {
+  const coreByKey = new Map();
+  for (const coreClass of safeArray(coreClasses)) {
+    const key = classIdentityKey(coreClass);
+    if (key && !coreByKey.has(key)) {
+      coreByKey.set(key, coreClass);
+    }
+  }
+
+  const usedKeys = new Set();
+  const merged = [];
+
+  for (const rawClass of safeArray(rawClasses)) {
+    const key = classIdentityKey(rawClass);
+    const coreMatch = key ? coreByKey.get(key) : null;
+    if (coreMatch) {
+      usedKeys.add(key);
+    }
+    merged.push(mergeClassWithCore(rawClass, coreMatch));
+  }
+
+  for (const coreClass of safeArray(coreClasses)) {
+    const key = classIdentityKey(coreClass);
+    if (key && usedKeys.has(key)) {
+      continue;
+    }
+    merged.push(mergeClassWithCore(null, coreClass));
+  }
+
+  return merged;
+}
+
+function mergeEvidenceEntries(rawEvidences, coreEvidences) {
+  const out = [];
+  const seen = new Set();
+  for (const evidence of [...safeArray(rawEvidences), ...safeArray(coreEvidences)]) {
+    const identity = [
+      evidence?.kind,
+      evidence?.evidenceId,
+      evidence?.fqn,
+      evidence?.startLine,
+      evidence?.endLine,
+    ]
+      .map((value) => (value == null ? "" : String(value)))
+      .join("|");
+    if (seen.has(identity)) {
+      continue;
+    }
+    seen.add(identity);
+    out.push(evidence);
+  }
+  return out;
+}
+
+function mergeFileEntryWithCore(rawFile, coreFile) {
+  const raw = isRecord(rawFile) ? rawFile : {};
+  const core = isRecord(coreFile) ? coreFile : {};
+  return {
+    ...core,
+    ...raw,
+    path: firstText([raw?.path, core?.path]) || "-",
+    classes: mergeClassesWithCore(raw?.classes, core?.classes),
+    evidences: mergeEvidenceEntries(raw?.evidences, core?.evidences),
+  };
+}
+
+function mergeDirectoryWithCore(rawDirectory, coreDirectory) {
+  const raw = isRecord(rawDirectory) ? rawDirectory : {};
+  const core = isRecord(coreDirectory) ? coreDirectory : {};
+  const coreFileByPath = new Map();
+  for (const coreFile of safeArray(core?.files)) {
+    const key = normalizePath(coreFile?.path || "");
+    if (key && !coreFileByPath.has(key)) {
+      coreFileByPath.set(key, coreFile);
+    }
+  }
+
+  const usedFilePath = new Set();
+  const mergedFiles = [];
+  for (const rawFile of safeArray(raw?.files)) {
+    const key = normalizePath(rawFile?.path || "");
+    const coreMatch = key ? coreFileByPath.get(key) : null;
+    if (coreMatch) {
+      usedFilePath.add(key);
+    }
+    mergedFiles.push(mergeFileEntryWithCore(rawFile, coreMatch));
+  }
+
+  for (const coreFile of safeArray(core?.files)) {
+    const key = normalizePath(coreFile?.path || "");
+    if (key && usedFilePath.has(key)) {
+      continue;
+    }
+    mergedFiles.push(mergeFileEntryWithCore(null, coreFile));
+  }
+
+  return {
+    ...core,
+    ...raw,
+    path: firstText([raw?.path, core?.path]) || "(root)",
+    files: mergedFiles,
+  };
+}
+
+function mergeDirectoriesWithCoreMethods(rawDirectories, coreMethodDirectories) {
+  const rawList = safeArray(rawDirectories);
+  const coreList = safeArray(coreMethodDirectories);
+
+  if (rawList.length === 0) {
+    return coreList;
+  }
+
+  const coreByPath = new Map();
+  for (const coreDir of coreList) {
+    const key = normalizePath(coreDir?.path || "");
+    if (key && !coreByPath.has(key)) {
+      coreByPath.set(key, coreDir);
+    }
+  }
+
+  const usedDirectoryPath = new Set();
+  const merged = [];
+  for (const rawDir of rawList) {
+    const key = normalizePath(rawDir?.path || "");
+    const coreMatch = key ? coreByPath.get(key) : null;
+    if (coreMatch) {
+      usedDirectoryPath.add(key);
+    }
+    merged.push(mergeDirectoryWithCore(rawDir, coreMatch));
+  }
+
+  for (const coreDir of coreList) {
+    const key = normalizePath(coreDir?.path || "");
+    if (key && usedDirectoryPath.has(key)) {
+      continue;
+    }
+    merged.push(mergeDirectoryWithCore(null, coreDir));
+  }
+
+  return merged;
 }
 
 function buildDirectoriesFromCoreMethods(coreMethods) {
@@ -686,13 +1045,12 @@ function FileTreePanel({ data }) {
   const rawDirectories = safeArray(pickFirst(data, ["directories"]));
   const directoriesFromEvidence = buildDirectoriesFromEvidence(evidenceLocations);
   const directoriesFromCoreMethods = buildDirectoriesFromCoreMethods(coreMethods);
-
+  const mergedDirectories = mergeDirectoriesWithCoreMethods(
+    rawDirectories,
+    directoriesFromCoreMethods
+  );
   const directories =
-    rawDirectories.length > 0
-      ? rawDirectories
-      : directoriesFromCoreMethods.length > 0
-      ? directoriesFromCoreMethods
-      : directoriesFromEvidence;
+    mergedDirectories.length > 0 ? mergedDirectories : directoriesFromEvidence;
 
   const [expanded, setExpanded] = useState({});
 
@@ -766,143 +1124,154 @@ function FileTreePanel({ data }) {
                         <div className="mt-3 space-y-3">
                           {classes.length > 0 &&
                             classes.map((clazz, classIndex) => (
-                              <div
-                                key={`${clazz?.symbolId || clazz?.name || "class"}-${classIndex}`}
-                                className="rounded-lg border border-white/10 bg-white/[0.025] p-3"
-                              >
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p className="font-semibold text-gray-100">
-                                    {clazz?.name || "-"}
-                                  </p>
+                              (() => {
+                                const roleGuide = resolveClassRoleGuide(clazz);
+                                const classSummary = resolveClassSummary(clazz);
+                                return (
+                                  <div
+                                    key={`${clazz?.symbolId || clazz?.name || "class"}-${classIndex}`}
+                                    className="rounded-lg border border-white/10 bg-white/[0.025] p-3"
+                                  >
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <p className="font-semibold text-gray-100">
+                                        {clazz?.name || "-"}
+                                      </p>
 
-                                  {clazz?.estimated && (
-                                    <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[11px] text-yellow-200">
-                                      estimated
-                                    </span>
-                                  )}
-                                </div>
+                                      {clazz?.estimated && (
+                                        <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[11px] text-yellow-200">
+                                          estimated
+                                        </span>
+                                      )}
 
-                                {clazz?.summary && (
-                                  <p className="mt-2 text-sm leading-6 text-gray-300">
-                                    {clazz.summary}
-                                  </p>
-                                )}
+                                      {roleGuide && (
+                                        <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[11px] text-cyan-100">
+                                          {roleGuide.code} · {roleGuide.label}
+                                        </span>
+                                      )}
+                                    </div>
 
-                                {safeArray(clazz?.methods).length > 0 && (
-                                  <div className="mt-3 space-y-2">
-                                    {safeArray(clazz.methods).map(
-                                      (method, methodIndex) => (
-                                        <div
-                                          key={`${method?.symbolId || method?.name || "method"}-${methodIndex}`}
-                                          className="rounded-lg border border-white/5 bg-black/20 px-3 py-2"
-                                        >
-                                          <div className="flex flex-wrap items-center gap-2">
-                                            <span className="text-sm font-medium text-cyan-100">
-                                              {method?.name || "-"}
-                                            </span>
+                                    {classSummary && (
+                                      <p className="mt-2 text-sm leading-6 text-gray-300">
+                                        {classSummary}
+                                      </p>
+                                    )}
 
-                                            {Number.isFinite(Number(method?.actionabilityScore)) && (
-                                              <span
-                                                className={
-                                                  Number(method?.actionabilityScore) >= 70
-                                                    ? "rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200"
-                                                    : "rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[10px] font-semibold text-yellow-100"
-                                                }
-                                              >
-                                                실행 가능성 {formatScore(method?.actionabilityScore)}
-                                              </span>
-                                            )}
+                                    {safeArray(clazz?.methods).length > 0 && (
+                                      <div className="mt-3 space-y-2">
+                                        {safeArray(clazz.methods).map(
+                                          (method, methodIndex) => (
+                                            <div
+                                              key={`${method?.symbolId || method?.name || "method"}-${methodIndex}`}
+                                              className="rounded-lg border border-white/5 bg-black/20 px-3 py-2"
+                                            >
+                                              <div className="flex flex-wrap items-center gap-2">
+                                                <span className="text-sm font-medium text-cyan-100">
+                                                  {method?.name || "-"}
+                                                </span>
 
-                                            {method?.estimated && (
-                                              <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[10px] text-yellow-200">
-                                                estimated
-                                              </span>
-                                            )}
-                                          </div>
-
-                                          {(method?.summary ||
-                                            method?.summaryPreview ||
-                                            method?.summaryFull) && (
-                                            <ExpandableText
-                                              preview={
-                                                method?.summaryFull ||
-                                                method?.summaryPreview ||
-                                                method?.summary
-                                              }
-                                              full={
-                                                method?.summaryFull ||
-                                                method?.summary ||
-                                                method?.summaryPreview
-                                              }
-                                              truncated={method?.summaryTruncated}
-                                              className="mt-1 text-sm text-gray-400"
-                                            />
-                                          )}
-
-                                          {hasGuideSlots(method?.guideSlots) && (
-                                            <div className="mt-2 grid gap-2 md:grid-cols-2">
-                                              <GuideSlotItem
-                                                label="호출 전 체크"
-                                                text={method?.guideSlots?.beforeCall}
-                                                evidence={method?.slotEvidence?.beforeCall}
-                                              />
-                                              <GuideSlotItem
-                                                label="호출 실행"
-                                                text={method?.guideSlots?.doCall}
-                                                evidence={method?.slotEvidence?.doCall}
-                                              />
-                                              <GuideSlotItem
-                                                label="성공 확인"
-                                                text={method?.guideSlots?.successCheck}
-                                                evidence={method?.slotEvidence?.successCheck}
-                                              />
-                                              <GuideSlotItem
-                                                label="실패 증상"
-                                                text={method?.guideSlots?.failureSymptom}
-                                                evidence={method?.slotEvidence?.failureSymptom}
-                                              />
-                                              <GuideSlotItem
-                                                label="다음 조치"
-                                                text={method?.guideSlots?.nextAction}
-                                                evidence={method?.slotEvidence?.nextAction}
-                                              />
-                                            </div>
-                                          )}
-
-                                          {(safeArray(method?.relatedRules)
-                                            .length > 0 ||
-                                            safeArray(method?.relatedScenarios)
-                                              .length > 0) && (
-                                            <div className="mt-2 flex flex-wrap gap-1.5">
-                                              {safeArray(method.relatedRules).map(
-                                                (rule) => (
+                                                {Number.isFinite(
+                                                  Number(method?.actionabilityScore)
+                                                ) && (
                                                   <span
-                                                    key={rule}
-                                                    className="rounded-full border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 text-[10px] text-purple-200"
+                                                    className={
+                                                      Number(method?.actionabilityScore) >= 70
+                                                        ? "rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200"
+                                                        : "rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[10px] font-semibold text-yellow-100"
+                                                    }
                                                   >
-                                                    {rule}
+                                                    실행 가능성 {formatScore(method?.actionabilityScore)}
                                                   </span>
-                                                )
+                                                )}
+
+                                                {method?.estimated && (
+                                                  <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[10px] text-yellow-200">
+                                                    estimated
+                                                  </span>
+                                                )}
+                                              </div>
+
+                                              {(method?.summary ||
+                                                method?.summaryPreview ||
+                                                method?.summaryFull) && (
+                                                <ExpandableText
+                                                  preview={
+                                                    method?.summaryFull ||
+                                                    method?.summaryPreview ||
+                                                    method?.summary
+                                                  }
+                                                  full={
+                                                    method?.summaryFull ||
+                                                    method?.summary ||
+                                                    method?.summaryPreview
+                                                  }
+                                                  truncated={method?.summaryTruncated}
+                                                  className="mt-1 text-sm text-gray-400"
+                                                />
                                               )}
 
-                                              {safeArray(
-                                                method.relatedScenarios
-                                              ).map((scenario) => (
-                                                <span
-                                                  key={scenario}
-                                                  className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[10px] text-cyan-200"
-                                                >
-                                                  {scenario}
-                                                </span>
-                                              ))}
+                                              {hasGuideSlots(method?.guideSlots) && (
+                                                <div className="mt-2 grid gap-2 md:grid-cols-2">
+                                                  <GuideSlotItem
+                                                    label="호출 전 체크"
+                                                    text={method?.guideSlots?.beforeCall}
+                                                    evidence={method?.slotEvidence?.beforeCall}
+                                                  />
+                                                  <GuideSlotItem
+                                                    label="호출 실행"
+                                                    text={method?.guideSlots?.doCall}
+                                                    evidence={method?.slotEvidence?.doCall}
+                                                  />
+                                                  <GuideSlotItem
+                                                    label="성공 확인"
+                                                    text={method?.guideSlots?.successCheck}
+                                                    evidence={method?.slotEvidence?.successCheck}
+                                                  />
+                                                  <GuideSlotItem
+                                                    label="실패 증상"
+                                                    text={method?.guideSlots?.failureSymptom}
+                                                    evidence={method?.slotEvidence?.failureSymptom}
+                                                  />
+                                                  <GuideSlotItem
+                                                    label="다음 조치"
+                                                    text={method?.guideSlots?.nextAction}
+                                                    evidence={method?.slotEvidence?.nextAction}
+                                                  />
+                                                </div>
+                                              )}
+
+                                              {(safeArray(method?.relatedRules).length > 0 ||
+                                                safeArray(method?.relatedScenarios).length >
+                                                  0) && (
+                                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                                  {safeArray(method.relatedRules).map((rule) => (
+                                                    <span
+                                                      key={rule}
+                                                      className="rounded-full border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 text-[10px] text-purple-200"
+                                                    >
+                                                      {rule}
+                                                    </span>
+                                                  ))}
+
+                                                  {safeArray(method.relatedScenarios).map(
+                                                    (scenario) => (
+                                                      <span
+                                                        key={scenario}
+                                                        className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[10px] text-cyan-200"
+                                                      >
+                                                        {scenario}
+                                                      </span>
+                                                    )
+                                                  )}
+                                                </div>
+                                              )}
                                             </div>
-                                          )}
-                                        </div>
-                                      )
+                                          )
+                                        )}
+                                      </div>
                                     )}
                                   </div>
-                                )}
-                              </div>
+                                );
+                              })()
                             ))}
 
                           {classes.length === 0 && fileEvidences.length === 0 && (
