@@ -15,9 +15,33 @@ export function getCurrentUser() {
   });
 }
 
+export function checkNicknameAvailability(nickname) {
+  return apiClient(
+    `/api/v1/auth/nicknames/${encodeURIComponent(nickname)}/availability`,
+    {
+      method: "GET",
+    }
+  );
+}
+
+export function updateNickname(nickname) {
+  return apiClient("/api/v1/auth/me/nickname", {
+    method: "PATCH",
+    body: {
+      nickname,
+    },
+  });
+}
+
 export function logout() {
   return apiClient("/api/v1/auth/logout", {
     method: "POST",
     skipAuthRefresh: true,
+  });
+}
+
+export function deleteAccount() {
+  return apiClient("/api/v1/auth/me", {
+    method: "DELETE",
   });
 }
