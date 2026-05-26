@@ -391,20 +391,42 @@ function buildDirectoriesFromCoreMethods(coreMethods) {
     );
 
     if (!alreadyAdded) {
+      const guideSlots = resolveMethodGuideSlots(method);
       classEntry.methods.push({
         symbolId,
         name: methodDisplayName(method),
-        summary: method?.whatItDoes || method?.summary || null,
+        guideNarrative:
+          method?.guideNarrative ||
+          method?.whatItDoes ||
+          method?.summaryNarrative ||
+          method?.summary ||
+          null,
+        guideSlots,
+        guideQuality: isRecord(method?.guideQuality) ? method.guideQuality : null,
+        slotEvidence: isRecord(method?.slotEvidence) ? method.slotEvidence : null,
+        actionabilityScore: method?.actionabilityScore,
+        summary:
+          method?.guideNarrative ||
+          method?.whatItDoes ||
+          method?.summaryNarrative ||
+          method?.summary ||
+          null,
         summaryPreview:
+          method?.guideNarrative ||
+          method?.whatItDoesFull ||
+          method?.summaryFull ||
           method?.whatItDoesPreview ||
           method?.summaryPreview ||
           method?.whatItDoes ||
+          method?.summaryNarrative ||
           method?.summary ||
           null,
         summaryFull:
+          method?.guideNarrative ||
           method?.whatItDoesFull ||
           method?.summaryFull ||
           method?.whatItDoes ||
+          method?.summaryNarrative ||
           method?.summary ||
           null,
         summaryTruncated: Boolean(
@@ -430,7 +452,13 @@ function buildDirectoriesFromCoreMethods(coreMethods) {
       fqn: method?.fqn || symbolId,
       startLine,
       endLine,
-      snippet: method?.whatItDoes || method?.summary || method?.whenToUse || null,
+      snippet:
+        method?.guideNarrative ||
+        method?.whatItDoes ||
+        method?.summaryNarrative ||
+        method?.summary ||
+        method?.whenToUse ||
+        null,
     });
   }
 
@@ -480,6 +508,173 @@ function ExpandableText({
         </button>
       )}
     </>
+  );
+}
+
+function normalizeGuideSlots(value) {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return {
+    beforeCall: typeof value.beforeCall === "string" ? value.beforeCall.trim() : "",
+    doCall: typeof value.doCall === "string" ? value.doCall.trim() : "",
+    successCheck:
+      typeof value.successCheck === "string" ? value.successCheck.trim() : "",
+    failureSymptom:
+      typeof value.failureSymptom === "string" ? value.failureSymptom.trim() : "",
+    nextAction: typeof value.nextAction === "string" ? value.nextAction.trim() : "",
+  };
+}
+
+function hasGuideSlots(value) {
+  const slots = normalizeGuideSlots(value);
+  if (!slots) {
+    return false;
+  }
+  return Boolean(
+    slots.beforeCall ||
+      slots.doCall ||
+      slots.successCheck ||
+      slots.failureSymptom ||
+      slots.nextAction
+  );
+}
+
+function formatScore(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return "-";
+  }
+  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1);
+}
+
+function firstText(values) {
+  for (const value of values) {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed) {
+        return trimmed;
+      }
+    }
+  }
+  return "";
+}
+
+function hasAnyGuideSlot(slots) {
+  return Boolean(
+    slots?.beforeCall ||
+      slots?.doCall ||
+      slots?.successCheck ||
+      slots?.failureSymptom ||
+      slots?.nextAction
+  );
+}
+
+function fallbackMethodGuideSlots(method) {
+  const summary = firstText([
+    method?.guideNarrative,
+    method?.whatItDoes,
+    method?.summaryNarrative,
+    method?.summary,
+  ]);
+  const cautionText = firstText(safeArray(method?.cautions));
+  const whenToUse = firstText([method?.whenToUse]);
+  const inputs = firstText([method?.inputs]);
+  const returns = firstText([method?.returns]);
+
+  return {
+    beforeCall:
+      whenToUse ||
+      (inputs
+        ? `호출 전에 입력 조건을 점검한다. (${inputs})`
+        : "호출 전에 입력값과 선행 호출 순서를 점검한다."),
+    doCall: summary || "핵심 메서드를 호출해 동작을 수행한다.",
+    successCheck:
+      returns
+        ? `반환 값은 ${returns} 기준으로 확인한다.`
+        : "호출 결과를 후속 분기 조건과 비교해 성공 여부를 확인한다.",
+    failureSymptom:
+      cautionText || "입력 누락 또는 상태 불일치 시 예외/오동작이 발생할 수 있다.",
+    nextAction: inputs
+      ? `입력 조건을 보완하고 재호출한다. (${inputs})`
+      : "입력값과 호출 순서를 보완한 뒤 재시도한다.",
+  };
+}
+
+function resolveMethodGuideSlots(method) {
+  const explicit = normalizeGuideSlots(method?.guideSlots);
+  if (hasAnyGuideSlot(explicit)) {
+    return explicit;
+  }
+  return fallbackMethodGuideSlots(method);
+}
+
+function fallbackRuleGuideSlots(rule) {
+  const classification = firstText([rule?.classification]);
+  const description = firstText([rule?.description]);
+  const name = firstText([rule?.name, rule?.ruleId]);
+  const evidenceIds = safeArray(rule?.evidenceIds).filter(Boolean);
+  const evidenceText =
+    evidenceIds.length > 0
+      ? `근거 ID(${evidenceIds.slice(0, 3).join(", ")})를 기준으로 검증한다.`
+      : "테스트/로그에서 해당 규칙 위반 징후를 검증한다.";
+
+  return {
+    beforeCall: classification
+      ? `${classification} 규칙이 적용되는 호출 구간에서 점검한다.`
+      : "관련 호출 구간에서 규칙을 점검한다.",
+    doCall: description || `${name || "규칙"}을 확인한다.`,
+    successCheck: evidenceText,
+    failureSymptom:
+      description || "규칙 위반 시 예외 또는 잘못된 분기가 발생할 수 있다.",
+    nextAction:
+      "위반 조건을 만족하지 않도록 입력값/호출 순서를 수정하고 다시 검증한다.",
+  };
+}
+
+function fallbackCautionGuideSlots(caution) {
+  const when = firstText([caution?.when]);
+  const message = firstText([caution?.message]);
+  const action = firstText([caution?.summary?.action]);
+  const relatedMethod = firstText([caution?.relatedMethod]);
+  const evidenceIds = safeArray(caution?.evidenceIds).filter(Boolean);
+  const evidenceText =
+    evidenceIds.length > 0 ? `근거 ID: ${evidenceIds.slice(0, 3).join(", ")}` : "";
+
+  return {
+    beforeCall:
+      when ||
+      (relatedMethod
+        ? `${relatedMethod} 호출 전에 점검한다.`
+        : "관련 메서드 호출 전에 점검한다."),
+    doCall: message || "주의 조건을 확인한다.",
+    successCheck: relatedMethod
+      ? `${relatedMethod} 호출 결과가 기대값과 일치하는지 확인한다.`
+      : "호출 결과가 기대값과 일치하는지 확인한다.",
+    failureSymptom:
+      message || "조건 미충족 시 예외 또는 오동작이 발생할 수 있다.",
+    nextAction:
+      action || "입력값을 보완하고 선행 검증을 추가한 뒤 재시도한다.",
+    evidenceText,
+  };
+}
+
+function GuideSlotItem({ label, text, evidence }) {
+  if (!text) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+      <p className="text-[11px] font-semibold tracking-wide text-cyan-200">
+        {label}
+      </p>
+      <p className="mt-1 text-sm leading-6 text-gray-300">{text}</p>
+      {evidence && (
+        <p className="mt-1 break-all text-[11px] text-gray-500">근거: {evidence}</p>
+      )}
+    </div>
   );
 }
 
@@ -606,6 +801,18 @@ function FileTreePanel({ data }) {
                                               {method?.name || "-"}
                                             </span>
 
+                                            {Number.isFinite(Number(method?.actionabilityScore)) && (
+                                              <span
+                                                className={
+                                                  Number(method?.actionabilityScore) >= 70
+                                                    ? "rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200"
+                                                    : "rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[10px] font-semibold text-yellow-100"
+                                                }
+                                              >
+                                                실행 가능성 {formatScore(method?.actionabilityScore)}
+                                              </span>
+                                            )}
+
                                             {method?.estimated && (
                                               <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[10px] text-yellow-200">
                                                 estimated
@@ -618,9 +825,9 @@ function FileTreePanel({ data }) {
                                             method?.summaryFull) && (
                                             <ExpandableText
                                               preview={
+                                                method?.summaryFull ||
                                                 method?.summaryPreview ||
-                                                method?.summary ||
-                                                method?.summaryFull
+                                                method?.summary
                                               }
                                               full={
                                                 method?.summaryFull ||
@@ -630,6 +837,36 @@ function FileTreePanel({ data }) {
                                               truncated={method?.summaryTruncated}
                                               className="mt-1 text-sm text-gray-400"
                                             />
+                                          )}
+
+                                          {hasGuideSlots(method?.guideSlots) && (
+                                            <div className="mt-2 grid gap-2 md:grid-cols-2">
+                                              <GuideSlotItem
+                                                label="호출 전 체크"
+                                                text={method?.guideSlots?.beforeCall}
+                                                evidence={method?.slotEvidence?.beforeCall}
+                                              />
+                                              <GuideSlotItem
+                                                label="호출 실행"
+                                                text={method?.guideSlots?.doCall}
+                                                evidence={method?.slotEvidence?.doCall}
+                                              />
+                                              <GuideSlotItem
+                                                label="성공 확인"
+                                                text={method?.guideSlots?.successCheck}
+                                                evidence={method?.slotEvidence?.successCheck}
+                                              />
+                                              <GuideSlotItem
+                                                label="실패 증상"
+                                                text={method?.guideSlots?.failureSymptom}
+                                                evidence={method?.slotEvidence?.failureSymptom}
+                                              />
+                                              <GuideSlotItem
+                                                label="다음 조치"
+                                                text={method?.guideSlots?.nextAction}
+                                                evidence={method?.slotEvidence?.nextAction}
+                                              />
+                                            </div>
                                           )}
 
                                           {(safeArray(method?.relatedRules)
@@ -995,17 +1232,55 @@ function ApiDocsPanel({ data }) {
   const methodUsageOrder = safeArray(
     pickFirst(data, ["methodUsageOrder", "method_usage_order"])
   );
+  const apiQualityGate = pickFirst(data, ["qualityGate", "quality_gate"]);
+  const qualityGate = isRecord(apiQualityGate) ? apiQualityGate : null;
 
   if (
     apiEntries.length === 0 &&
     coreMethods.length === 0 &&
-    methodUsageOrder.length === 0
+    methodUsageOrder.length === 0 &&
+    !qualityGate
   ) {
     return <EmptyText text="API 문서 결과가 없습니다." />;
   }
 
   return (
     <div className="space-y-4">
+      {qualityGate && (
+        <article className="rounded-xl border border-white/10 bg-white/[0.025] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-base font-bold text-gray-100">API 품질 게이트</h4>
+            <span
+              className={
+                qualityGate?.meetsThreshold
+                  ? "rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200"
+                  : "rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[11px] font-semibold text-yellow-100"
+              }
+            >
+              {qualityGate?.meetsThreshold ? "임계치 충족" : "임계치 미달"}
+            </span>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-cyan-100">
+              평균 점수: {formatScore(qualityGate?.averageActionabilityScore)}
+            </span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-gray-200">
+              최소 점수: {formatScore(qualityGate?.minActionabilityScore)}
+            </span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-gray-200">
+              임계치: {formatScore(qualityGate?.threshold)}
+            </span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-gray-200">
+              카드 수: {formatScore(qualityGate?.methodCount)}
+            </span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-gray-200">
+              미달 카드: {formatScore(qualityGate?.belowThresholdCount)}
+            </span>
+          </div>
+        </article>
+      )}
+
       {methodUsageOrder.length > 0 && (
         <article className="rounded-xl border border-white/10 bg-white/[0.025] p-5">
           <h4 className="text-base font-bold text-gray-100">Method Usage Order</h4>
@@ -1062,13 +1337,56 @@ function ApiDocsPanel({ data }) {
                 {entry?.fqn || "-"}
               </h4>
 
-              {(entry?.summary || entry?.summaryPreview || entry?.summaryFull) && (
+              {(entry?.guideNarrative ||
+                entry?.summary ||
+                entry?.summaryPreview ||
+                entry?.summaryFull) && (
                 <ExpandableText
-                  preview={entry?.summaryPreview || entry?.summary || entry?.summaryFull}
-                  full={entry?.summaryFull || entry?.summary || entry?.summaryPreview}
+                  preview={
+                    entry?.guideNarrative ||
+                    entry?.summaryFull ||
+                    entry?.summaryPreview ||
+                    entry?.summary
+                  }
+                  full={
+                    entry?.guideNarrative ||
+                    entry?.summaryFull ||
+                    entry?.summary ||
+                    entry?.summaryPreview
+                  }
                   truncated={entry?.summaryTruncated}
                   className="mt-2 text-sm leading-6 text-gray-300"
                 />
+              )}
+
+              {hasGuideSlots(entry?.guideSlots) && (
+                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                  <GuideSlotItem
+                    label="호출 전 체크"
+                    text={entry?.guideSlots?.beforeCall}
+                    evidence={entry?.slotEvidence?.beforeCall}
+                  />
+                  <GuideSlotItem
+                    label="호출 실행"
+                    text={entry?.guideSlots?.doCall}
+                    evidence={entry?.slotEvidence?.doCall}
+                  />
+                  <GuideSlotItem
+                    label="성공 확인"
+                    text={entry?.guideSlots?.successCheck}
+                    evidence={entry?.slotEvidence?.successCheck}
+                  />
+                  <GuideSlotItem
+                    label="실패 증상"
+                    text={entry?.guideSlots?.failureSymptom}
+                    evidence={entry?.slotEvidence?.failureSymptom}
+                  />
+                  <GuideSlotItem
+                    label="다음 조치"
+                    text={entry?.guideSlots?.nextAction}
+                    evidence={entry?.slotEvidence?.nextAction}
+                  />
+                </div>
               )}
             </article>
           ))}
@@ -1079,68 +1397,140 @@ function ApiDocsPanel({ data }) {
         <article className="rounded-xl border border-white/10 bg-white/[0.025] p-5">
           <h4 className="text-base font-bold text-gray-100">Core Methods</h4>
           <div className="mt-3 space-y-3">
-            {coreMethods.map((method, idx) => (
-              <div
-                key={`${method?.fqn || method?.methodName || "method"}-${idx}`}
-                className="rounded-lg border border-white/10 bg-black/20 p-3"
-              >
-                <p className="break-all text-sm font-semibold text-gray-100">
-                  {method?.fqn || `${method?.classFqn || ""}.${method?.methodName || ""}`}
-                </p>
+            {coreMethods.map((method, idx) => {
+              const guideSlots = normalizeGuideSlots(method?.guideSlots);
+              const guideQuality = isRecord(method?.guideQuality)
+                ? method.guideQuality
+                : null;
+              const qualityThreshold = Number(guideQuality?.threshold ?? 70);
+              const qualityScore = Number(
+                method?.actionabilityScore ?? guideQuality?.actionabilityScore
+              );
+              const scoreBadgeClass =
+                qualityScore >= qualityThreshold
+                  ? "rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200"
+                  : "rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[10px] font-semibold text-yellow-100";
 
-                {(method?.whatItDoes ||
-                  method?.whatItDoesPreview ||
-                  method?.whatItDoesFull) && (
-                  <ExpandableText
-                    preview={
-                      method?.whatItDoesPreview ||
-                      method?.whatItDoes ||
-                      method?.whatItDoesFull
-                    }
-                    full={
-                      method?.whatItDoesFull ||
-                      method?.whatItDoes ||
-                      method?.whatItDoesPreview
-                    }
-                    truncated={method?.whatItDoesTruncated}
-                    className="mt-1 text-sm text-gray-300"
-                  />
-                )}
-
-                {method?.whenToUse && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    언제 사용: {method.whenToUse}
-                  </p>
-                )}
-
-                {(method?.inputs || method?.returns) && (
-                  <div className="mt-2 space-y-1 text-xs text-gray-400">
-                    {method?.inputs && <p>입력: {method.inputs}</p>}
-                    {method?.returns && <p>반환: {method.returns}</p>}
-                  </div>
-                )}
-
-                {safeArray(method?.cautions).length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {safeArray(method.cautions).map((caution, cIdx) => (
-                      <span
-                        key={`${caution}-${cIdx}`}
-                        className="rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2 py-0.5 text-[10px] text-yellow-200"
-                      >
-                        {caution}
+              return (
+                <div
+                  key={`${method?.fqn || method?.methodName || "method"}-${idx}`}
+                  className="rounded-lg border border-white/10 bg-black/20 p-3"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="break-all text-sm font-semibold text-gray-100">
+                      {method?.fqn || `${method?.classFqn || ""}.${method?.methodName || ""}`}
+                    </p>
+                    {Number.isFinite(qualityScore) && (
+                      <span className={scoreBadgeClass}>
+                        실행 가능성 {formatScore(qualityScore)}
                       </span>
-                    ))}
+                    )}
                   </div>
-                )}
 
-                {isRecord(method?.evidence) && (
-                  <p className="mt-2 break-all text-xs text-gray-500">
-                    근거: {method.evidence?.filePath || "-"}
-                    {lineText(method.evidence?.startLine, method.evidence?.endLine)}
-                  </p>
-                )}
-              </div>
-            ))}
+                  {(method?.guideNarrative ||
+                    method?.whatItDoes ||
+                    method?.summaryNarrative ||
+                    method?.whatItDoesPreview ||
+                    method?.whatItDoesFull) && (
+                    <ExpandableText
+                      preview={
+                        method?.guideNarrative ||
+                        method?.whatItDoesFull ||
+                        method?.whatItDoesPreview ||
+                        method?.summaryNarrative ||
+                        method?.whatItDoes
+                      }
+                      full={
+                        method?.guideNarrative ||
+                        method?.whatItDoesFull ||
+                        method?.summaryNarrative ||
+                        method?.whatItDoes ||
+                        method?.whatItDoesPreview
+                      }
+                      truncated={method?.whatItDoesTruncated}
+                      className="mt-1 text-sm text-gray-300"
+                    />
+                  )}
+
+                  {hasGuideSlots(guideSlots) && (
+                    <div className="mt-3 grid gap-2 md:grid-cols-2">
+                      <GuideSlotItem
+                        label="호출 전 체크"
+                        text={guideSlots?.beforeCall}
+                        evidence={method?.slotEvidence?.beforeCall}
+                      />
+                      <GuideSlotItem
+                        label="호출 실행"
+                        text={guideSlots?.doCall}
+                        evidence={method?.slotEvidence?.doCall}
+                      />
+                      <GuideSlotItem
+                        label="성공 확인"
+                        text={guideSlots?.successCheck}
+                        evidence={method?.slotEvidence?.successCheck}
+                      />
+                      <GuideSlotItem
+                        label="실패 증상"
+                        text={guideSlots?.failureSymptom}
+                        evidence={method?.slotEvidence?.failureSymptom}
+                      />
+                      <GuideSlotItem
+                        label="다음 조치"
+                        text={guideSlots?.nextAction}
+                        evidence={method?.slotEvidence?.nextAction}
+                      />
+                    </div>
+                  )}
+
+                  {guideQuality && (
+                    <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+                      <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-cyan-100">
+                        슬롯 충족률 {formatScore(Number(guideQuality?.slotCoverage) * 100)}%
+                      </span>
+                      <span className="rounded-full border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 text-purple-100">
+                        근거 커버리지 {formatScore(Number(guideQuality?.evidenceCoverage) * 100)}%
+                      </span>
+                      <span className="rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2 py-0.5 text-yellow-100">
+                        반복률 {formatScore(Number(guideQuality?.repetitionRate) * 100)}%
+                      </span>
+                    </div>
+                  )}
+
+                  {method?.whenToUse && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      언제 사용: {method.whenToUse}
+                    </p>
+                  )}
+
+                  {(method?.inputs || method?.returns) && (
+                    <div className="mt-2 space-y-1 text-xs text-gray-400">
+                      {method?.inputs && <p>입력: {method.inputs}</p>}
+                      {method?.returns && <p>반환: {method.returns}</p>}
+                    </div>
+                  )}
+
+                  {safeArray(method?.cautions).length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {safeArray(method.cautions).map((caution, cIdx) => (
+                        <span
+                          key={`${caution}-${cIdx}`}
+                          className="rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2 py-0.5 text-[10px] text-yellow-200"
+                        >
+                          {caution}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {isRecord(method?.evidence) && (
+                    <p className="mt-2 break-all text-xs text-gray-500">
+                      근거: {method.evidence?.filePath || "-"}
+                      {lineText(method.evidence?.startLine, method.evidence?.endLine)}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </article>
       )}
@@ -1162,38 +1552,43 @@ function RefinedRulesPanel({ data }) {
         <article className="rounded-xl border border-white/10 bg-white/[0.025] p-5">
           <h4 className="text-base font-bold text-gray-100">Rules</h4>
           <div className="mt-3 space-y-3">
-            {rules.map((rule, idx) => (
-              <div
-                key={`${rule?.ruleId || rule?.name || "rule"}-${idx}`}
-                className="rounded-lg border border-white/10 bg-black/20 p-3"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  {rule?.ruleId && (
-                    <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[11px] text-cyan-100">
-                      {rule.ruleId}
-                    </span>
+            {rules.map((rule, idx) => {
+              const slots = fallbackRuleGuideSlots(rule);
+              return (
+                <div
+                  key={`${rule?.ruleId || rule?.name || "rule"}-${idx}`}
+                  className="rounded-lg border border-white/10 bg-black/20 p-3"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    {rule?.ruleId && (
+                      <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[11px] text-cyan-100">
+                        {rule.ruleId}
+                      </span>
+                    )}
+
+                    {rule?.classification && (
+                      <span className="rounded-full border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 text-[11px] text-purple-100">
+                        {rule.classification}
+                      </span>
+                    )}
+                  </div>
+
+                  {rule?.name && (
+                    <p className="mt-2 text-sm font-semibold text-gray-100">
+                      {rule.name}
+                    </p>
                   )}
 
-                  {rule?.classification && (
-                    <span className="rounded-full border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 text-[11px] text-purple-100">
-                      {rule.classification}
-                    </span>
-                  )}
+                  <div className="mt-2 grid gap-2 md:grid-cols-2">
+                    <GuideSlotItem label="적용 상황" text={slots.beforeCall} />
+                    <GuideSlotItem label="핵심 내용" text={slots.doCall} />
+                    <GuideSlotItem label="확인 방법" text={slots.successCheck} />
+                    <GuideSlotItem label="실패 영향" text={slots.failureSymptom} />
+                    <GuideSlotItem label="다음 조치" text={slots.nextAction} />
+                  </div>
                 </div>
-
-                {rule?.name && (
-                  <p className="mt-2 text-sm font-semibold text-gray-100">
-                    {rule.name}
-                  </p>
-                )}
-
-                {rule?.description && (
-                  <p className="mt-2 text-sm leading-6 text-gray-300">
-                    {rule.description}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </article>
       )}
@@ -1202,28 +1597,31 @@ function RefinedRulesPanel({ data }) {
         <article className="rounded-xl border border-white/10 bg-white/[0.025] p-5">
           <h4 className="text-base font-bold text-gray-100">Cautions</h4>
           <div className="mt-3 space-y-3">
-            {cautions.map((caution, idx) => (
-              <div
-                key={`${caution?.cautionId || caution?.title || "caution"}-${idx}`}
-                className="rounded-lg border border-yellow-400/20 bg-yellow-400/5 p-3"
-              >
-                <p className="text-sm font-semibold text-yellow-100">
-                  {caution?.title || caution?.cautionId || "주의"}
-                </p>
-
-                {caution?.message && (
-                  <p className="mt-1 text-sm leading-6 text-yellow-50/90">
-                    {caution.message}
+            {cautions.map((caution, idx) => {
+              const slots = fallbackCautionGuideSlots(caution);
+              return (
+                <div
+                  key={`${caution?.cautionId || caution?.title || "caution"}-${idx}`}
+                  className="rounded-lg border border-yellow-400/20 bg-yellow-400/5 p-3"
+                >
+                  <p className="text-sm font-semibold text-yellow-100">
+                    {caution?.title || caution?.cautionId || "주의"}
                   </p>
-                )}
 
-                {caution?.when && (
-                  <p className="mt-1 text-xs text-yellow-100/80">
-                    언제: {caution.when}
-                  </p>
-                )}
-              </div>
-            ))}
+                  <div className="mt-2 grid gap-2 md:grid-cols-2">
+                    <GuideSlotItem
+                      label="언제 점검"
+                      text={slots.beforeCall}
+                      evidence={slots.evidenceText}
+                    />
+                    <GuideSlotItem label="무엇을 확인" text={slots.doCall} />
+                    <GuideSlotItem label="성공 확인" text={slots.successCheck} />
+                    <GuideSlotItem label="실패 증상" text={slots.failureSymptom} />
+                    <GuideSlotItem label="다음 조치" text={slots.nextAction} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </article>
       )}
