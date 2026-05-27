@@ -870,18 +870,12 @@ function ExpandableText({
   );
 }
 
-function compactText(value, maxLength = 200) {
+function compactText(value) {
   if (typeof value !== "string") {
     return "";
   }
   const normalized = value.replace(/\s+/g, " ").trim();
-  if (!normalized) {
-    return "";
-  }
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-  return `${normalized.slice(0, maxLength).trim()}...`;
+  return normalized || "";
 }
 
 function GuideDisclosureCard({
@@ -894,7 +888,7 @@ function GuideDisclosureCard({
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showRaw, setShowRaw] = useState(false);
-  const previewText = compactText(preview, 220);
+  const previewText = compactText(preview);
   const hasRaw = raw != null;
 
   return (
