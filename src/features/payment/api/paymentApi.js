@@ -1,25 +1,19 @@
 import { apiClient } from "../../../shared/api/client";
 
-export function preparePortOneCheckout() {
-  return apiClient("/api/v1/payments/portone/checkout", {
-    method: "POST",
-  });
-}
-
-export function verifyPortOnePayment(paymentId) {
-  return apiClient("/api/v1/payments/portone/verify", {
+export function prepareTokenChargeCheckout(amount) {
+  return apiClient("/api/v1/payments/portone/token-checkout", {
     method: "POST",
     body: {
-      paymentId,
+      amount,
     },
   });
 }
 
-export function cancelPortOnePayment(paymentId, reason = "테스트 결제 취소") {
-  return apiClient(`/api/v1/payments/portone/${paymentId}/cancel`, {
+export function verifyTokenChargePayment(paymentId) {
+  return apiClient("/api/v1/payments/portone/token-verify", {
     method: "POST",
     body: {
-      reason,
+      paymentId,
     },
   });
 }

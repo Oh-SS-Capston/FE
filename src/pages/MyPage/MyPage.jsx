@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  CheckCircle2,
-  CreditCard,
+  Check,
+  ChevronRight,
+  Coins,
   LogOut,
   RefreshCw,
-  ShieldCheck,
   Trash2,
   UserRound,
   WalletCards,
@@ -14,38 +14,47 @@ import {
 import { checkNicknameAvailability } from "../../features/auth/api/authApi";
 import { useAuth } from "../../features/auth/model/AuthContext";
 import {
-  preparePortOneCheckout,
-  verifyPortOnePayment,
+  prepareTokenChargeCheckout,
+  verifyTokenChargePayment,
 } from "../../features/payment/api/paymentApi";
-import { requestMembershipPayment } from "../../features/payment/lib/portonePayment";
+import { requestTokenChargePayment } from "../../features/payment/lib/portonePayment";
+import {
+  getMyTokenBalance,
+  getMyTokenLedgers,
+} from "../../features/token/api/tokenApi";
+
+const CHARGE_OPTIONS = [2000, 5000, 10000, 30000];
 
 export default function MyPage() {
-  const {
-    user,
-    membership,
-    refreshMembership,
-    updateNickname,
-    deleteAccount,
-    logout,
-  } = useAuth();
+  const { user, updateNickname, deleteAccount, logout } = useAuth();
 
   const [nickname, setNickname] = useState("");
   const [nicknameMessage, setNicknameMessage] = useState("");
   const [nicknameAvailable, setNicknameAvailable] = useState(null);
   const [checkingNickname, setCheckingNickname] = useState(false);
   const [savingNickname, setSavingNickname] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [openDeleteModal, setOpenDeleteModal] = useState(false);
 
+  const [tokenBalance, setTokenBalance] = useState(null);
+  const [tokenLedgers, setTokenLedgers] = useState([]);
+  const [loadingTokens, setLoadingTokens] = useState(false);
+
+  const [selectedChargeAmount, setSelectedChargeAmount] = useState(10000);
   const [paying, setPaying] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(null);
+
+  const [deleting, setDeleting] = useState(false);
+  const [openDeleteModal, setOpenDeleteModal] = useState(false);
 
   useEffect(() => {
     setNickname(user?.nickname || "");
     setNicknameAvailable(null);
     setNicknameMessage("");
   }, [user]);
+
+  useEffect(() => {
+    refreshTokens();
+  }, []);
 
   const trimmedNickname = nickname.trim();
   const currentNickname = user?.nickname || "";
@@ -59,23 +68,9 @@ export default function MyPage() {
     !checkingNickname &&
     !savingNickname;
 
-  const membershipLabel = useMemo(() => {
-    if (!membership) {
-      return "조회 필요";
-    }
-
-    if (membership.membershipActive) {
-      return "활성화";
-    }
-
-    if (membership.freeAnalysisRemaining > 0) {
-      return "무료 분석 가능";
-    }
-
-    return "멤버십 필요";
-  }, [membership]);
-
-  const canPayMembership = !paying && !membership?.membershipActive;
+  const formattedBalance = useMemo(() => {
+    return `${(tokenBalance?.balance ?? 0).toLocaleString()} T`;
+  }, [tokenBalance]);
 
   const handleCheckNickname = async () => {
     if (!trimmedNickname) {
@@ -131,34 +126,52 @@ export default function MyPage() {
     }
   };
 
-  const handleRefreshMembership = async () => {
-    await refreshMembership();
+  const refreshTokens = async () => {
+    try {
+      setLoadingTokens(true);
+
+      const [balance, ledgers] = await Promise.all([
+        getMyTokenBalance(),
+        getMyTokenLedgers(30),
+      ]);
+
+      setTokenBalance(balance);
+      setTokenLedgers(Array.isArray(ledgers) ? ledgers : []);
+    } catch {
+      setTokenBalance(null);
+      setTokenLedgers([]);
+    } finally {
+      setLoadingTokens(false);
+    }
   };
 
-  const handleStartPayment = async () => {
+  const handleChargeTokens = async () => {
     try {
       setPaying(true);
       setPaymentSuccess(null);
       setPaymentMessage("결제 정보를 준비하는 중입니다.");
 
-      const checkout = await preparePortOneCheckout();
+      const checkout = await prepareTokenChargeCheckout(selectedChargeAmount);
 
       setPaymentMessage("PortOne 결제창을 여는 중입니다.");
 
-      const paymentResult = await requestMembershipPayment(checkout);
+      const paymentResult = await requestTokenChargePayment(checkout);
       const paymentId = paymentResult.paymentId || checkout.paymentId;
 
       setPaymentMessage("결제 검증 중입니다.");
 
-      const verified = await verifyPortOnePayment(paymentId);
+      const verified = await verifyTokenChargePayment(paymentId);
 
-      await refreshMembership();
+      await refreshTokens();
 
       setPaymentSuccess(true);
-      setPaymentMessage(verified?.message || "멤버십이 활성화되었습니다.");
+      setPaymentMessage(
+        verified?.message ||
+          `${verified?.chargedTokens?.toLocaleString?.() ?? selectedChargeAmount.toLocaleString()}토큰 충전이 완료되었습니다.`
+      );
     } catch (error) {
       setPaymentSuccess(false);
-      setPaymentMessage(error.message || "결제 처리 중 오류가 발생했습니다.");
+      setPaymentMessage(error.message || "토큰 충전에 실패했습니다.");
     } finally {
       setPaying(false);
     }
@@ -169,255 +182,216 @@ export default function MyPage() {
       setDeleting(true);
       await deleteAccount();
     } catch (error) {
-      alert(error.message || "회원 탈퇴에 실패했습니다.");
+      setPaymentSuccess(false);
+      setPaymentMessage(error.message || "회원 탈퇴에 실패했습니다.");
       setDeleting(false);
       setOpenDeleteModal(false);
     }
   };
 
   return (
-    <main className="mx-auto min-h-[80vh] max-w-6xl px-5 py-10">
-      <div className="mb-8">
+    <main className="mx-auto min-h-[80vh] max-w-5xl px-5 py-10">
+      <header className="mb-10">
         <p className="text-sm font-semibold text-purple-300">My Page</p>
         <h1 className="mt-2 text-3xl font-black text-white">마이페이지</h1>
         <p className="mt-3 text-sm leading-6 text-gray-400">
-          계정 정보, 닉네임, 멤버십 상태를 확인하고 관리할 수 있습니다.
+          계정 정보와 토큰 잔액을 관리합니다.
         </p>
-      </div>
+      </header>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr]">
-        <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-purple-950/10">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/15 text-purple-200">
-              <UserRound size={26} />
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.035]">
+        <SectionTitle title="계정" description="Google 계정 기반 로그인 정보입니다." />
+
+        <div className="divide-y divide-white/10">
+          <InfoLine label="이메일" value={user?.email || "-"} />
+          <InfoLine label="로그인 방식" value={user?.provider || "GOOGLE"} />
+
+          <div className="grid gap-4 px-5 py-5 md:grid-cols-[160px_1fr] md:items-start">
+            <div>
+              <p className="text-sm font-semibold text-gray-400">닉네임</p>
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-white">내 정보</h2>
-              <p className="text-sm text-gray-500">Google 계정 기반 로그인</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <InfoRow label="이메일" value={user?.email || "-"} />
-            <InfoRow label="닉네임" value={user?.nickname || "-"} />
-            <InfoRow label="로그인 방식" value={user?.provider || "GOOGLE"} />
-          </div>
-
-          <div className="mt-7 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
-            <div className="flex gap-3">
-              <AlertTriangle
-                className="mt-0.5 shrink-0 text-amber-200"
-                size={19}
-              />
-              <p className="text-sm leading-6 text-amber-100/90">
-                회원 탈퇴 후 30일 동안 같은 Google 계정으로 다시 가입할 수
-                없습니다. 30일 이후 재가입해도 무료 분석권 사용량은 초기화되지
-                않습니다.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-7 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={logout}
-              className="flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-white/10 hover:text-white"
-            >
-              <LogOut size={17} />
-              로그아웃
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setOpenDeleteModal(true)}
-              disabled={deleting}
-              className="flex items-center gap-2 rounded-full border border-red-400/30 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Trash2 size={17} />
-              회원 탈퇴
-            </button>
-          </div>
-        </section>
-
-        <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-purple-950/10">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500/15 text-cyan-200">
-              <ShieldCheck size={26} />
-            </div>
-
-            <div>
-              <h2 className="text-xl font-bold text-white">닉네임 변경</h2>
-              <p className="text-sm text-gray-500">
-                2~20자, 한글/영문/숫자/밑줄 사용 가능
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <input
-              value={nickname}
-              onChange={(event) => {
-                setNickname(event.target.value);
-                setNicknameAvailable(null);
-                setNicknameMessage("닉네임 중복 확인 후 저장할 수 있습니다.");
-              }}
-              placeholder="닉네임을 입력하세요"
-              className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-500 focus:border-purple-400/60"
-            />
-
-            <button
-              type="button"
-              onClick={handleCheckNickname}
-              disabled={checkingNickname || !trimmedNickname}
-              className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-bold text-gray-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {checkingNickname ? "확인 중..." : "중복 확인"}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSaveNickname}
-              disabled={!canSaveNickname}
-              className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {savingNickname ? "저장 중..." : "저장"}
-            </button>
-          </div>
-
-          {nicknameMessage && (
-            <p
-              className={`mt-3 text-sm ${
-                nicknameAvailable === true
-                  ? "text-emerald-300"
-                  : nicknameAvailable === false
-                    ? "text-red-300"
-                    : "text-gray-400"
-              }`}
-            >
-              {nicknameMessage}
-            </p>
-          )}
-
-          <div className="mt-8 border-t border-white/10 pt-6">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-200">
-                  <CreditCard size={26} />
-                </div>
-
-                <div>
-                  <h2 className="text-xl font-bold text-white">멤버십</h2>
-                  <p className="text-sm text-gray-500">
-                    무료 분석권과 멤버십 상태
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleRefreshMembership}
-                className="rounded-full border border-white/10 p-2 text-gray-300 transition hover:bg-white/10 hover:text-white"
-                aria-label="멤버십 새로고침"
-              >
-                <RefreshCw size={18} />
-              </button>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <MembershipCard label="상태" value={membershipLabel} />
-              <MembershipCard
-                label="무료 분석 잔여"
-                value={
-                  membership
-                    ? `${membership.freeAnalysisRemaining ?? 0}회`
-                    : "-"
-                }
-              />
-              <MembershipCard
-                label="무료 분석 사용"
-                value={membership ? `${membership.freeAnalysisUsed ?? 0}회` : "-"}
-              />
-              <MembershipCard
-                label="플랜"
-                value={membership?.planName || "Basic Monthly"}
-              />
-              <MembershipCard
-                label="가격"
-                value={
-                  membership
-                    ? `${membership.amount?.toLocaleString?.() ?? 0} ${
-                        membership.currency || "KRW"
-                      }`
-                    : "9,900 KRW"
-                }
-              />
-              <MembershipCard
-                label="만료일"
-                value={
-                  membership?.currentPeriodEnd
-                    ? new Date(membership.currentPeriodEnd).toLocaleString()
-                    : "-"
-                }
-              />
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-              <div className="flex gap-3">
-                <CheckCircle2
-                  className="mt-0.5 shrink-0 text-emerald-200"
-                  size={18}
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  value={nickname}
+                  onChange={(event) => {
+                    setNickname(event.target.value);
+                    setNicknameAvailable(null);
+                    setNicknameMessage(
+                      "닉네임 중복 확인 후 저장할 수 있습니다."
+                    );
+                  }}
+                  placeholder="닉네임을 입력하세요"
+                  className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-500 focus:border-purple-400/60"
                 />
-                <p className="text-sm leading-6 text-gray-300">
-                  {membership?.message ||
-                    "멤버십 정보를 불러오면 현재 분석 가능 여부를 확인할 수 있습니다."}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-purple-400/20 bg-purple-400/10 p-4">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-bold text-purple-100">
-                    Basic Monthly 멤버십
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-purple-100/70">
-                    무료 분석권을 모두 사용한 뒤에도 계속 분석하려면 멤버십이
-                    필요합니다.
-                  </p>
-                </div>
 
                 <button
                   type="button"
-                  onClick={handleStartPayment}
-                  disabled={!canPayMembership}
-                  className="flex shrink-0 items-center justify-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-black text-slate-950 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={handleCheckNickname}
+                  disabled={checkingNickname || !trimmedNickname}
+                  className="rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-gray-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <WalletCards size={18} />
-                  {membership?.membershipActive
-                    ? "멤버십 이용 중"
-                    : paying
-                      ? "결제 진행 중..."
-                      : "멤버십 결제하기"}
+                  {checkingNickname ? "확인 중..." : "중복 확인"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveNickname}
+                  disabled={!canSaveNickname}
+                  className="rounded-xl bg-white px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {savingNickname ? "저장 중..." : "저장"}
                 </button>
               </div>
 
-              {paymentMessage && (
+              {nicknameMessage && (
                 <p
                   className={`mt-3 text-sm ${
-                    paymentSuccess === true
+                    nicknameAvailable === true
                       ? "text-emerald-300"
-                      : paymentSuccess === false
+                      : nicknameAvailable === false
                         ? "text-red-300"
-                        : "text-gray-300"
+                        : "text-gray-400"
                   }`}
                 >
-                  {paymentMessage}
+                  {nicknameMessage}
                 </p>
               )}
             </div>
           </div>
-        </section>
+        </div>
+
+        <SectionDivider />
+
+        <SectionTitle
+          title="토큰"
+          description="분석 요청과 재분석 요청에 사용하는 선불 토큰입니다."
+          right={
+            <button
+              type="button"
+              onClick={refreshTokens}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs font-bold text-gray-300 transition hover:bg-white/10 hover:text-white"
+            >
+              <RefreshCw size={14} />
+              새로고침
+            </button>
+          }
+        />
+
+        <div className="px-5 pb-6">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-400">
+                  <Coins size={17} />
+                  보유 토큰
+                </div>
+                <p className="mt-2 text-4xl font-black text-white">
+                  {loadingTokens ? "조회 중..." : formattedBalance}
+                </p>
+                <p className="mt-2 text-sm text-gray-500">
+                  일반 분석 2,000T · 재분석 500T
+                </p>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-4 md:w-[420px]">
+                {CHARGE_OPTIONS.map((amount) => (
+                  <button
+                    key={amount}
+                    type="button"
+                    onClick={() => setSelectedChargeAmount(amount)}
+                    className={`rounded-xl border px-3 py-3 text-sm font-bold transition ${
+                      selectedChargeAmount === amount
+                        ? "border-purple-300 bg-purple-400/20 text-white"
+                        : "border-white/10 bg-white/[0.03] text-gray-300 hover:bg-white/10"
+                    }`}
+                  >
+                    {amount.toLocaleString()}원
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-gray-400">
+                1원 = 1토큰으로 충전됩니다.
+              </p>
+
+              <button
+                type="button"
+                onClick={handleChargeTokens}
+                disabled={paying}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <WalletCards size={18} />
+                {paying
+                  ? "결제 진행 중..."
+                  : `${selectedChargeAmount.toLocaleString()}토큰 충전`}
+              </button>
+            </div>
+
+            {paymentMessage && (
+              <p
+                className={`mt-4 text-sm ${
+                  paymentSuccess === true
+                    ? "text-emerald-300"
+                    : paymentSuccess === false
+                      ? "text-red-300"
+                      : "text-gray-300"
+                }`}
+              >
+                {paymentMessage}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <SectionDivider />
+
+        <SectionTitle
+          title="토큰 내역"
+          description="최근 충전과 사용 내역입니다."
+        />
+
+        <div className="px-5 pb-6">
+          {tokenLedgers.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-5 py-8 text-center text-sm text-gray-500">
+              아직 토큰 내역이 없습니다.
+            </div>
+          ) : (
+            <div className="divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+              {tokenLedgers.map((ledger) => (
+                <TokenLedgerRow key={ledger.ledgerId} ledger={ledger} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <SectionDivider />
+
+        <SectionTitle title="계정 관리" description="로그아웃 또는 탈퇴할 수 있습니다." />
+
+        <div className="flex flex-wrap gap-3 px-5 pb-6">
+          <button
+            type="button"
+            onClick={logout}
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2.5 text-sm font-semibold text-gray-300 transition hover:bg-white/10 hover:text-white"
+          >
+            <LogOut size={17} />
+            로그아웃
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setOpenDeleteModal(true)}
+            disabled={deleting}
+            className="inline-flex items-center gap-2 rounded-full border border-red-400/30 px-4 py-2.5 text-sm font-semibold text-red-200 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Trash2 size={17} />
+            회원 탈퇴
+          </button>
+        </div>
       </div>
 
       {openDeleteModal && (
@@ -435,6 +409,64 @@ export default function MyPage() {
   );
 }
 
+function SectionTitle({ title, description, right }) {
+  return (
+    <div className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 className="text-lg font-bold text-white">{title}</h2>
+        {description && (
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
+        )}
+      </div>
+      {right}
+    </div>
+  );
+}
+
+function SectionDivider() {
+  return <div className="border-t border-white/10" />;
+}
+
+function InfoLine({ label, value }) {
+  return (
+    <div className="grid gap-2 px-5 py-4 md:grid-cols-[160px_1fr]">
+      <p className="text-sm font-semibold text-gray-400">{label}</p>
+      <p className="break-all text-sm font-semibold text-gray-100">{value}</p>
+    </div>
+  );
+}
+
+function TokenLedgerRow({ ledger }) {
+  const positive = ledger.amount > 0;
+
+  return (
+    <div className="flex items-center justify-between gap-4 px-5 py-4">
+      <div className="min-w-0">
+        <p className="text-sm font-bold text-white">
+          {formatLedgerType(ledger.type)}
+        </p>
+        <p className="mt-1 truncate text-xs text-gray-500">
+          {ledger.reason || ledger.referenceId || "-"}
+        </p>
+      </div>
+
+      <div className="shrink-0 text-right">
+        <p
+          className={`text-sm font-black ${
+            positive ? "text-emerald-300" : "text-red-300"
+          }`}
+        >
+          {positive ? "+" : ""}
+          {ledger.amount.toLocaleString()} T
+        </p>
+        <p className="mt-1 text-xs text-gray-500">
+          잔액 {ledger.balanceAfter.toLocaleString()} T
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function DeleteAccountModal({ deleting, onClose, onConfirm }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
@@ -447,8 +479,6 @@ function DeleteAccountModal({ deleting, onClose, onConfirm }) {
       />
 
       <section className="relative w-full max-w-md overflow-hidden rounded-3xl border border-red-400/20 bg-slate-950 p-7 shadow-2xl shadow-red-950/30">
-        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-amber-400 to-purple-500" />
-
         <button
           type="button"
           onClick={onClose}
@@ -459,8 +489,8 @@ function DeleteAccountModal({ deleting, onClose, onConfirm }) {
           <X size={20} />
         </button>
 
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/15 text-red-200">
-          <Trash2 size={28} />
+        <div className="flex h-13 w-13 items-center justify-center rounded-2xl bg-red-500/15 text-red-200">
+          <Trash2 size={27} />
         </div>
 
         <h2 className="mt-5 text-2xl font-bold text-white">
@@ -469,8 +499,7 @@ function DeleteAccountModal({ deleting, onClose, onConfirm }) {
 
         <p className="mt-3 text-sm leading-6 text-gray-400">
           탈퇴 후 30일 동안 같은 Google 계정으로 다시 가입할 수 없습니다.
-          30일 이후 재가입해도 무료 분석권 사용량과 기존 분석 이력은
-          초기화되지 않습니다.
+          기존 토큰 사용 내역과 무료 지급 이력은 초기화되지 않습니다.
         </p>
 
         <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
@@ -510,26 +539,17 @@ function DeleteAccountModal({ deleting, onClose, onConfirm }) {
   );
 }
 
-function InfoRow({ label, value }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-        {label}
-      </p>
-      <p className="mt-2 break-all text-sm font-semibold text-gray-100">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function MembershipCard({ label, value }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-        {label}
-      </p>
-      <p className="mt-2 text-sm font-bold text-white">{value}</p>
-    </div>
-  );
+function formatLedgerType(type) {
+  switch (type) {
+    case "SIGNUP_BONUS":
+      return "무료 분석 토큰 지급";
+    case "TOKEN_CHARGE":
+      return "토큰 충전";
+    case "ANALYSIS_USE":
+      return "일반 분석";
+    case "REANALYSIS_USE":
+      return "재분석";
+    default:
+      return type || "토큰 내역";
+  }
 }
