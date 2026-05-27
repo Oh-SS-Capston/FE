@@ -8,10 +8,16 @@ import {
   ShieldCheck,
   Trash2,
   UserRound,
+  WalletCards,
   X,
 } from "lucide-react";
 import { checkNicknameAvailability } from "../../features/auth/api/authApi";
 import { useAuth } from "../../features/auth/model/AuthContext";
+import {
+  preparePortOneCheckout,
+  verifyPortOnePayment,
+} from "../../features/payment/api/paymentApi";
+import { requestMembershipPayment } from "../../features/payment/lib/portonePayment";
 
 export default function MyPage() {
   const {
@@ -31,6 +37,10 @@ export default function MyPage() {
   const [deleting, setDeleting] = useState(false);
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
 
+  const [paying, setPaying] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState("");
+  const [paymentSuccess, setPaymentSuccess] = useState(null);
+
   useEffect(() => {
     setNickname(user?.nickname || "");
     setNicknameAvailable(null);
@@ -40,7 +50,8 @@ export default function MyPage() {
   const trimmedNickname = nickname.trim();
   const currentNickname = user?.nickname || "";
 
-  const nicknameChanged = trimmedNickname !== "" && trimmedNickname !== currentNickname;
+  const nicknameChanged =
+    trimmedNickname !== "" && trimmedNickname !== currentNickname;
 
   const canSaveNickname =
     nicknameChanged &&
@@ -63,6 +74,8 @@ export default function MyPage() {
 
     return "멤버십 필요";
   }, [membership]);
+
+  const canPayMembership = !paying && !membership?.membershipActive;
 
   const handleCheckNickname = async () => {
     if (!trimmedNickname) {
@@ -120,6 +133,35 @@ export default function MyPage() {
 
   const handleRefreshMembership = async () => {
     await refreshMembership();
+  };
+
+  const handleStartPayment = async () => {
+    try {
+      setPaying(true);
+      setPaymentSuccess(null);
+      setPaymentMessage("결제 정보를 준비하는 중입니다.");
+
+      const checkout = await preparePortOneCheckout();
+
+      setPaymentMessage("PortOne 결제창을 여는 중입니다.");
+
+      const paymentResult = await requestMembershipPayment(checkout);
+      const paymentId = paymentResult.paymentId || checkout.paymentId;
+
+      setPaymentMessage("결제 검증 중입니다.");
+
+      const verified = await verifyPortOnePayment(paymentId);
+
+      await refreshMembership();
+
+      setPaymentSuccess(true);
+      setPaymentMessage(verified?.message || "멤버십이 활성화되었습니다.");
+    } catch (error) {
+      setPaymentSuccess(false);
+      setPaymentMessage(error.message || "결제 처리 중 오류가 발생했습니다.");
+    } finally {
+      setPaying(false);
+    }
   };
 
   const handleConfirmDeleteAccount = async () => {
@@ -333,9 +375,47 @@ export default function MyPage() {
               </div>
             </div>
 
-            <p className="mt-4 text-xs leading-5 text-gray-500">
-              결제 버튼과 PortOne 결제창 호출은 5차 작업에서 연결합니다.
-            </p>
+            <div className="mt-5 rounded-2xl border border-purple-400/20 bg-purple-400/10 p-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-bold text-purple-100">
+                    Basic Monthly 멤버십
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-purple-100/70">
+                    무료 분석권을 모두 사용한 뒤에도 계속 분석하려면 멤버십이
+                    필요합니다.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleStartPayment}
+                  disabled={!canPayMembership}
+                  className="flex shrink-0 items-center justify-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-black text-slate-950 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <WalletCards size={18} />
+                  {membership?.membershipActive
+                    ? "멤버십 이용 중"
+                    : paying
+                      ? "결제 진행 중..."
+                      : "멤버십 결제하기"}
+                </button>
+              </div>
+
+              {paymentMessage && (
+                <p
+                  className={`mt-3 text-sm ${
+                    paymentSuccess === true
+                      ? "text-emerald-300"
+                      : paymentSuccess === false
+                        ? "text-red-300"
+                        : "text-gray-300"
+                  }`}
+                >
+                  {paymentMessage}
+                </p>
+              )}
+            </div>
           </div>
         </section>
       </div>
