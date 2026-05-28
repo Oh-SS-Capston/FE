@@ -9,6 +9,10 @@ import AnalyzeProgressPanel from "./components/AnalyzeProgressPanel";
 import LlmResultSection from "./components/LlmResultSection";
 import PackageClassDocsSection from "./components/PackageClassDocsSection";
 
+import InsufficientTokenModal from "../../features/token/components/InsufficientTokenModal";
+import ReanalysisConfirmModal from "../../features/token/components/ReanalysisConfirmModal";
+import { TOKEN_COST } from "../../features/token/constants/tokenPolicy";
+
 import {
   createRepoRun,
   getArtifactJson,
@@ -315,6 +319,9 @@ export default function AnalyPage() {
   const [llmLoading, setLlmLoading] = useState(false);
   const [llmError, setLlmError] = useState(null);
   const [rebuildLoading, setRebuildLoading] = useState(false);
+
+  const [reanalysisConfirmOpen, setReanalysisConfirmOpen] = useState(false);
+  const [insufficientTokenOpen, setInsufficientTokenOpen] = useState(false);
 
   useEffect(() => {
     if (!repo) return;
