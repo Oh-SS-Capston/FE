@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  Check,
-  ChevronRight,
   Coins,
   LogOut,
   RefreshCw,
   Trash2,
-  UserRound,
   WalletCards,
   X,
 } from "lucide-react";
@@ -23,7 +20,36 @@ import {
   getMyTokenLedgers,
 } from "../../features/token/api/tokenApi";
 
-const CHARGE_OPTIONS = [2000, 5000, 10000, 30000];
+const CHARGE_OPTIONS = [2000, 5000, 10000];
+const TOKEN_REFRESH_DELAY_MS = 1200;
+const MIN_CHARGE_AMOUNT = 1000;
+const MAX_CHARGE_AMOUNT = 1000000;
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseChargeAmount(value) {
+  const onlyDigits = String(value ?? "").replace(/[^\d]/g, "");
+
+  if (!onlyDigits) {
+    return 0;
+  }
+
+  return Number(onlyDigits);
+}
+
+function formatChargeAmount(value) {
+  const amount = parseChargeAmount(value);
+
+  if (!amount) {
+    return "";
+  }
+
+  const limitedAmount = Math.min(amount, MAX_CHARGE_AMOUNT);
+
+  return limitedAmount.toLocaleString();
+}
 
 export default function MyPage() {
   const { user, updateNickname, deleteAccount, logout } = useAuth();
@@ -38,7 +64,7 @@ export default function MyPage() {
   const [tokenLedgers, setTokenLedgers] = useState([]);
   const [loadingTokens, setLoadingTokens] = useState(false);
 
-  const [selectedChargeAmount, setSelectedChargeAmount] = useState(10000);
+  const [selectedChargeAmount, setSelectedChargeAmount] = useState("10,000");
   const [paying, setPaying] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(null);
@@ -67,6 +93,8 @@ export default function MyPage() {
     nicknameAvailable === true &&
     !checkingNickname &&
     !savingNickname;
+
+  const chargeAmount = parseChargeAmount(selectedChargeAmount);
 
   const formattedBalance = useMemo(() => {
     return `${(tokenBalance?.balance ?? 0).toLocaleString()} T`;
@@ -133,6 +161,7 @@ export default function MyPage() {
       const [balance, ledgers] = await Promise.all([
         getMyTokenBalance(),
         getMyTokenLedgers(30),
+        delay(TOKEN_REFRESH_DELAY_MS),
       ]);
 
       setTokenBalance(balance);
@@ -145,13 +174,45 @@ export default function MyPage() {
     }
   };
 
+  const handleChargeInputChange = (event) => {
+    const rawValue = event.target.value;
+    const onlyDigits = rawValue.replace(/[^\d]/g, "");
+
+    if (!onlyDigits) {
+      setSelectedChargeAmount("");
+      setPaymentMessage("");
+      setPaymentSuccess(null);
+      return;
+    }
+
+    const amount = Math.min(Number(onlyDigits), MAX_CHARGE_AMOUNT);
+
+    setSelectedChargeAmount(amount.toLocaleString());
+    setPaymentMessage("");
+    setPaymentSuccess(null);
+  };
+
   const handleChargeTokens = async () => {
+    const requestAmount = parseChargeAmount(selectedChargeAmount);
+
+    if (!Number.isInteger(requestAmount) || requestAmount < MIN_CHARGE_AMOUNT) {
+      setPaymentSuccess(false);
+      setPaymentMessage("최소 1,000원 이상 충전할 수 있습니다.");
+      return;
+    }
+
+    if (requestAmount > MAX_CHARGE_AMOUNT) {
+      setPaymentSuccess(false);
+      setPaymentMessage("최대 1,000,000원까지 충전할 수 있습니다.");
+      return;
+    }
+
     try {
       setPaying(true);
       setPaymentSuccess(null);
       setPaymentMessage("결제 정보를 준비하는 중입니다.");
 
-      const checkout = await prepareTokenChargeCheckout(selectedChargeAmount);
+      const checkout = await prepareTokenChargeCheckout(requestAmount);
 
       setPaymentMessage("PortOne 결제창을 여는 중입니다.");
 
@@ -167,7 +228,10 @@ export default function MyPage() {
       setPaymentSuccess(true);
       setPaymentMessage(
         verified?.message ||
-          `${verified?.chargedTokens?.toLocaleString?.() ?? selectedChargeAmount.toLocaleString()}토큰 충전이 완료되었습니다.`
+          `${
+            verified?.chargedTokens?.toLocaleString?.() ??
+            requestAmount.toLocaleString()
+          }토큰 충전이 완료되었습니다.`
       );
     } catch (error) {
       setPaymentSuccess(false);
@@ -206,9 +270,9 @@ export default function MyPage() {
           <InfoLine label="이메일" value={user?.email || "-"} />
           <InfoLine label="로그인 방식" value={user?.provider || "GOOGLE"} />
 
-          <div className="grid gap-4 px-5 py-5 md:grid-cols-[160px_1fr] md:items-start">
+          <div className="grid gap-4 px-5 py-5 md:grid-cols-[180px_1fr] md:items-start">
             <div>
-              <p className="text-sm font-semibold text-gray-400">닉네임</p>
+              <p className="text-base font-bold text-gray-300">닉네임</p>
             </div>
 
             <div>
@@ -223,7 +287,7 @@ export default function MyPage() {
                     );
                   }}
                   placeholder="닉네임을 입력하세요"
-                  className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-500 focus:border-purple-400/60"
+                  className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-base font-semibold text-white outline-none transition placeholder:text-gray-500 focus:border-purple-400/60"
                 />
 
                 <button
@@ -271,7 +335,8 @@ export default function MyPage() {
             <button
               type="button"
               onClick={refreshTokens}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs font-bold text-gray-300 transition hover:bg-white/10 hover:text-white"
+              disabled={loadingTokens}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs font-bold text-gray-300 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               <RefreshCw size={14} />
               새로고침
@@ -295,21 +360,51 @@ export default function MyPage() {
                 </p>
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-4 md:w-[420px]">
-                {CHARGE_OPTIONS.map((amount) => (
-                  <button
-                    key={amount}
-                    type="button"
-                    onClick={() => setSelectedChargeAmount(amount)}
-                    className={`rounded-xl border px-3 py-3 text-sm font-bold transition ${
-                      selectedChargeAmount === amount
-                        ? "border-purple-300 bg-purple-400/20 text-white"
-                        : "border-white/10 bg-white/[0.03] text-gray-300 hover:bg-white/10"
-                    }`}
-                  >
-                    {amount.toLocaleString()}원
-                  </button>
-                ))}
+              <div className="w-full md:w-[420px]">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {CHARGE_OPTIONS.map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      onClick={() => {
+                        setSelectedChargeAmount(amount.toLocaleString());
+                        setPaymentMessage("");
+                        setPaymentSuccess(null);
+                      }}
+                      className={`rounded-xl border px-3 py-3 text-sm font-bold transition ${
+                        parseChargeAmount(selectedChargeAmount) === amount
+                          ? "border-purple-300 bg-purple-400/20 text-white"
+                          : "border-white/10 bg-white/[0.03] text-gray-300 hover:bg-white/10"
+                      }`}
+                    >
+                      {amount.toLocaleString()}원
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-4">
+                  <label className="mb-2 block text-sm font-semibold text-gray-400">
+                    직접 충전 금액
+                  </label>
+
+                  <div className="flex items-center rounded-xl border border-white/10 bg-black/20 px-4 py-3 transition focus-within:border-purple-400/60">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={selectedChargeAmount}
+                      onChange={handleChargeInputChange}
+                      className="min-w-0 flex-1 bg-transparent text-base font-bold text-white outline-none placeholder:text-gray-500"
+                      placeholder="충전 금액을 입력하세요"
+                    />
+                    <span className="ml-3 text-sm font-semibold text-gray-400">
+                      원
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-xs text-gray-500">
+                    최소 1,000원부터 최대 1,000,000원까지 충전할 수 있습니다.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -321,13 +416,13 @@ export default function MyPage() {
               <button
                 type="button"
                 onClick={handleChargeTokens}
-                disabled={paying}
+                disabled={paying || chargeAmount < MIN_CHARGE_AMOUNT}
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <WalletCards size={18} />
                 {paying
                   ? "결제 진행 중..."
-                  : `${selectedChargeAmount.toLocaleString()}토큰 충전`}
+                  : `${chargeAmount.toLocaleString()}토큰 충전`}
               </button>
             </div>
 
@@ -370,7 +465,7 @@ export default function MyPage() {
 
         <SectionDivider />
 
-        <SectionTitle title="계정 관리" description="로그아웃 또는 탈퇴할 수 있습니다." />
+        <SectionTitle title="회원 관리" description="로그아웃 또는 탈퇴할 수 있습니다." />
 
         <div className="flex flex-wrap gap-3 px-5 pb-6">
           <button
@@ -429,9 +524,11 @@ function SectionDivider() {
 
 function InfoLine({ label, value }) {
   return (
-    <div className="grid gap-2 px-5 py-4 md:grid-cols-[160px_1fr]">
-      <p className="text-sm font-semibold text-gray-400">{label}</p>
-      <p className="break-all text-sm font-semibold text-gray-100">{value}</p>
+    <div className="grid gap-2 px-5 py-5 md:grid-cols-[180px_1fr]">
+      <p className="text-base font-bold text-gray-300">{label}</p>
+      <p className="break-all text-base font-bold text-gray-50 md:text-lg">
+        {value}
+      </p>
     </div>
   );
 }
