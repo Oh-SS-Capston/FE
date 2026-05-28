@@ -606,7 +606,7 @@ export default function AnalyPage() {
     }
   };
 
-  const handleForceRebuild = async () => {
+  const executeForceRebuild = async () => {
     const repoUrlForRequest =
       location.state?.repoUrl ||
       run?.repoUrl ||
@@ -648,10 +648,20 @@ export default function AnalyPage() {
         }
       );
     } catch (e) {
+      if (e?.code === "TOKEN402_1") {
+        setInsufficientTokenOpen(true);
+        setLlmError(null);
+        return;
+      }
+
       setLlmError(e?.message ?? "재생성 요청에 실패했습니다.");
     } finally {
       setRebuildLoading(false);
     }
+  };
+
+  const handleForceRebuild = () => {
+    setReanalysisConfirmOpen(true);
   };
 
   const toggleFolder = async (path) => {
@@ -813,6 +823,30 @@ export default function AnalyPage() {
           cachedAnalyzedAt={run?.updatedAt ?? run?.createdAt ?? progress?.updatedAt ?? progress?.createdAt ?? null}
         />
       </div>
+      <ReanalysisConfirmModal
+        open={reanalysisConfirmOpen}
+        loading={rebuildLoading}
+        onClose={() => {
+          if (!rebuildLoading) {
+            setReanalysisConfirmOpen(false);
+          }
+        }}
+        onConfirm={async () => {
+          await executeForceRebuild();
+          setReanalysisConfirmOpen(false);
+        }}
+      />
+      <InsufficientTokenModal
+        open={insufficientTokenOpen}
+        requiredTokens={TOKEN_COST.REANALYSIS}
+        title="재분석에 필요한 토큰이 부족합니다."
+        description="재분석 요청에는 500토큰이 필요합니다. 토큰을 충전한 뒤 다시 요청해주세요."
+        onClose={() => setInsufficientTokenOpen(false)}
+        onCharge={() => {
+          setInsufficientTokenOpen(false);
+          navigate("/mypage");
+        }}
+      />
     </div>
   );
 }

@@ -6,6 +6,8 @@ import SearchBar from "./components/SearchBar";
 import SearchHistory from "./components/SearchHistory";
 import { useAuth } from "../../features/auth/model/AuthContext";
 import { createRepoRun, getRecentRuns } from "../../features/run/api/runApi";
+import InsufficientTokenModal from "../../features/token/components/InsufficientTokenModal";
+import { TOKEN_COST } from "../../features/token/constants/tokenPolicy";
 
 const clamp01 = (value) => Math.min(1, Math.max(0, value));
 
@@ -190,6 +192,7 @@ export default function LandingPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
   const [analyzeError, setAnalyzeError] = useState(null);
+  const [insufficientTokenOpen, setInsufficientTokenOpen] = useState(false);
 
   const [recentRef, recentStyle] = useScrollLinkedStyle({
     direction: "left",
@@ -314,6 +317,12 @@ export default function LandingPage() {
       if (error.status === 401) {
         setAnalyzeError("로그인 후 레포지토리 분석을 요청할 수 있습니다.");
         setHistory([]);
+        return;
+      }
+
+      if (error.code === "TOKEN402_1") {
+        setInsufficientTokenOpen(true);
+        setAnalyzeError(null);
         return;
       }
 
@@ -488,6 +497,17 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
+      <InsufficientTokenModal
+        open={insufficientTokenOpen}
+        requiredTokens={TOKEN_COST.ANALYSIS}
+        title="분석에 필요한 토큰이 부족합니다."
+        description="일반 분석 요청에는 2,000토큰이 필요합니다. 토큰을 충전한 뒤 다시 요청해주세요."
+        onClose={() => setInsufficientTokenOpen(false)}
+        onCharge={() => {
+          setInsufficientTokenOpen(false);
+          navigate("/mypage");
+        }}
+      />
     </div>
   );
 }
