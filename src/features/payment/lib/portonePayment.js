@@ -12,13 +12,13 @@ function toPortOneCurrency(currency) {
   return `CURRENCY_${currency}`;
 }
 
-export async function requestMembershipPayment(checkout) {
+export async function requestTokenChargePayment(checkout) {
   const response = await PortOne.requestPayment({
     storeId: checkout.storeId,
     channelKey: checkout.channelKey,
     paymentId: checkout.paymentId,
     orderName: checkout.orderName,
-    totalAmount: checkout.amount,
+    totalAmount: checkout.chargeAmount,
     currency: toPortOneCurrency(checkout.currency),
     payMethod: "CARD",
     customer: {

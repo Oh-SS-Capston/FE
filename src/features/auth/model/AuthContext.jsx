@@ -14,25 +14,12 @@ import {
   redirectToGoogleSignup,
   updateNickname as updateNicknameRequest,
 } from "../api/authApi";
-import { getMyMembership } from "../../membership/api/membershipApi";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [membership, setMembership] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-
-  const refreshMembership = useCallback(async () => {
-    try {
-      const nextMembership = await getMyMembership();
-      setMembership(nextMembership);
-      return nextMembership;
-    } catch {
-      setMembership(null);
-      return null;
-    }
-  }, []);
 
   const refreshMe = useCallback(async () => {
     try {
@@ -41,17 +28,14 @@ export function AuthProvider({ children }) {
       const currentUser = await getCurrentUser();
       setUser(currentUser);
 
-      await refreshMembership();
-
       return currentUser;
     } catch {
       setUser(null);
-      setMembership(null);
       return null;
     } finally {
       setAuthLoading(false);
     }
-  }, [refreshMembership]);
+  }, []);
 
   useEffect(() => {
     refreshMe();
@@ -70,7 +54,6 @@ export function AuthProvider({ children }) {
       await logoutRequest();
     } finally {
       setUser(null);
-      setMembership(null);
       window.location.replace("/");
     }
   }, []);
@@ -84,14 +67,12 @@ export function AuthProvider({ children }) {
   const deleteAccount = useCallback(async () => {
     await deleteAccountRequest();
     setUser(null);
-    setMembership(null);
     window.location.replace("/");
   }, []);
 
   const value = useMemo(
     () => ({
       user,
-      membership,
       authLoading,
       isAuthenticated: Boolean(user),
 
@@ -103,11 +84,9 @@ export function AuthProvider({ children }) {
       deleteAccount,
 
       refreshMe,
-      refreshMembership,
     }),
     [
       user,
-      membership,
       authLoading,
       loginWithGoogle,
       signupWithGoogle,
@@ -115,7 +94,6 @@ export function AuthProvider({ children }) {
       updateNickname,
       deleteAccount,
       refreshMe,
-      refreshMembership,
     ]
   );
 

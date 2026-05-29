@@ -9,6 +9,10 @@ import AnalyzeProgressPanel from "./components/AnalyzeProgressPanel";
 import LlmResultSection from "./components/LlmResultSection";
 import PackageClassDocsSection from "./components/PackageClassDocsSection";
 
+import InsufficientTokenModal from "../../features/token/components/InsufficientTokenModal";
+import ReanalysisConfirmModal from "../../features/token/components/ReanalysisConfirmModal";
+import { TOKEN_COST } from "../../features/token/constants/tokenPolicy";
+
 import {
   createRepoRun,
   getArtifactJson,
@@ -281,6 +285,55 @@ function unwrapApiResponse(response) {
   return response?.result ?? response;
 }
 
+function mapGithubContentItem(item) {
+  return {
+    name: item.name,
+    path: item.path,
+    type: item.type,
+    children: item.type === "dir" ? [] : undefined,
+    loaded: false,
+  };
+}
+
+function updateTreeNodeChildren(nodes, targetPath, children) {
+  return nodes.map((node) => {
+    if (node.path === targetPath) {
+      return {
+        ...node,
+        children,
+        loaded: true,
+      };
+    }
+
+    if (Array.isArray(node.children) && node.children.length > 0) {
+      return {
+        ...node,
+        children: updateTreeNodeChildren(node.children, targetPath, children),
+      };
+    }
+
+    return node;
+  });
+}
+
+function findTreeNode(nodes, targetPath) {
+  for (const node of nodes) {
+    if (node.path === targetPath) {
+      return node;
+    }
+
+    if (Array.isArray(node.children) && node.children.length > 0) {
+      const found = findTreeNode(node.children, targetPath);
+
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
+}
+
 export default function AnalyPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -315,6 +368,9 @@ export default function AnalyPage() {
   const [llmLoading, setLlmLoading] = useState(false);
   const [llmError, setLlmError] = useState(null);
   const [rebuildLoading, setRebuildLoading] = useState(false);
+
+  const [reanalysisConfirmOpen, setReanalysisConfirmOpen] = useState(false);
+  const [insufficientTokenOpen, setInsufficientTokenOpen] = useState(false);
 
   useEffect(() => {
     if (!repo) return;
@@ -356,14 +412,7 @@ export default function AnalyPage() {
 
         const items = await res.json();
 
-        setTree(
-          items.map((it) => ({
-            name: it.name,
-            path: it.path,
-            type: it.type,
-            children: [],
-          }))
-        );
+        setTree(items.map(mapGithubContentItem));
       } catch (e) {
         setTreeError(e?.message ?? String(e));
       } finally {
@@ -599,7 +648,7 @@ export default function AnalyPage() {
     }
   };
 
-  const handleForceRebuild = async () => {
+  const executeForceRebuild = async () => {
     const repoUrlForRequest =
       location.state?.repoUrl ||
       run?.repoUrl ||
@@ -641,51 +690,66 @@ export default function AnalyPage() {
         }
       );
     } catch (e) {
+      if (e?.code === "TOKEN402_1") {
+        setInsufficientTokenOpen(true);
+        setLlmError(null);
+        return;
+      }
+
       setLlmError(e?.message ?? "재생성 요청에 실패했습니다.");
     } finally {
       setRebuildLoading(false);
     }
   };
 
-  const toggleFolder = async (path) => {
-    if (!repo) return;
-
-    const [owner, name] = repo.split("/");
-    const isOpen = !!expanded[path];
-
-    setExpanded((prev) => ({ ...prev, [path]: !isOpen }));
-
-    if (isOpen) return;
-
-    try {
-      const res = await fetch(
-        `https://api.github.com/repos/${owner}/${name}/contents/${path}`
-      );
-
-      if (!res.ok) {
-        throw new Error(`GitHub contents error: ${res.status}`);
-      }
-
-      const children = await res.json();
-
-      setTree((prev) =>
-        prev.map((node) => {
-          if (node.path !== path) return node;
-
-          return {
-            ...node,
-            children: children.map((c) => ({
-              name: c.name,
-              path: c.path,
-              type: c.type,
-            })),
-          };
-        })
-      );
-    } catch {
-      // 디렉터리 펼치기 실패는 전체 분석 실패로 처리하지 않습니다.
-    }
+  const handleForceRebuild = () => {
+    setReanalysisConfirmOpen(true);
   };
+
+const toggleFolder = async (path) => {
+  if (!repo) return;
+
+  const [owner, name] = repo.split("/");
+  const isOpen = !!expanded[path];
+
+  setExpanded((prev) => ({
+    ...prev,
+    [path]: !isOpen,
+  }));
+
+  if (isOpen) {
+    return;
+  }
+
+  const targetNode = findTreeNode(tree, path);
+
+  if (targetNode?.loaded) {
+    return;
+  }
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${name}/contents/${path}`
+    );
+
+    if (!res.ok) {
+      throw new Error(`GitHub contents error: ${res.status}`);
+    }
+
+    const children = await res.json();
+    const mappedChildren = Array.isArray(children)
+      ? children.map(mapGithubContentItem)
+      : [];
+
+    setTree((prev) => updateTreeNodeChildren(prev, path, mappedChildren));
+  } catch {
+    /*
+     * 디렉터리 펼치기 실패는 전체 분석 실패로 처리하지 않습니다.
+     * GitHub contents API rate limit이나 네트워크 오류가 있어도
+     * 분석 결과 페이지 전체가 깨지지 않게 합니다.
+     */
+  }
+};
 
   if (!repo) {
     return (
@@ -806,6 +870,30 @@ export default function AnalyPage() {
           cachedAnalyzedAt={run?.updatedAt ?? run?.createdAt ?? progress?.updatedAt ?? progress?.createdAt ?? null}
         />
       </div>
+      <ReanalysisConfirmModal
+        open={reanalysisConfirmOpen}
+        loading={rebuildLoading}
+        onClose={() => {
+          if (!rebuildLoading) {
+            setReanalysisConfirmOpen(false);
+          }
+        }}
+        onConfirm={async () => {
+          await executeForceRebuild();
+          setReanalysisConfirmOpen(false);
+        }}
+      />
+      <InsufficientTokenModal
+        open={insufficientTokenOpen}
+        requiredTokens={TOKEN_COST.REANALYSIS}
+        title="재분석에 필요한 토큰이 부족합니다."
+        description="재분석 요청에는 500토큰이 필요합니다. 토큰을 충전한 뒤 다시 요청해주세요."
+        onClose={() => setInsufficientTokenOpen(false)}
+        onCharge={() => {
+          setInsufficientTokenOpen(false);
+          navigate("/mypage");
+        }}
+      />
     </div>
   );
 }

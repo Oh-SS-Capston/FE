@@ -1,0 +1,4 @@
+export const TOKEN_COST = {
+  ANALYSIS: 2000,
+  REANALYSIS: 500,
+};
