@@ -465,7 +465,7 @@ export default function MyPage() {
 
         <SectionDivider />
 
-        <SectionTitle title="회원 관리" description="로그아웃 또는 탈퇴할 수 있습니다." />
+        <SectionTitle title="계정 관리" description="로그아웃 또는 탈퇴할 수 있습니다." />
 
         <div className="flex flex-wrap gap-3 px-5 pb-6">
           <button
