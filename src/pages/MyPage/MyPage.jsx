@@ -228,10 +228,9 @@ export default function MyPage() {
       setPaymentSuccess(true);
       setPaymentMessage(
         verified?.message ||
-          `${
-            verified?.chargedTokens?.toLocaleString?.() ??
-            requestAmount.toLocaleString()
-          }토큰 충전이 완료되었습니다.`
+        `${verified?.chargedTokens?.toLocaleString?.() ??
+        requestAmount.toLocaleString()
+        }토큰 충전이 완료되었습니다.`
       );
     } catch (error) {
       setPaymentSuccess(false);
@@ -256,6 +255,15 @@ export default function MyPage() {
   return (
     <main className="mx-auto min-h-[80vh] max-w-5xl px-5 py-10">
       <header className="mb-10">
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="mb-6 flex w-fit items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+        >
+          <ArrowLeft size={16} />
+          Home
+        </button>
+
         <p className="text-sm font-semibold text-purple-300">My Page</p>
         <h1 className="mt-2 text-3xl font-black text-white">마이페이지</h1>
         <p className="mt-3 text-sm leading-6 text-gray-400">
@@ -311,13 +319,12 @@ export default function MyPage() {
 
               {nicknameMessage && (
                 <p
-                  className={`mt-3 text-sm ${
-                    nicknameAvailable === true
+                  className={`mt-3 text-sm ${nicknameAvailable === true
                       ? "text-emerald-300"
                       : nicknameAvailable === false
                         ? "text-red-300"
                         : "text-gray-400"
-                  }`}
+                    }`}
                 >
                   {nicknameMessage}
                 </p>
@@ -371,11 +378,10 @@ export default function MyPage() {
                         setPaymentMessage("");
                         setPaymentSuccess(null);
                       }}
-                      className={`rounded-xl border px-3 py-3 text-sm font-bold transition ${
-                        parseChargeAmount(selectedChargeAmount) === amount
+                      className={`rounded-xl border px-3 py-3 text-sm font-bold transition ${parseChargeAmount(selectedChargeAmount) === amount
                           ? "border-purple-300 bg-purple-400/20 text-white"
                           : "border-white/10 bg-white/[0.03] text-gray-300 hover:bg-white/10"
-                      }`}
+                        }`}
                     >
                       {amount.toLocaleString()}원
                     </button>
@@ -428,13 +434,12 @@ export default function MyPage() {
 
             {paymentMessage && (
               <p
-                className={`mt-4 text-sm ${
-                  paymentSuccess === true
+                className={`mt-4 text-sm ${paymentSuccess === true
                     ? "text-emerald-300"
                     : paymentSuccess === false
                       ? "text-red-300"
                       : "text-gray-300"
-                }`}
+                  }`}
               >
                 {paymentMessage}
               </p>
@@ -549,9 +554,8 @@ function TokenLedgerRow({ ledger }) {
 
       <div className="shrink-0 text-right">
         <p
-          className={`text-sm font-black ${
-            positive ? "text-emerald-300" : "text-red-300"
-          }`}
+          className={`text-sm font-black ${positive ? "text-emerald-300" : "text-red-300"
+            }`}
         >
           {positive ? "+" : ""}
           {ledger.amount.toLocaleString()} T
