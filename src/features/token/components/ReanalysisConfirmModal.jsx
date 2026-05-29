@@ -45,7 +45,7 @@ export default function ReanalysisConfirmModal({
           차감됩니다.
         </p>
 
-        <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+        <div className="mt-5 rounded-2xl bg-white/[0.04] p-4">
           <p className="text-sm font-semibold text-gray-400">차감 토큰</p>
           <p className="mt-1 text-2xl font-black text-white">
             {TOKEN_COST.REANALYSIS.toLocaleString()} T

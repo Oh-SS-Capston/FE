@@ -8,6 +8,8 @@ import { useAuth } from "../../features/auth/model/AuthContext";
 import { createRepoRun, getRecentRuns } from "../../features/run/api/runApi";
 import InsufficientTokenModal from "../../features/token/components/InsufficientTokenModal";
 import { TOKEN_COST } from "../../features/token/constants/tokenPolicy";
+import AnalysisRequestConfirmModal from "../../features/token/components/AnalysisRequestConfirmModal";
+import { getMyTokenBalance } from "../../features/token/api/tokenApi";
 
 const clamp01 = (value) => Math.min(1, Math.max(0, value));
 
@@ -183,6 +185,27 @@ function FeaturedPlanetCard({
   );
 }
 
+function extractRepoLabel(repoUrl) {
+  if (!repoUrl) {
+    return "";
+  }
+
+  const trimmed = repoUrl.trim();
+
+  try {
+    const url = new URL(trimmed);
+    const parts = url.pathname.split("/").filter(Boolean);
+
+    if (parts.length >= 2) {
+      return `${parts[0]}/${parts[1].replace(".git", "")}`;
+    }
+
+    return trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const { authLoading, isAuthenticated } = useAuth();
@@ -192,7 +215,14 @@ export default function LandingPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
   const [analyzeError, setAnalyzeError] = useState(null);
+
   const [insufficientTokenOpen, setInsufficientTokenOpen] = useState(false);
+
+  const [analysisConfirmOpen, setAnalysisConfirmOpen] = useState(false);
+  const [analysisConfirmLoading, setAnalysisConfirmLoading] = useState(false);
+  const [currentTokens, setCurrentTokens] = useState(0);
+  const [pendingRepoUrl, setPendingRepoUrl] = useState("");
+  const [pendingRepoLabel, setPendingRepoLabel] = useState("");
 
   const [recentRef, recentStyle] = useScrollLinkedStyle({
     direction: "left",
@@ -241,7 +271,7 @@ export default function LandingPage() {
   };
 
   const normalizeGithubRepo = (input) => {
-    const trimmed = input.trim();
+    const trimmed = String(input ?? "").trim();
 
     if (!trimmed) return null;
 
@@ -274,6 +304,10 @@ export default function LandingPage() {
     return null;
   };
 
+  /*
+   * 직접 URL 입력 Analyze 버튼과 Featured Planets 클릭이 모두 이 함수를 탑니다.
+   * 여기서는 실제 분석 요청을 보내지 않고, 현재 토큰을 조회한 뒤 확인 모달만 엽니다.
+   */
   const handleAnalyze = async (raw) => {
     if (!isAuthenticated) {
       setAnalyzeError("로그인 후 레포지토리 분석을 요청할 수 있습니다.");
@@ -291,8 +325,36 @@ export default function LandingPage() {
       setAnalyzeLoading(true);
       setAnalyzeError(null);
 
+      const balance = await getMyTokenBalance();
+
+      setCurrentTokens(balance?.balance ?? 0);
+      setPendingRepoUrl(normalized.repoUrl);
+      setPendingRepoLabel(normalized.repo);
+      setAnalysisConfirmOpen(true);
+    } catch (error) {
+      if (error.status === 401) {
+        setAnalyzeError("로그인 후 레포지토리 분석을 요청할 수 있습니다.");
+        setHistory([]);
+        return;
+      }
+
+      setAnalyzeError(error.message ?? "토큰 정보를 조회하지 못했습니다.");
+    } finally {
+      setAnalyzeLoading(false);
+    }
+  };
+
+  /*
+   * 확인 모달에서 “분석 시작”을 눌렀을 때만 실제 분석 요청을 보냅니다.
+   */
+  const executeAnalyze = async () => {
+    try {
+      setAnalysisConfirmLoading(true);
+      setAnalyzeLoading(true);
+      setAnalyzeError(null);
+
       const run = await createRepoRun({
-        repoUrl: normalized.repoUrl,
+        repoUrl: pendingRepoUrl,
       });
 
       /*
@@ -301,14 +363,16 @@ export default function LandingPage() {
        */
       await loadRecentRuns();
 
+      setAnalysisConfirmOpen(false);
+
       navigate(
         `/analyze?runId=${encodeURIComponent(
           run.runId
-        )}&repo=${encodeURIComponent(normalized.repo)}`,
+        )}&repo=${encodeURIComponent(pendingRepoLabel)}`,
         {
           state: {
-            repo: normalized.repo,
-            repoUrl: normalized.repoUrl,
+            repo: pendingRepoLabel,
+            repoUrl: pendingRepoUrl,
             run,
           },
         }
@@ -321,13 +385,14 @@ export default function LandingPage() {
       }
 
       if (error.code === "TOKEN402_1") {
+        setAnalysisConfirmOpen(false);
         setInsufficientTokenOpen(true);
-        setAnalyzeError(null);
         return;
       }
 
       setAnalyzeError(error.message ?? "레포지토리 분석 요청에 실패했습니다.");
     } finally {
+      setAnalysisConfirmLoading(false);
       setAnalyzeLoading(false);
     }
   };
@@ -497,11 +562,30 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
+
+      <AnalysisRequestConfirmModal
+        open={analysisConfirmOpen}
+        repoLabel={pendingRepoLabel || extractRepoLabel(pendingRepoUrl)}
+        currentTokens={currentTokens}
+        loading={analysisConfirmLoading}
+        onClose={() => {
+          if (!analysisConfirmLoading) {
+            setAnalysisConfirmOpen(false);
+          }
+        }}
+        onConfirm={executeAnalyze}
+        onCharge={() => {
+          setAnalysisConfirmOpen(false);
+          navigate("/mypage");
+        }}
+      />
+
       <InsufficientTokenModal
         open={insufficientTokenOpen}
         requiredTokens={TOKEN_COST.ANALYSIS}
         title="분석에 필요한 토큰이 부족합니다."
         description="일반 분석 요청에는 2,000토큰이 필요합니다. 토큰을 충전한 뒤 다시 요청해주세요."
+        currentTokens={currentTokens}
         onClose={() => setInsufficientTokenOpen(false)}
         onCharge={() => {
           setInsufficientTokenOpen(false);
