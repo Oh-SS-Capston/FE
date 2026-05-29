@@ -285,6 +285,55 @@ function unwrapApiResponse(response) {
   return response?.result ?? response;
 }
 
+function mapGithubContentItem(item) {
+  return {
+    name: item.name,
+    path: item.path,
+    type: item.type,
+    children: item.type === "dir" ? [] : undefined,
+    loaded: false,
+  };
+}
+
+function updateTreeNodeChildren(nodes, targetPath, children) {
+  return nodes.map((node) => {
+    if (node.path === targetPath) {
+      return {
+        ...node,
+        children,
+        loaded: true,
+      };
+    }
+
+    if (Array.isArray(node.children) && node.children.length > 0) {
+      return {
+        ...node,
+        children: updateTreeNodeChildren(node.children, targetPath, children),
+      };
+    }
+
+    return node;
+  });
+}
+
+function findTreeNode(nodes, targetPath) {
+  for (const node of nodes) {
+    if (node.path === targetPath) {
+      return node;
+    }
+
+    if (Array.isArray(node.children) && node.children.length > 0) {
+      const found = findTreeNode(node.children, targetPath);
+
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
+}
+
 export default function AnalyPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -363,14 +412,7 @@ export default function AnalyPage() {
 
         const items = await res.json();
 
-        setTree(
-          items.map((it) => ({
-            name: it.name,
-            path: it.path,
-            type: it.type,
-            children: [],
-          }))
-        );
+        setTree(items.map(mapGithubContentItem));
       } catch (e) {
         setTreeError(e?.message ?? String(e));
       } finally {
@@ -664,45 +706,50 @@ export default function AnalyPage() {
     setReanalysisConfirmOpen(true);
   };
 
-  const toggleFolder = async (path) => {
-    if (!repo) return;
+const toggleFolder = async (path) => {
+  if (!repo) return;
 
-    const [owner, name] = repo.split("/");
-    const isOpen = !!expanded[path];
+  const [owner, name] = repo.split("/");
+  const isOpen = !!expanded[path];
 
-    setExpanded((prev) => ({ ...prev, [path]: !isOpen }));
+  setExpanded((prev) => ({
+    ...prev,
+    [path]: !isOpen,
+  }));
 
-    if (isOpen) return;
+  if (isOpen) {
+    return;
+  }
 
-    try {
-      const res = await fetch(
-        `https://api.github.com/repos/${owner}/${name}/contents/${path}`
-      );
+  const targetNode = findTreeNode(tree, path);
 
-      if (!res.ok) {
-        throw new Error(`GitHub contents error: ${res.status}`);
-      }
+  if (targetNode?.loaded) {
+    return;
+  }
 
-      const children = await res.json();
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${name}/contents/${path}`
+    );
 
-      setTree((prev) =>
-        prev.map((node) => {
-          if (node.path !== path) return node;
-
-          return {
-            ...node,
-            children: children.map((c) => ({
-              name: c.name,
-              path: c.path,
-              type: c.type,
-            })),
-          };
-        })
-      );
-    } catch {
-      // 디렉터리 펼치기 실패는 전체 분석 실패로 처리하지 않습니다.
+    if (!res.ok) {
+      throw new Error(`GitHub contents error: ${res.status}`);
     }
-  };
+
+    const children = await res.json();
+    const mappedChildren = Array.isArray(children)
+      ? children.map(mapGithubContentItem)
+      : [];
+
+    setTree((prev) => updateTreeNodeChildren(prev, path, mappedChildren));
+  } catch {
+    /*
+     * 디렉터리 펼치기 실패는 전체 분석 실패로 처리하지 않습니다.
+     * GitHub contents API rate limit이나 네트워크 오류가 있어도
+     * 분석 결과 페이지 전체가 깨지지 않게 합니다.
+     */
+  }
+};
 
   if (!repo) {
     return (
