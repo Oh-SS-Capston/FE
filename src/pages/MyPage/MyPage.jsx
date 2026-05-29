@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   Coins,
   LogOut,
+  ArrowLeft,
   RefreshCw,
   Trash2,
   WalletCards,
@@ -52,6 +54,7 @@ function formatChargeAmount(value) {
 }
 
 export default function MyPage() {
+  const navigate = useNavigate();
   const { user, updateNickname, deleteAccount, logout } = useAuth();
 
   const [nickname, setNickname] = useState("");
@@ -565,7 +568,7 @@ function TokenLedgerRow({ ledger }) {
         </p>
       </div>
     </div>
-  );
+  );g
 }
 
 function DeleteAccountModal({ deleting, onClose, onConfirm }) {
