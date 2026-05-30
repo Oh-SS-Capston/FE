@@ -814,50 +814,50 @@ export default function AnalyPage() {
     setReanalysisConfirmOpen(true);
   };
 
-const toggleFolder = async (path) => {
-  if (!repo) return;
+  const toggleFolder = async (path) => {
+    if (!repo) return;
 
-  const [owner, name] = repo.split("/");
-  const isOpen = !!expanded[path];
+    const [owner, name] = repo.split("/");
+    const isOpen = !!expanded[path];
 
-  setExpanded((prev) => ({
-    ...prev,
-    [path]: !isOpen,
-  }));
+    setExpanded((prev) => ({
+      ...prev,
+      [path]: !isOpen,
+    }));
 
-  if (isOpen) {
-    return;
-  }
-
-  const targetNode = findTreeNode(tree, path);
-
-  if (targetNode?.loaded) {
-    return;
-  }
-
-  try {
-    const res = await fetch(
-      `https://api.github.com/repos/${owner}/${name}/contents/${path}`
-    );
-
-    if (!res.ok) {
-      throw new Error(`GitHub contents error: ${res.status}`);
+    if (isOpen) {
+      return;
     }
 
-    const children = await res.json();
-    const mappedChildren = Array.isArray(children)
-      ? children.map(mapGithubContentItem)
-      : [];
+    const targetNode = findTreeNode(tree, path);
 
-    setTree((prev) => updateTreeNodeChildren(prev, path, mappedChildren));
-  } catch {
-    /*
-     * 디렉터리 펼치기 실패는 전체 분석 실패로 처리하지 않습니다.
-     * GitHub contents API rate limit이나 네트워크 오류가 있어도
-     * 분석 결과 페이지 전체가 깨지지 않게 합니다.
-     */
-  }
-};
+    if (targetNode?.loaded) {
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${owner}/${name}/contents/${path}`
+      );
+
+      if (!res.ok) {
+        throw new Error(`GitHub contents error: ${res.status}`);
+      }
+
+      const children = await res.json();
+      const mappedChildren = Array.isArray(children)
+        ? children.map(mapGithubContentItem)
+        : [];
+
+      setTree((prev) => updateTreeNodeChildren(prev, path, mappedChildren));
+    } catch {
+      /*
+       * 디렉터리 펼치기 실패는 전체 분석 실패로 처리하지 않습니다.
+       * GitHub contents API rate limit이나 네트워크 오류가 있어도
+       * 분석 결과 페이지 전체가 깨지지 않게 합니다.
+       */
+    }
+  };
 
   if (!repo) {
     return (
