@@ -334,6 +334,49 @@ function findTreeNode(nodes, targetPath) {
   return null;
 }
 
+function isLlmAnalysisCompleted(progress) {
+  if (!progress) {
+    return false;
+  }
+
+  if (progress.status !== "SUCCESS") {
+    return false;
+  }
+
+  if (progress.stage !== "DONE") {
+    return false;
+  }
+
+  const progressValue = Number(progress.progress);
+
+  if (!Number.isFinite(progressValue) || progressValue < 100) {
+    return false;
+  }
+
+  const llmStep = Array.isArray(progress.steps)
+    ? progress.steps.find((step) => step?.stage === "LLM")
+    : null;
+
+  if (llmStep?.status === "SUCCESS") {
+    return true;
+  }
+
+  const llmArtifactMap = resolveLlmArtifactMap(progress);
+  return LLM_RESULT_KEYS.every((key) => Boolean(llmArtifactMap[key]));
+}
+
+function isBrowserNotificationSupported() {
+  return typeof window !== "undefined" && "Notification" in window;
+}
+
+function getBrowserNotificationPermission() {
+  if (!isBrowserNotificationSupported()) {
+    return "unsupported";
+  }
+
+  return Notification.permission;
+}
+
 export default function AnalyPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -347,6 +390,7 @@ export default function AnalyPage() {
     classDiagram: null,
     llm: createEmptyLlmArtifactIdMap(),
   });
+  const completionNoticeRunRef = useRef(null);
 
   const [repoInfo, setRepoInfo] = useState(null);
   const [repoInfoLoading, setRepoInfoLoading] = useState(false);
@@ -368,6 +412,14 @@ export default function AnalyPage() {
   const [llmLoading, setLlmLoading] = useState(false);
   const [llmError, setLlmError] = useState(null);
   const [rebuildLoading, setRebuildLoading] = useState(false);
+  const [completionNoticeVisible, setCompletionNoticeVisible] = useState(false);
+  const [browserNoticePermission, setBrowserNoticePermission] = useState(
+    getBrowserNotificationPermission()
+  );
+
+  useEffect(() => {
+    setBrowserNoticePermission(getBrowserNotificationPermission());
+  }, []);
 
   const [reanalysisConfirmOpen, setReanalysisConfirmOpen] = useState(false);
   const [insufficientTokenOpen, setInsufficientTokenOpen] = useState(false);
@@ -421,6 +473,51 @@ export default function AnalyPage() {
     })();
   }, [repo]);
 
+  const requestBrowserNotificationPermission = async () => {
+    if (!isBrowserNotificationSupported()) {
+      return;
+    }
+
+    if (Notification.permission === "granted") {
+      setBrowserNoticePermission("granted");
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      setBrowserNoticePermission(permission);
+    } catch {
+      setBrowserNoticePermission(getBrowserNotificationPermission());
+    }
+  };
+
+  const notifyBrowserIfBackground = (nextRunId) => {
+    if (!isBrowserNotificationSupported()) {
+      return;
+    }
+
+    if (Notification.permission !== "granted") {
+      return;
+    }
+
+    if (!document.hidden) {
+      return;
+    }
+
+    const notification = new Notification("Oh!SS 분석 완료", {
+      body: "LLM 결과 생성까지 100% 완료되었습니다.",
+      icon: "/favicon.ico",
+      lang: "ko-KR",
+      tag: `ossdoc-analysis-complete-${nextRunId}`,
+      requireInteraction: true,
+    });
+
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+  };
+
   useEffect(() => {
     if (!runId) return;
 
@@ -431,6 +528,8 @@ export default function AnalyPage() {
       classDiagram: null,
       llm: createEmptyLlmArtifactIdMap(),
     };
+    completionNoticeRunRef.current = null;
+    setCompletionNoticeVisible(false);
 
     setClassDiagram(null);
     setClassDiagramError(null);
@@ -554,6 +653,15 @@ export default function AnalyPage() {
 
         setProgress(nextProgress);
         setProgressError(null);
+
+        if (
+          isLlmAnalysisCompleted(nextProgress) &&
+          completionNoticeRunRef.current !== runId
+        ) {
+          completionNoticeRunRef.current = runId;
+          setCompletionNoticeVisible(true);
+          notifyBrowserIfBackground(runId);
+        }
 
         /*
          * 동작 변경
@@ -807,14 +915,28 @@ const toggleFolder = async (path) => {
           </button>
 
           {runId && (
-            <button
-              type="button"
-              onClick={moveToGithubStats}
-              className="flex w-fit items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-sm font-bold text-cyan-100 transition hover:border-cyan-300/40 hover:bg-cyan-300/20"
-            >
-              <BarChart3 size={18} />
-              GitHub 통계 보기
-            </button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {browserNoticePermission !== "granted" &&
+                browserNoticePermission !== "unsupported" && (
+                  <button
+                    type="button"
+                    onClick={requestBrowserNotificationPermission}
+                    translate="no"
+                    className="notranslate rounded-full border border-yellow-300/30 bg-yellow-300/10 px-4 py-2 text-sm font-bold text-yellow-100 transition hover:border-yellow-300/50 hover:bg-yellow-300/20"
+                  >
+                    분석 완료 알림 허용
+                  </button>
+                )}
+
+              <button
+                type="button"
+                onClick={moveToGithubStats}
+                className="flex w-fit items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-sm font-bold text-cyan-100 transition hover:border-cyan-300/40 hover:bg-cyan-300/20"
+              >
+                <BarChart3 size={18} />
+                GitHub 통계 보기
+              </button>
+            </div>
           )}
         </div>
 
@@ -894,6 +1016,32 @@ const toggleFolder = async (path) => {
           navigate("/mypage");
         }}
       />
+
+      {completionNoticeVisible && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          translate="no"
+          className="notranslate fixed bottom-6 right-6 z-[120] w-[min(420px,calc(100vw-2rem))] rounded-2xl border border-cyan-300/30 bg-slate-950/95 p-4 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-cyan-100">분석 완료</p>
+              <p className="mt-1 text-sm text-slate-200">
+                LLM 결과 생성까지 100% 완료되었습니다.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setCompletionNoticeVisible(false)}
+              className="shrink-0 rounded-md border border-white/20 px-2 py-1 text-xs font-semibold text-slate-200 hover:bg-white/10"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
