@@ -8,6 +8,7 @@ import DirectoryStructureSection from "./components/DirectoryStructureSection";
 import AnalyzeProgressPanel from "./components/AnalyzeProgressPanel";
 import LlmResultSection from "./components/LlmResultSection";
 import PackageClassDocsSection from "./components/PackageClassDocsSection";
+import LicenseAnalysisSection from "./components/LicenseAnalysisSection";
 
 import InsufficientTokenModal from "../../features/token/components/InsufficientTokenModal";
 import ReanalysisConfirmModal from "../../features/token/components/ReanalysisConfirmModal";
@@ -101,6 +102,19 @@ const CLASS_DIAGRAM_ARTIFACT_FIELDS = [
   "classDiagramArtifactId",
   "classMapArtifactId",
   "classDiagramId",
+];
+
+const LICENSE_ANALYSIS_ARTIFACT_FIELDS = [
+  "licenseAnalysisArtifactId",
+  "licenseAnalysisId",
+  "projectLicenseArtifactId",
+  "licenseArtifactId",
+];
+
+const LICENSE_ANALYSIS_ARTIFACT_TYPE_TOKEN = [
+  "LICENSE_ANALYSIS_JSON",
+  "LICENSE_ANALYSIS",
+  "PROJECT_LICENSE",
 ];
 
 function createEmptyLlmResultMap() {
@@ -255,6 +269,30 @@ function resolveClassDiagramArtifactId(progress) {
   );
 }
 
+function resolveLicenseAnalysisArtifactId(progress) {
+  const artifacts = progress?.artifacts;
+  const artifactList = getArtifactList(artifacts, progress);
+  const artifactIds = artifacts?.artifactIds ?? progress?.artifactIds ?? null;
+
+  return (
+    firstNonEmptyString(
+      ...LICENSE_ANALYSIS_ARTIFACT_FIELDS.map((field) => artifacts?.[field]),
+      artifacts?.licenseAnalysis?.artifactId,
+      artifacts?.licenseAnalysis?.id,
+      artifacts?.license?.artifactId,
+      artifacts?.license?.id,
+      ...LICENSE_ANALYSIS_ARTIFACT_TYPE_TOKEN.map((token) => artifactIds?.[token]),
+      artifactIds?.licenseAnalysis,
+      artifactIds?.license_analysis,
+      progress?.licenseAnalysisArtifactId
+    ) ||
+    findArtifactIdFromList(
+      artifactList,
+      LICENSE_ANALYSIS_ARTIFACT_TYPE_TOKEN
+    )
+  );
+}
+
 function resolveLlmArtifactMap(progress) {
   const artifacts = progress?.artifacts;
   const llmArtifacts = artifacts?.llm ?? progress?.llmArtifacts ?? null;
@@ -388,6 +426,7 @@ export default function AnalyPage() {
 
   const loadedArtifactIdsRef = useRef({
     classDiagram: null,
+    licenseAnalysis: null,
     llm: createEmptyLlmArtifactIdMap(),
   });
   const completionNoticeRunRef = useRef(null);
@@ -407,6 +446,10 @@ export default function AnalyPage() {
   const [classDiagram, setClassDiagram] = useState(null);
   const [classDiagramLoading, setClassDiagramLoading] = useState(false);
   const [classDiagramError, setClassDiagramError] = useState(null);
+
+  const [licenseAnalysis, setLicenseAnalysis] = useState(null);
+  const [licenseAnalysisLoading, setLicenseAnalysisLoading] = useState(false);
+  const [licenseAnalysisError, setLicenseAnalysisError] = useState(null);
 
   const [llmResults, setLlmResults] = useState(EMPTY_LLM_RESULTS);
   const [llmLoading, setLlmLoading] = useState(false);
@@ -526,6 +569,7 @@ export default function AnalyPage() {
 
     loadedArtifactIdsRef.current = {
       classDiagram: null,
+      licenseAnalysis: null,
       llm: createEmptyLlmArtifactIdMap(),
     };
     completionNoticeRunRef.current = null;
@@ -533,6 +577,8 @@ export default function AnalyPage() {
 
     setClassDiagram(null);
     setClassDiagramError(null);
+    setLicenseAnalysis(null);
+    setLicenseAnalysisError(null);
     setLlmResults(createEmptyLlmResultMap());
     setLlmError(null);
 
@@ -583,6 +629,51 @@ export default function AnalyPage() {
       } finally {
         if (!cancelled) {
           setClassDiagramLoading(false);
+        }
+      }
+    };
+
+    const loadLicenseAnalysisIfReady = async (nextProgress) => {
+      const artifactId = resolveLicenseAnalysisArtifactId(nextProgress);
+
+      const licenseFailed = nextProgress?.failedSteps?.find(
+        (step) => step.stage === "LICENSE"
+      );
+
+      if (!artifactId) {
+        if (licenseFailed) {
+          setLicenseAnalysisError(licenseFailed.message);
+        }
+
+        return;
+      }
+
+      if (loadedArtifactIdsRef.current.licenseAnalysis === artifactId) {
+        return;
+      }
+
+      try {
+        loadedArtifactIdsRef.current.licenseAnalysis = artifactId;
+        setLicenseAnalysisLoading(true);
+        setLicenseAnalysisError(null);
+
+        const content = await loadArtifactContent(artifactId);
+
+        if (!cancelled) {
+          setLicenseAnalysis(content);
+        }
+      } catch (e) {
+        loadedArtifactIdsRef.current.licenseAnalysis = null;
+
+        if (!cancelled) {
+          setLicenseAnalysis(null);
+          setLicenseAnalysisError(
+            e?.message ?? "라이선스 분석 산출물을 불러오지 못했습니다."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLicenseAnalysisLoading(false);
         }
       }
     };
@@ -670,6 +761,7 @@ export default function AnalyPage() {
          */
         await Promise.allSettled([
           loadClassDiagramIfReady(nextProgress),
+          loadLicenseAnalysisIfReady(nextProgress),
           loadLlmArtifactsIfReady(nextProgress),
         ]);
 
@@ -879,6 +971,10 @@ export default function AnalyPage() {
   const classMapFailed = progress?.failedSteps?.find(
     (step) => step.stage === "CLASSMAP"
   );
+  const licenseAnalysisArtifactId = resolveLicenseAnalysisArtifactId(progress);
+  const licenseAnalysisFailed = progress?.failedSteps?.find(
+    (step) => step.stage === "LICENSE"
+  );
 
   const moveToGithubStats = () => {
     if (!runId) {
@@ -965,6 +1061,14 @@ export default function AnalyPage() {
         )}
 
         <AnalyzeProgressPanel progress={progress} />
+
+        {/* 3-1. 대표 라이선스 분석 */}
+        <LicenseAnalysisSection
+          artifactId={licenseAnalysisArtifactId}
+          analysis={licenseAnalysis}
+          loading={licenseAnalysisLoading}
+          error={licenseAnalysisError || licenseAnalysisFailed?.message}
+        />
 
         {/* 4. 클래스 다이어그램 */}
         <ClassDiagramSection

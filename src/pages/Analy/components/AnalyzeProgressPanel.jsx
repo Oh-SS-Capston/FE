@@ -8,6 +8,7 @@ import {
 
 const STAGE_LABEL = {
   SNAPSHOT: "레포지토리 스냅샷 준비",
+  LICENSE: "대표 라이선스 분석",
   BUILD: "빌드 환경 분석",
   EXTRACTION: "소스 코드와 바이트코드 분석",
   GRAPHSTORE: "코드 구조 그래프 저장",
@@ -24,6 +25,7 @@ const STAGE_LABEL = {
 
 const SUCCESS_MESSAGE = {
   SNAPSHOT: "레포지토리 스냅샷 준비가 완료됐습니다.",
+  LICENSE: "대표 라이선스 분석이 완료됐습니다.",
   BUILD: "빌드 환경 분석이 완료됐습니다.",
   EXTRACTION: "소스 코드와 바이트코드 분석이 완료됐습니다.",
   GRAPHSTORE: "코드 구조 그래프 저장이 완료됐습니다.",
@@ -40,6 +42,7 @@ const SUCCESS_MESSAGE = {
 
 const RUNNING_MESSAGE = {
   SNAPSHOT: "레포지토리 스냅샷을 준비 중입니다.",
+  LICENSE: "대표 라이선스 정보를 분석 중입니다.",
   BUILD: "빌드 환경을 분석 중입니다.",
   EXTRACTION: "소스 코드와 바이트코드를 분석 중입니다.",
   GRAPHSTORE: "코드 구조 그래프를 저장 중입니다.",
