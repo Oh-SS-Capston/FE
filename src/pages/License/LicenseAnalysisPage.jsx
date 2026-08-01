@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import LicenseActionGuide from "../../features/license/components/LicenseActionGuide";
 import LicenseAnalysisSection from "../../features/license/components/LicenseAnalysisSection";
 import LicenseEvidenceExplorer from "../../features/license/components/LicenseEvidenceExplorer";
+import LicenseReportActions from "../../features/license/components/LicenseReportActions";
 import LicenseSectionNavigator from "../../features/license/components/LicenseSectionNavigator";
 import { useLicenseAnalysisArtifact } from "../../features/license/hooks/useLicenseAnalysisArtifact";
 import { buildAnalyzePath } from "../../features/license/lib/licenseNavigation";
@@ -134,6 +135,10 @@ export default function LicenseAnalysisPage() {
           <div className="mt-6 rounded-2xl border border-red-400/20 bg-red-950/10 p-4 text-sm text-red-100">
             {progressError}
           </div>
+        )}
+
+        {analysis && !licenseLoading && !licenseError && (
+          <LicenseReportActions analysis={analysis} runId={runId} repo={repo} />
         )}
 
         <div className="mt-8">
