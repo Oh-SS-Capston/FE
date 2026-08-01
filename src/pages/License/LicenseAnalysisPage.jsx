@@ -1,5 +1,6 @@
 import { ArrowLeft, BadgeCheck, RefreshCw, ShieldCheck } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import LicenseActionGuide from "../../features/license/components/LicenseActionGuide";
 import LicenseAnalysisSection from "../../features/license/components/LicenseAnalysisSection";
 import LicenseEvidenceExplorer from "../../features/license/components/LicenseEvidenceExplorer";
 import { useLicenseAnalysisArtifact } from "../../features/license/hooks/useLicenseAnalysisArtifact";
@@ -144,9 +145,15 @@ export default function LicenseAnalysisPage() {
         </div>
 
         {analysis && !licenseLoading && !licenseError && (
-          <div className="mt-8">
-            <LicenseEvidenceExplorer analysis={analysis} />
-          </div>
+          <>
+            <div className="mt-8">
+              <LicenseActionGuide analysis={analysis} />
+            </div>
+
+            <div className="mt-8">
+              <LicenseEvidenceExplorer analysis={analysis} />
+            </div>
+          </>
         )}
       </div>
     </main>
