@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import LicenseActionGuide from "../../features/license/components/LicenseActionGuide";
 import LicenseAnalysisSection from "../../features/license/components/LicenseAnalysisSection";
 import LicenseEvidenceExplorer from "../../features/license/components/LicenseEvidenceExplorer";
+import LicenseSectionNavigator from "../../features/license/components/LicenseSectionNavigator";
 import { useLicenseAnalysisArtifact } from "../../features/license/hooks/useLicenseAnalysisArtifact";
 import { buildAnalyzePath } from "../../features/license/lib/licenseNavigation";
 import { useRunProgressPolling } from "../../features/run/hooks/useRunProgressPolling";
@@ -136,6 +137,10 @@ export default function LicenseAnalysisPage() {
         )}
 
         <div className="mt-8">
+          <LicenseSectionNavigator analysis={analysis} />
+        </div>
+
+        <div id="license-summary" className="mt-8 scroll-mt-32">
           <LicenseAnalysisSection
             artifactId={artifactId}
             analysis={analysis}
@@ -146,11 +151,11 @@ export default function LicenseAnalysisPage() {
 
         {analysis && !licenseLoading && !licenseError && (
           <>
-            <div className="mt-8">
+            <div id="license-guide" className="mt-8 scroll-mt-32">
               <LicenseActionGuide analysis={analysis} />
             </div>
 
-            <div className="mt-8">
+            <div id="license-evidence" className="mt-8 scroll-mt-32">
               <LicenseEvidenceExplorer analysis={analysis} />
             </div>
           </>
