@@ -1,4 +1,10 @@
-import { ClipboardCheck, FileSearch, Gauge, ShieldCheck } from "lucide-react";
+import {
+  ClipboardCheck,
+  FileSearch,
+  Gauge,
+  ListChecks,
+  ShieldCheck,
+} from "lucide-react";
 import { buildLicenseViewModel } from "../model/licenseAnalysisModel";
 
 const NAV_ITEMS = [
@@ -13,6 +19,12 @@ const NAV_ITEMS = [
     label: "검토 가이드",
     description: "다음 행동 체크리스트",
     icon: ClipboardCheck,
+  },
+  {
+    id: "license-checklist",
+    label: "체크리스트",
+    description: "수동 확인 상태 기록",
+    icon: ListChecks,
   },
   {
     id: "license-evidence",

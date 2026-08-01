@@ -4,6 +4,7 @@ import LicenseActionGuide from "../../features/license/components/LicenseActionG
 import LicenseAnalysisSection from "../../features/license/components/LicenseAnalysisSection";
 import LicenseEvidenceExplorer from "../../features/license/components/LicenseEvidenceExplorer";
 import LicenseReportActions from "../../features/license/components/LicenseReportActions";
+import LicenseReviewChecklist from "../../features/license/components/LicenseReviewChecklist";
 import LicenseSectionNavigator from "../../features/license/components/LicenseSectionNavigator";
 import { useLicenseAnalysisArtifact } from "../../features/license/hooks/useLicenseAnalysisArtifact";
 import { buildAnalyzePath } from "../../features/license/lib/licenseNavigation";
@@ -158,6 +159,10 @@ export default function LicenseAnalysisPage() {
           <>
             <div id="license-guide" className="mt-8 scroll-mt-32">
               <LicenseActionGuide analysis={analysis} />
+            </div>
+
+            <div id="license-checklist" className="mt-8 scroll-mt-32">
+              <LicenseReviewChecklist analysis={analysis} runId={runId} repo={repo} />
             </div>
 
             <div id="license-evidence" className="mt-8 scroll-mt-32">
