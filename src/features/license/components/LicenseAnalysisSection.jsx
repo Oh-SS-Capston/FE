@@ -99,6 +99,7 @@ export default function LicenseAnalysisSection({
   analysis,
   loading,
   error,
+  actions,
 }) {
   if (!artifactId && !analysis && !loading && !error) {
     return <LicenseEmptyState />;
@@ -142,10 +143,14 @@ export default function LicenseAnalysisSection({
             </p>
           </div>
 
-          <div
-            className={`w-fit rounded-full border px-4 py-2 text-sm font-black ${license.tone.chip}`}
-          >
-            {license.manualReviewRequired ? "검토 필요" : "자동 판단 가능"}
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              className={`w-fit rounded-full border px-4 py-2 text-sm font-black ${license.tone.chip}`}
+            >
+              {license.manualReviewRequired ? "검토 필요" : "자동 판단 가능"}
+            </div>
+
+            {actions}
           </div>
         </div>
 

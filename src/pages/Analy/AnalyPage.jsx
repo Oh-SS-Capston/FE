@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, BarChart3 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BarChart3 } from "lucide-react";
 
 import RepoInfoSection from "./components/RepoInfoSection";
 import ClassDiagramSection from "./components/ClassDiagramSection";
@@ -10,6 +10,7 @@ import LlmResultSection from "./components/LlmResultSection";
 import PackageClassDocsSection from "./components/PackageClassDocsSection";
 import LicenseAnalysisSection from "../../features/license/components/LicenseAnalysisSection";
 import { useLicenseAnalysisArtifact } from "../../features/license/hooks/useLicenseAnalysisArtifact";
+import { buildLicenseAnalysisPath } from "../../features/license/lib/licenseNavigation";
 
 import InsufficientTokenModal from "../../features/token/components/InsufficientTokenModal";
 import ReanalysisConfirmModal from "../../features/token/components/ReanalysisConfirmModal";
@@ -910,6 +911,20 @@ export default function AnalyPage() {
     });
   };
 
+  const moveToLicenseAnalysis = () => {
+    if (!runId) {
+      alert("runId가 없어 라이선스 상세 분석을 조회할 수 없습니다.");
+      return;
+    }
+
+    navigate(buildLicenseAnalysisPath({ runId, repo }), {
+      state: {
+        runId,
+        repo,
+      },
+    });
+  };
+
   return (
     <div className="relative z-10">
       <div className="w-[90vw] mx-auto px-6 py-10 space-y-8">
@@ -980,6 +995,18 @@ export default function AnalyPage() {
           analysis={licenseAnalysis}
           loading={licenseAnalysisLoading}
           error={licenseAnalysisError}
+          actions={
+            runId ? (
+              <button
+                type="button"
+                onClick={moveToLicenseAnalysis}
+                className="inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 text-sm font-black text-cyan-100 transition hover:border-cyan-300/45 hover:bg-cyan-300/20"
+              >
+                상세 보기
+                <ArrowUpRight size={16} />
+              </button>
+            ) : null
+          }
         />
 
         {/* 4. 클래스 다이어그램 */}

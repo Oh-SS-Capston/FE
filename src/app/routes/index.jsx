@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "../layout/AppShell";
 import LandingPage from "../../pages/Landing/LandingPage";
 import AnalyPage from "../../pages/Analy/AnalyPage";
+import LicenseAnalysisPage from "../../pages/License/LicenseAnalysisPage";
 import GithubStatsPage from "../../pages/GithubStats/GithubStatsPage";
 import LoginSuccessPage from "../../pages/Auth/LoginSuccessPage";
 import LoginFailurePage from "../../pages/Auth/LoginFailurePage";
@@ -42,6 +43,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AnalyPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/license-analysis",
+        element: (
+          <ProtectedRoute>
+            <LicenseAnalysisPage />
           </ProtectedRoute>
         ),
       },
