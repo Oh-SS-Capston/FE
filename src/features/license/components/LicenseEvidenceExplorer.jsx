@@ -12,39 +12,20 @@ import {
   pickFirst,
   safeArray,
 } from "../model/licenseAnalysisModel";
+import {
+  buildLicenseEvidenceSearchText,
+  getLicenseEvidenceSource,
+  normalizeEvidenceText,
+} from "../model/licenseEvidenceModel";
 import LicenseEvidenceCard from "./LicenseEvidenceCard";
 
 const ALL_SOURCES = "ALL";
-
-function normalizeText(value) {
-  return String(value ?? "").toLowerCase();
-}
-
-function evidenceSource(evidence) {
-  return pickFirst(
-    evidence,
-    ["source", "sourceType", "source_type"],
-    "UNKNOWN_SOURCE"
-  );
-}
-
-function evidenceSearchText(evidence) {
-  return [
-    pickFirst(evidence, ["evidenceId", "id"], ""),
-    pickFirst(evidence, ["path", "filePath", "file_path"], ""),
-    pickFirst(evidence, ["source", "sourceType", "source_type"], ""),
-    pickFirst(evidence, ["evidenceType", "evidence_type", "type"], ""),
-    pickFirst(evidence, ["snippet", "contextSnippet", "context_snippet"], ""),
-  ]
-    .map(normalizeText)
-    .join(" ");
-}
 
 function buildSourceOptions(evidences) {
   const counts = new Map();
 
   evidences.forEach((evidence) => {
-    const source = evidenceSource(evidence);
+    const source = getLicenseEvidenceSource(evidence);
     counts.set(source, (counts.get(source) ?? 0) + 1);
   });
 
@@ -121,11 +102,12 @@ export default function LicenseEvidenceExplorer({ analysis }) {
 
   const sourceOptions = useMemo(() => buildSourceOptions(evidences), [evidences]);
   const filteredEvidences = useMemo(() => {
-    const normalizedQuery = normalizeText(query).trim();
+    const normalizedQuery = normalizeEvidenceText(query).trim();
 
-    return evidences.filter((evidence) => {
+    return evidences.filter((evidence, index) => {
       const sourceMatched =
-        selectedSource === ALL_SOURCES || evidenceSource(evidence) === selectedSource;
+        selectedSource === ALL_SOURCES ||
+        getLicenseEvidenceSource(evidence) === selectedSource;
 
       if (!sourceMatched) {
         return false;
@@ -135,7 +117,9 @@ export default function LicenseEvidenceExplorer({ analysis }) {
         return true;
       }
 
-      return evidenceSearchText(evidence).includes(normalizedQuery);
+      return buildLicenseEvidenceSearchText(evidence, index).includes(
+        normalizedQuery
+      );
     });
   }, [evidences, query, selectedSource]);
 
