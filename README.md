@@ -20,6 +20,12 @@ UI에서 Public API, 다이어그램, 시나리오 등을 탐색할 수 있는 �
 
 ---
 
+## 기능 검증 문서
+
+- [라이선스 분석 기능 검증 가이드](docs/license-analysis-verification.md)
+
+---
+
 ## 스택
 
 ### Frontend
