@@ -20,13 +20,66 @@ import LicenseEvidenceCard from "./LicenseEvidenceCard";
 import LicenseMetricCard from "./LicenseMetricCard";
 import LicenseReviewNotice from "./LicenseReviewNotice";
 
-function LicenseEmptyState() {
+function emptyStateToneClass(tone) {
+  if (tone === "danger") {
+    return {
+      border: "border-red-400/25",
+      bg: "bg-red-950/10",
+      icon: "border-red-300/25 bg-red-300/10 text-red-100",
+      badge: "border-red-300/25 bg-red-300/10 text-red-100",
+    };
+  }
+
+  if (tone === "warning") {
+    return {
+      border: "border-amber-300/25",
+      bg: "bg-amber-300/[0.055]",
+      icon: "border-amber-300/25 bg-amber-300/10 text-amber-100",
+      badge: "border-amber-300/25 bg-amber-300/10 text-amber-100",
+    };
+  }
+
+  return {
+    border: "border-cyan-300/20",
+    bg: "bg-cyan-300/[0.045]",
+    icon: "border-cyan-300/25 bg-cyan-300/10 text-cyan-100",
+    badge: "border-cyan-300/25 bg-cyan-300/10 text-cyan-100",
+  };
+}
+
+function LicenseEmptyState({ state }) {
+  const resolvedState = state ?? {
+    tone: "info",
+    title: "대표 라이선스 분석 산출물을 기다리는 중입니다.",
+    description: "분석이 완료되면 대표 라이선스 결과가 표시됩니다.",
+    badge: "대기 중",
+  };
+  const tone = emptyStateToneClass(resolvedState.tone);
+  const Icon = resolvedState.tone === "danger" ? AlertTriangle : Info;
+
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080817]/70 backdrop-blur-xl">
-      <div className="p-6">
-        <div className="flex items-center gap-3 text-gray-400">
-          <Info size={18} />
-          <span>대표 라이선스 분석 산출물을 기다리는 중입니다.</span>
+    <section
+      className={`overflow-hidden rounded-[1.75rem] border ${tone.border} ${tone.bg} backdrop-blur-xl`}
+    >
+      <div className="p-6 lg:p-7">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="flex items-start gap-3">
+            <div className={`rounded-2xl border p-3 ${tone.icon}`}>
+              <Icon size={20} />
+            </div>
+            <div>
+              <h3 className="font-black text-white">{resolvedState.title}</h3>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
+                {resolvedState.description}
+              </p>
+            </div>
+          </div>
+
+          <span
+            className={`w-fit rounded-full border px-3 py-1 text-xs font-black ${tone.badge}`}
+          >
+            {resolvedState.badge}
+          </span>
         </div>
       </div>
     </section>
@@ -100,9 +153,10 @@ export default function LicenseAnalysisSection({
   loading,
   error,
   actions,
+  emptyState,
 }) {
   if (!artifactId && !analysis && !loading && !error) {
-    return <LicenseEmptyState />;
+    return <LicenseEmptyState state={emptyState} />;
   }
 
   if (loading) {

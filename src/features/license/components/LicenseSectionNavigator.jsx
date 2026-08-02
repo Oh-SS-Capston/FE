@@ -69,6 +69,9 @@ function NavItem({ item }) {
 
 export default function LicenseSectionNavigator({ analysis }) {
   const license = analysis ? buildLicenseViewModel(analysis) : null;
+  const visibleItems = license
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter((item) => item.id === "license-summary");
   const reviewTone = license?.manualReviewRequired
     ? "text-amber-100"
     : "text-emerald-100";
@@ -112,7 +115,7 @@ export default function LicenseSectionNavigator({ analysis }) {
       </div>
 
       <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-        {NAV_ITEMS.map((item) => (
+        {visibleItems.map((item) => (
           <NavItem key={item.id} item={item} />
         ))}
       </div>

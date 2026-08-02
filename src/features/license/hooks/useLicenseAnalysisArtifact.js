@@ -57,6 +57,15 @@ export function useLicenseAnalysisArtifact(progress, runId) {
           return;
         }
 
+        if (content == null) {
+          setState({
+            analysis: null,
+            loading: false,
+            error: "라이선스 분석 산출물 내용이 비어 있습니다.",
+          });
+          return;
+        }
+
         setState({
           analysis: content,
           loading: false,

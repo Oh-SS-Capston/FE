@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { ArrowLeft, BadgeCheck, RefreshCw, ShieldCheck } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import LicenseActionGuide from "../../features/license/components/LicenseActionGuide";
@@ -8,6 +9,10 @@ import LicenseReviewChecklist from "../../features/license/components/LicenseRev
 import LicenseSectionNavigator from "../../features/license/components/LicenseSectionNavigator";
 import { useLicenseAnalysisArtifact } from "../../features/license/hooks/useLicenseAnalysisArtifact";
 import { buildAnalyzePath } from "../../features/license/lib/licenseNavigation";
+import {
+  buildLicenseEmptyState,
+  hasRenderableLicenseAnalysis,
+} from "../../features/license/model/licenseDetailStateModel";
 import { useRunProgressPolling } from "../../features/run/hooks/useRunProgressPolling";
 
 function StatusPill({ progress, loading }) {
@@ -56,6 +61,21 @@ export default function LicenseAnalysisPage() {
     loading: licenseLoading,
     error: licenseError,
   } = useLicenseAnalysisArtifact(progress, runId);
+  const licenseReady = hasRenderableLicenseAnalysis(
+    analysis,
+    licenseLoading,
+    licenseError
+  );
+  const licenseEmptyState = useMemo(
+    () =>
+      buildLicenseEmptyState({
+        progress,
+        progressLoading,
+        progressError,
+        artifactId,
+      }),
+    [artifactId, progress, progressError, progressLoading]
+  );
 
   const goBackToAnalyze = () => {
     navigate(buildAnalyzePath({ runId, repo }), {
@@ -132,13 +152,13 @@ export default function LicenseAnalysisPage() {
           </div>
         </div>
 
-        {progressError && (
-          <div className="mt-6 rounded-2xl border border-red-400/20 bg-red-950/10 p-4 text-sm text-red-100">
+        {progressError && !licenseReady && (
+          <div className="mt-6 rounded-2xl border border-amber-300/25 bg-amber-300/[0.07] p-4 text-sm leading-6 text-amber-100">
             {progressError}
           </div>
         )}
 
-        {analysis && !licenseLoading && !licenseError && (
+        {licenseReady && (
           <LicenseReportActions analysis={analysis} runId={runId} repo={repo} />
         )}
 
@@ -152,10 +172,11 @@ export default function LicenseAnalysisPage() {
             analysis={analysis}
             loading={licenseLoading || progressLoading}
             error={licenseError}
+            emptyState={licenseEmptyState}
           />
         </div>
 
-        {analysis && !licenseLoading && !licenseError && (
+        {licenseReady && (
           <>
             <div id="license-guide" className="mt-8 scroll-mt-32">
               <LicenseActionGuide analysis={analysis} />
