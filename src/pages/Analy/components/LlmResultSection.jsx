@@ -1664,7 +1664,6 @@ function SubsystemPanel({ data }) {
 }
 
 function ApiDocsPanel({ data }) {
-  const apiEntries = safeArray(pickFirst(data, ["apiEntries", "api_entries"]));
   const coreMethods = safeArray(pickFirst(data, ["coreMethods", "core_methods"]));
   const methodUsageOrder = safeArray(
     pickFirst(data, ["methodUsageOrder", "method_usage_order"])
@@ -1673,7 +1672,6 @@ function ApiDocsPanel({ data }) {
   const qualityGate = isRecord(apiQualityGate) ? apiQualityGate : null;
 
   if (
-    apiEntries.length === 0 &&
     coreMethods.length === 0 &&
     methodUsageOrder.length === 0 &&
     !qualityGate
@@ -1744,93 +1742,6 @@ function ApiDocsPanel({ data }) {
             ))}
           </ol>
         </article>
-      )}
-
-      {apiEntries.length > 0 && (
-        <div className="space-y-3">
-          {apiEntries.map((entry, idx) => (
-            <GuideDisclosureCard
-              key={`${entry?.fqn || "entry"}-${idx}`}
-              title={entry?.fqn || "-"}
-              preview={
-                entry?.guideNarrative ||
-                entry?.summaryFull ||
-                entry?.summaryPreview ||
-                entry?.summary
-              }
-              raw={entry}
-              badges={
-                <>
-                  {entry?.subsystem && (
-                    <span className="rounded-full border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 text-[11px] text-purple-200">
-                      {entry.subsystem}
-                    </span>
-                  )}
-                  {safeArray(entry?.relatedScenarios).map((scenario) => (
-                    <span
-                      key={scenario}
-                      className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[11px] text-cyan-200"
-                    >
-                      {scenario}
-                    </span>
-                  ))}
-                </>
-              }
-            >
-              {(entry?.guideNarrative ||
-                entry?.summary ||
-                entry?.summaryPreview ||
-                entry?.summaryFull) && (
-                <ExpandableText
-                  preview={
-                    entry?.guideNarrative ||
-                    entry?.summaryFull ||
-                    entry?.summaryPreview ||
-                    entry?.summary
-                  }
-                  full={
-                    entry?.guideNarrative ||
-                    entry?.summaryFull ||
-                    entry?.summary ||
-                    entry?.summaryPreview
-                  }
-                  truncated={entry?.summaryTruncated}
-                  className="mt-2 text-sm leading-6 text-gray-300"
-                />
-              )}
-
-              {hasGuideSlots(entry?.guideSlots) && (
-                <div className="mt-3 grid gap-2 md:grid-cols-2">
-                  <GuideSlotItem
-                    label="호출 전 체크"
-                    text={entry?.guideSlots?.beforeCall}
-                    evidence={entry?.slotEvidence?.beforeCall}
-                  />
-                  <GuideSlotItem
-                    label="호출 실행"
-                    text={entry?.guideSlots?.doCall}
-                    evidence={entry?.slotEvidence?.doCall}
-                  />
-                  <GuideSlotItem
-                    label="성공 확인"
-                    text={entry?.guideSlots?.successCheck}
-                    evidence={entry?.slotEvidence?.successCheck}
-                  />
-                  <GuideSlotItem
-                    label="실패 증상"
-                    text={entry?.guideSlots?.failureSymptom}
-                    evidence={entry?.slotEvidence?.failureSymptom}
-                  />
-                  <GuideSlotItem
-                    label="다음 조치"
-                    text={entry?.guideSlots?.nextAction}
-                    evidence={entry?.slotEvidence?.nextAction}
-                  />
-                </div>
-              )}
-            </GuideDisclosureCard>
-          ))}
-        </div>
       )}
 
       {coreMethods.length > 0 && (
