@@ -34,83 +34,127 @@ UI에서 Public API, 다이어그램, 시나리오 등을 탐색할 수 있는 �
 - lucide-react (icons)
 - Tailwind CSS (전역 스타일/컴포넌트 스타일링)
 
-## 디렉토리 구조 (+향후 추가 예정 포함)
+## 디렉토리 구조
 ```txt
+docs/
+  license-analysis-verification.md # 라이선스 분석 기능 검증 가이드
+public/
+  favicon-ossdoc.svg                # 서비스 파비콘
+  vite.svg                          # Vite 기본 로고 이미지
 src/
   app/
-    providers/
-      AppProviders.jsx          # (기존) RouterProvider + (추후) QueryClientProvider 조립
-    routes/
-      index.jsx                 # (기존) 라우트 정의
-    layout/
-      AppShell.jsx              # (기존) 헤더/컨텐츠 레이아웃 (Landing/Analy 공통)
     config/
-      env.js                    # (추가) VITE_API_BASE_URL 등 환경값 읽기
-
-  pages/
-    Landing/
-      LandingPage.jsx           # (기존) 검색 + 검색 히스토리(메인 화면)
-      components/
-        SearchBar.jsx           # (기존) 입력창 + 버튼
-        SearchHistory.jsx       # (기존) 히스토리 목록
-        HistoryItem.jsx         # (추가) 히스토리 단일 row 컴포넌트
-    Analy/
-      AnalyPage.jsx             # (기존) 분석 페이지(현재는 repo 정보/디렉토리/다이어그램)
-      components/
-        RunSummaryCard.jsx      # (추가/대체 가능) repo 요약 카드(현재 RepoInfoSection 역할을 이 이름으로)
-        RunStatusBadge.jsx      # (추가) QUEUED/RUNNING/SUCCESS/FAILED 배지
-        ArtifactPanel.jsx       # (추가) job_manifest/build_manifest 링크 모음(백엔드 연동용)
-        DiagramViewer.jsx       # (추가/대체 가능) svg/plantuml 렌더 (현재 ClassDiagramSection 역할을 이 이름으로)
-        SymbolSearchInline.jsx  # (추가) 분석 페이지 내 심볼 검색(간단 UI)
-
+      env.js                        # API 기본 URL 환경 변수 설정
+    layout/
+      AppShell.jsx                  # 공통 헤더와 배경을 포함한 앱 레이아웃
+    providers/
+      AppProviders.jsx              # 인증과 라우터 전역 Provider 구성
+    routes/
+      index.jsx                     # 페이지 라우트와 인증 보호 라우트 정의
+  assets/
+    react.svg                       # React 로고 이미지
   features/
     auth/
       api/
-        authApi.js              # (추가) login/signup API 호출(현재는 TODO)
+        authApi.js                  # 로그인, 회원 정보, 로그아웃 API
       components/
-        LoginModal.jsx          # (기존) 로그인 팝업
-        SignupModal.jsx         # (기존) 회원가입 팝업
+        LoginModal.jsx              # Google 로그인 안내 모달
+        SignupModal.jsx             # Google 회원가입 안내 모달
       model/
-        authStore.js            # (선택 추가) zustand로 토큰/유저 상태
-      index.js                  # (추가) export 모음
-
+        AuthContext.jsx             # 인증 상태와 사용자 정보 Context
+    classmap/
+      api/
+        classMapApi.js              # 클래스 맵 분석 API
+    githubStats/
+      api/
+        githubStatsApi.js           # GitHub 통계 조회 API
+    license/
+      components/
+        LicenseActionGuide.jsx      # 라이선스별 대응 가이드
+        LicenseAnalysisSection.jsx  # 라이선스 분석 결과 메인 영역
+        LicenseDetailList.jsx       # 라이선스 상세 항목 목록
+        LicenseEvidenceCard.jsx     # 분석 근거 카드
+        LicenseEvidenceExplorer.jsx # 근거 검색과 출처 필터 UI
+        LicenseMetricCard.jsx       # 라이선스 지표 카드
+        LicenseReportActions.jsx    # 분석 보고서 다운로드 기능
+        LicenseReviewChecklist.jsx  # 검토 체크리스트
+        LicenseReviewNotice.jsx     # 경고와 검토 필요 항목 안내
+        LicenseSectionNavigator.jsx # 분석 결과 섹션 내비게이션
+      hooks/
+        useLicenseAnalysisArtifact.js # 라이선스 산출물 조회 Hook
+        useLicenseReviewChecklist.js  # 체크리스트 상태 관리 Hook
+      lib/
+        licenseNavigation.js        # 분석 페이지 경로 생성 유틸리티
+      model/
+        licenseAnalysisModel.js     # 분석 응답 정규화와 View Model 생성
+        licenseArtifactResolver.js  # 라이선스 산출물 ID와 실패 상태 판별
+        licenseDetailStateModel.js  # 라이선스 상세 화면 상태 계산
+        licenseEvidenceModel.js     # 분석 근거 데이터 가공
+        licenseReportModel.js       # Markdown·JSON 보고서 생성
+        licenseReviewChecklistModel.js # 검토 체크리스트 항목과 진행률 생성
+    membership/
+      api/
+        membershipApi.js            # 내 멤버십 정보 조회 API
+    payment/
+      api/
+        paymentApi.js               # 토큰 결제 준비와 검증 API
+      lib/
+        portonePayment.js           # PortOne 결제 요청 연동
     run/
       api/
-        runApi.js               # (추가) createRun/getRun/listRuns/pollRunStatus
-      components/
-        RunCreateForm.jsx       # (선택 추가) repo URL 입력 폼(landing에서 SearchBar 대신 사용 가능)
-      model/
-        runKeys.js              # (추가) React Query key 모음
-      index.js                  # (추가) export 모음
-
-    search/
+        runApi.js                   # 분석 실행, 진행 상태, 산출물 조회 API
+      hooks/
+        useRunProgressPolling.js    # 분석 진행 상태 Polling Hook
+    token/
       api/
-        searchApi.js            # (추가) 심볼 검색 API(백엔드 연동용)
+        tokenApi.js                 # 토큰 잔액과 사용 내역 조회 API
       components/
-        SymbolResultList.jsx    # (추가) 검색 결과 목록
-      model/
-        searchHistoryStore.js   # (기존) 로컬스토리지 기반 검색 히스토리 저장
-
+        AnalysisRequestConfirmModal.jsx # 분석 요청 확인 모달
+        InsufficientTokenModal.jsx  # 토큰 부족 안내 모달
+        ReanalysisConfirmModal.jsx  # 재분석 요청 확인 모달
+      constants/
+        tokenPolicy.js              # 기능별 토큰 비용 정책
+  pages/
+    Analy/
+      components/
+        AnalyzeProgressPanel.jsx    # 분석 단계별 진행 상태 패널
+        ClassDiagramSection.jsx     # 클래스 관계 다이어그램 탐색 UI
+        DirectoryStructureSection.jsx # 저장소 디렉터리 트리 UI
+        LlmResultSection.jsx        # LLM 분석 산출물 탭과 상세 결과
+        PackageClassDocsSection.jsx # 패키지·클래스·메서드 문서 UI
+        RepoInfoSection.jsx         # 저장소 기본 정보 영역
+        classMapWorkspace.jsx       # 서브시스템별 클래스 맵 작업 영역
+      AnalyPage.jsx                 # 저장소 분석 실행과 결과 화면
+    Auth/
+      AuthRequiredPage.jsx          # 인증 필요 안내 화면
+      LoginFailurePage.jsx          # 로그인 실패 화면
+      LoginSuccessPage.jsx          # 로그인 성공 처리 화면
+    GithubStats/
+      GithubStatsPage.jsx           # GitHub 저장소 통계 대시보드
+    Landing/
+      components/
+        SearchBar.jsx               # 저장소 주소 입력과 분석 요청 폼
+        SearchHistory.jsx           # 최근 분석 실행 목록
+      LandingPage.jsx               # 서비스 소개와 저장소 검색 화면
+    License/
+      LicenseAnalysisPage.jsx       # 라이선스 분석 상세 화면
+    MyPage/
+      MyPage.jsx                    # 회원 정보, 토큰 충전·내역 관리 화면
   shared/
     api/
-      client.js                 # (추가) axios 인스턴스 + baseURL + 인터셉터
-      httpError.js              # (추가) 에러 공통 처리(토스트 메시지 변환 등)
+      client.js                     # 공통 HTTP 요청과 API 오류 처리
     components/
-      ui/
-        Modal.jsx               # (선택 추가) 공용 모달 (Login/Signup에서 사용 가능)
-        Button.jsx              # (선택 추가) 공용 버튼
-        Input.jsx               # (선택 추가) 공용 인풋
-        Tabs.jsx                # (선택 추가) 탭 UI (AnalyPage에 유용)
-        Spinner.jsx             # (선택 추가) 로딩 UI
-        ToastHost.jsx           # (선택 추가) 토스트 루트
       common/
-        Header.jsx              # (기존) 상단바(로그인/회원가입 버튼)
-    lib/
-      storage.js                # (선택 추가) localStorage helper (historyStore가 커지면 분리)
-      format.js                 # (선택 추가) 날짜/바이트 포맷
-      validators.js             # (선택 추가) URL 검증/정규화
+        Header.jsx                  # 전역 내비게이션 헤더
     styles/
-      globals.css               # (기존) 전역 스타일 (index.css에서 이동한 파일)
-
-  main.jsx                      # (기존) React entry
-  ```
+      globals.css                   # 전역 스타일과 화면별 공통 스타일
+  main.jsx                          # React 애플리케이션 진입점
+.gitignore                          # Git 추적 제외 규칙
+eslint.config.js                    # ESLint 검사 규칙
+index.html                          # Vite HTML 진입 문서
+package-lock.json                   # npm 의존성 잠금 파일
+package.json                        # 프로젝트 스크립트와 의존성 정의
+README.md                           # 프로젝트 소개와 사용 문서
+vercel.json                         # Vercel 배포 라우팅 설정
+vite.config.js                      # Vite와 React 빌드 설정
+```
