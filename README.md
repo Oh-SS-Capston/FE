@@ -1,7 +1,6 @@
-# Oh! SS (Capstone)
+# Oh! SS 
 
-GitHub 레포지토리를 입력하면 정적 분석 기반 산출물(그래프/심볼/엣지/근거)을 생성하고,
-UI에서 Public API, 다이어그램, 시나리오 등을 탐색할 수 있는 프로젝트입니다.
+처음 접하는 오픈소스 저장소의 구조·Public API·호출 관계·모듈 관계·개발 규칙을 정적 분석하고, 근거가 연결된 온보딩 문서를 자동 생성하는 오픈소스 분석 플랫폼
 
 ---
 
@@ -40,10 +39,29 @@ UI에서 Public API, 다이어그램, 시나리오 등을 탐색할 수 있는 �
 ## 스택
 
 ### Frontend
-- React + Vite
-- react-router-dom
-- lucide-react (icons)
-- Tailwind CSS (전역 스타일/컴포넌트 스타일링)
+
+- React 19
+- React DOM 19
+- React Router DOM 7
+- Tailwind CSS 4
+- Lucide React
+
+### 데이터 시각화
+
+- React Flow
+- Dagre
+
+### 결제
+
+- PortOne Browser SDK
+
+### 개발 및 빌드
+
+- Vite 7
+- Vite React Plugin
+- Tailwind CSS Vite Plugin
+- PostCSS
+- Autoprefixer
 
 ## 디렉토리 구조
 ```txt
