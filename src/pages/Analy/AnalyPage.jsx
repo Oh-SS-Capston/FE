@@ -1,6 +1,6 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowUpRight, BarChart3 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BarChart3, BookOpen, FolderTree, Network } from "lucide-react";
 
 import RepoInfoSection from "./components/RepoInfoSection";
 import ClassDiagramSection from "./components/ClassDiagramSection";
@@ -106,6 +106,12 @@ const CLASS_DIAGRAM_ARTIFACT_FIELDS = [
   "classDiagramId",
 ];
 
+const RESULT_TAB = {
+  DOCUMENTS: "DOCUMENTS",
+  CODE_EXPLORER: "CODE_EXPLORER",
+  CLASS_STRUCTURE: "CLASS_STRUCTURE",
+};
+
 function createEmptyLlmResultMap() {
   return LLM_RESULT_KEYS.reduce((acc, key) => {
     acc[key] = null;
@@ -138,6 +144,80 @@ function firstNonEmptyString(...values) {
   }
 
   return null;
+}
+
+function resolveAnalysisCommitSha(run, progress) {
+  return firstNonEmptyString(
+    run?.commitSha,
+    run?.resolvedCommitSha,
+    run?.resolvedSha,
+    run?.snapshotCommitSha,
+    run?.headCommitSha,
+    run?.headSha,
+    run?.commitId,
+    run?.commit?.sha,
+    run?.resolvedCommit?.sha,
+    run?.snapshot?.commitSha,
+    progress?.commitSha,
+    progress?.resolvedCommitSha,
+    progress?.resolvedSha,
+    progress?.snapshotCommitSha,
+    progress?.headCommitSha,
+    progress?.headSha,
+    progress?.commitId,
+    progress?.commit?.sha,
+    progress?.resolvedCommit?.sha,
+    progress?.snapshot?.commitSha,
+    progress?.run?.commitSha,
+    progress?.artifacts?.commitSha
+  );
+}
+
+function resolveAnalysisRef(run, progress) {
+  return firstNonEmptyString(
+    run?.resolvedRef,
+    run?.requestedRef,
+    run?.ref,
+    run?.branch,
+    progress?.resolvedRef,
+    progress?.requestedRef,
+    progress?.ref,
+    progress?.branch,
+    progress?.run?.resolvedRef
+  );
+}
+
+function resolveAnalyzedAt(run, progress) {
+  return firstNonEmptyString(
+    progress?.analyzedAt,
+    progress?.analysisCompletedAt,
+    progress?.completedAt,
+    progress?.finishedAt,
+    run?.analyzedAt,
+    run?.analysisCompletedAt,
+    run?.completedAt,
+    run?.finishedAt,
+    progress?.updatedAt,
+    run?.updatedAt,
+    progress?.createdAt,
+    run?.createdAt
+  );
+}
+
+function encodeGithubPath(path) {
+  return String(path ?? "")
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
+function buildGithubContentsUrl(owner, name, path, commitSha) {
+  const encodedPath = encodeGithubPath(path);
+  const pathSuffix = encodedPath ? `/${encodedPath}` : "";
+  return `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(
+    name
+  )}/contents${pathSuffix}?ref=${encodeURIComponent(commitSha)}`;
 }
 
 function normalizeArtifactToken(value) {
@@ -419,6 +499,7 @@ export default function AnalyPage() {
   const [browserNoticePermission, setBrowserNoticePermission] = useState(
     getBrowserNotificationPermission()
   );
+  const [activeResultTab, setActiveResultTab] = useState(RESULT_TAB.DOCUMENTS);
 
   useEffect(() => {
     setBrowserNoticePermission(getBrowserNotificationPermission());
@@ -432,6 +513,14 @@ export default function AnalyPage() {
     loading: licenseAnalysisLoading,
     error: licenseAnalysisError,
   } = useLicenseAnalysisArtifact(progress, runId);
+
+  const analysisCommitSha = useMemo(
+    () => resolveAnalysisCommitSha(run, progress),
+    [run, progress]
+  );
+  const analysisRef = useMemo(() => resolveAnalysisRef(run, progress), [run, progress]);
+  const analyzedAt = useMemo(() => resolveAnalyzedAt(run, progress), [run, progress]);
+  const analysisStatus = progress?.status ?? run?.status ?? null;
 
   useEffect(() => {
     if (!repo) return;
@@ -457,14 +546,34 @@ export default function AnalyPage() {
         setRepoInfoLoading(false);
       }
     })();
+  }, [repo]);
+
+  useEffect(() => {
+    if (!repo) return;
+
+    setTree([]);
+    setExpanded({});
+    setTreeError(null);
+
+    if (!analysisCommitSha) {
+      const terminal = analysisStatus === "SUCCESS" || analysisStatus === "FAILED";
+      setTreeLoading(Boolean(runId) && !terminal);
+      setTreeError(
+        terminal
+          ? "분석 결과에서 Commit SHA를 확인하지 못해 디렉토리를 조회하지 않았습니다."
+          : null
+      );
+      return;
+    }
+
+    const [owner, name] = repo.split("/");
+    let cancelled = false;
 
     (async () => {
       try {
         setTreeLoading(true);
-        setTreeError(null);
-
         const res = await fetch(
-          `https://api.github.com/repos/${owner}/${name}/contents`
+          buildGithubContentsUrl(owner, name, "", analysisCommitSha)
         );
 
         if (!res.ok) {
@@ -473,14 +582,24 @@ export default function AnalyPage() {
 
         const items = await res.json();
 
-        setTree(items.map(mapGithubContentItem));
+        if (!cancelled) {
+          setTree(Array.isArray(items) ? items.map(mapGithubContentItem) : []);
+        }
       } catch (e) {
-        setTreeError(e?.message ?? String(e));
+        if (!cancelled) {
+          setTreeError(e?.message ?? String(e));
+        }
       } finally {
-        setTreeLoading(false);
+        if (!cancelled) {
+          setTreeLoading(false);
+        }
       }
     })();
-  }, [repo]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [analysisCommitSha, analysisStatus, repo, runId]);
 
   const requestBrowserNotificationPermission = async () => {
     if (!isBrowserNotificationSupported()) {
@@ -824,7 +943,7 @@ export default function AnalyPage() {
   };
 
   const toggleFolder = async (path) => {
-    if (!repo) return;
+    if (!repo || !analysisCommitSha) return;
 
     const [owner, name] = repo.split("/");
     const isOpen = !!expanded[path];
@@ -846,7 +965,7 @@ export default function AnalyPage() {
 
     try {
       const res = await fetch(
-        `https://api.github.com/repos/${owner}/${name}/contents/${path}`
+        buildGithubContentsUrl(owner, name, path, analysisCommitSha)
       );
 
       if (!res.ok) {
@@ -925,6 +1044,27 @@ export default function AnalyPage() {
     });
   };
 
+  const resultTabs = [
+    {
+      key: RESULT_TAB.DOCUMENTS,
+      label: "분석 문서",
+      description: "시나리오, 서브시스템, API와 규칙",
+      icon: BookOpen,
+    },
+    {
+      key: RESULT_TAB.CODE_EXPLORER,
+      label: "코드 탐색",
+      description: "Commit 고정 디렉토리와 파일 설명",
+      icon: FolderTree,
+    },
+    {
+      key: RESULT_TAB.CLASS_STRUCTURE,
+      label: "클래스 구조",
+      description: "클래스 관계와 핵심 진입점",
+      icon: Network,
+    },
+  ];
+
   return (
     <div className="relative z-10">
       <div className="w-[90vw] mx-auto px-6 py-10 space-y-8">
@@ -963,24 +1103,18 @@ export default function AnalyPage() {
           )}
         </div>
 
-        {/* 1. 레포 프로필 */}
         <RepoInfoSection
           repo={repo}
           info={repoInfo}
           loading={repoInfoLoading}
           error={repoInfoError}
+          commitSha={analysisCommitSha}
+          analysisRef={analysisRef}
+          analyzedAt={analyzedAt}
+          analysisStatus={analysisStatus}
+          cacheHit={Boolean(run?.cacheHit)}
         />
 
-        {/* 2. 레포 디렉터리 구조 */}
-        <DirectoryStructureSection
-          tree={tree}
-          loading={treeLoading}
-          error={treeError}
-          expanded={expanded}
-          onToggle={toggleFolder}
-        />
-
-        {/* 3. 작업 프로세스 */}
         {progressError && (
           <div className="rounded-xl border border-red-500/20 bg-red-950/10 p-4 text-sm text-red-200">
             {progressError}
@@ -989,7 +1123,7 @@ export default function AnalyPage() {
 
         <AnalyzeProgressPanel progress={progress} />
 
-        {/* 3-1. 대표 라이선스 분석 */}
+        {/* 대표 라이선스 분석 */}
         <LicenseAnalysisSection
           artifactId={licenseAnalysisArtifactId}
           analysis={licenseAnalysis}
@@ -1009,31 +1143,81 @@ export default function AnalyPage() {
           }
         />
 
-        {/* 4. 클래스 다이어그램 */}
-        <ClassDiagramSection
-          classDiagram={classDiagram}
-          loading={classDiagramLoading}
-          error={classDiagramError || classMapFailed?.message}
-        />
+        <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a1a]/50 backdrop-blur-xl">
+          <div className="border-b border-white/10 p-3">
+            <div
+              role="tablist"
+              aria-label="분석 결과 보기"
+              className="grid gap-2 md:grid-cols-3"
+            >
+              {resultTabs.map((tab) => {
+                const Icon = tab.icon;
+                const active = activeResultTab === tab.key;
 
-        {/* 4-1. 패키지별 클래스 메서드 문서
-        <PackageClassDocsSection
-          fileTreeDocs={llmResults.fileTreeDocs}
-          loading={llmLoading && !llmResults.fileTreeDocs}
-          error={llmError}
-        /> */}
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setActiveResultTab(tab.key)}
+                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
+                      active
+                        ? "border-cyan-300/35 bg-cyan-300/10 text-cyan-50"
+                        : "border-transparent bg-white/[0.025] text-gray-400 hover:border-white/10 hover:bg-white/[0.05] hover:text-gray-100"
+                    }`}
+                  >
+                    <Icon size={19} className="shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block font-semibold">{tab.label}</span>
+                      <span className="mt-0.5 block truncate text-xs opacity-70">
+                        {tab.description}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-        {/* 5. LLM Result */}
-        <LlmResultSection
-          results={llmResults}
-          loading={llmLoading}
-          error={llmError}
-          onRefresh={refreshLlmResults}
-          onRegenerate={handleForceRebuild}
-          regenerating={rebuildLoading}
-          showCachedNotice={Boolean(run?.cacheHit)}
-          cachedAnalyzedAt={run?.updatedAt ?? run?.createdAt ?? progress?.updatedAt ?? progress?.createdAt ?? null}
-        />
+          <div className="p-4 sm:p-6">
+            {activeResultTab === RESULT_TAB.DOCUMENTS && (
+              <LlmResultSection
+                results={llmResults}
+                loading={llmLoading}
+                error={llmError}
+                onRefresh={refreshLlmResults}
+                onRegenerate={handleForceRebuild}
+                regenerating={rebuildLoading}
+                showCachedNotice={Boolean(run?.cacheHit)}
+                cachedAnalyzedAt={analyzedAt}
+                showFileTreeTab={false}
+              />
+            )}
+
+            {activeResultTab === RESULT_TAB.CODE_EXPLORER && (
+              <DirectoryStructureSection
+                tree={tree}
+                loading={treeLoading}
+                error={treeError}
+                expanded={expanded}
+                onToggle={toggleFolder}
+                commitSha={analysisCommitSha}
+                fileTreeDocs={llmResults.fileTreeDocs}
+                docsLoading={llmLoading && !llmResults.fileTreeDocs}
+                docsError={llmError}
+              />
+            )}
+
+            {activeResultTab === RESULT_TAB.CLASS_STRUCTURE && (
+              <ClassDiagramSection
+                classDiagram={classDiagram}
+                loading={classDiagramLoading}
+                error={classDiagramError || classMapFailed?.message}
+              />
+            )}
+          </div>
+        </section>
       </div>
       <ReanalysisConfirmModal
         open={reanalysisConfirmOpen}
