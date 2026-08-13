@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import {
   CheckCircle2,
+  ChevronDown,
   Circle,
   Clock,
   Loader2,
@@ -92,9 +94,7 @@ function getStepMessage(step) {
   }
 
   if (step.status === "SKIPPED") {
-    return (
-      step.message ?? `${formatStageLabel(step.stage)} 단계를 건너뛰었습니다.`
-    );
+    return step.message ?? `${formatStageLabel(step.stage)} 단계를 건너뛰었습니다.`;
   }
 
   if (step.status === "RUNNING") {
@@ -132,11 +132,25 @@ function stepBorderClass(status) {
   return "border-white/10 bg-white/[0.025]";
 }
 
+function isCompleted(progress) {
+  return (
+    progress?.status === "SUCCESS" &&
+    (progress?.stage === "DONE" || Number(progress?.progress) >= 100)
+  );
+}
+
 export default function AnalyzeProgressPanel({ progress }) {
+  const completed = isCompleted(progress);
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    setCollapsed(completed);
+  }, [completed]);
+
   if (!progress) {
     return (
       <section className="rounded-2xl border border-white/10 bg-[#0a0a1a]/60 p-6">
-        <div className="flex items-center gap-3 text-gray-400">
+        <div className="flex items-center gap-3 text-gray-300">
           <Loader2 size={18} className="animate-spin" />
           <span>분석 상태를 불러오는 중입니다.</span>
         </div>
@@ -145,7 +159,9 @@ export default function AnalyzeProgressPanel({ progress }) {
   }
 
   const steps = progress.steps ?? [];
-  const progressValue = progress.progress ?? 0;
+  const progressValue = Number(progress.progress) || 0;
+  const successCount = steps.filter((step) => step.status === "SUCCESS").length;
+  const failedCount = steps.filter((step) => step.status === "FAILED").length;
 
   return (
     <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl">
@@ -157,83 +173,107 @@ export default function AnalyzeProgressPanel({ progress }) {
         }}
       />
 
-      <div className="p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-gray-100">작업 프로세스</h3>
-            <p className="mt-2 text-sm text-gray-500">
-              {progress.message ?? progress.stageLabel ?? "분석 작업을 진행하고 있습니다."}
-            </p>
-          </div>
+      <button
+        type="button"
+        aria-expanded={!collapsed}
+        onClick={() => setCollapsed((prev) => !prev)}
+        className="flex w-full flex-col gap-4 p-5 text-left transition hover:bg-white/[0.025] sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          {completed ? (
+            <CheckCircle2 size={21} className="shrink-0 text-emerald-300" />
+          ) : progress.status === "FAILED" ? (
+            <TriangleAlert size={21} className="shrink-0 text-red-300" />
+          ) : (
+            <Loader2 size={21} className="shrink-0 animate-spin text-cyan-300" />
+          )}
 
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wide text-gray-500">
-              Progress
-            </p>
-            <p className="mt-1 text-xl font-bold text-gray-100">
-              {progressValue}%
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-bold text-gray-100">작업 프로세스</h3>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-semibold text-gray-300">
+                {successCount}/{steps.length || "-"} 단계 완료
+              </span>
+              {failedCount > 0 && (
+                <span className="rounded-full border border-red-300/20 bg-red-300/10 px-2.5 py-1 text-xs font-semibold text-red-100">
+                  실패 {failedCount}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 truncate text-sm text-gray-400">
+              {completed
+                ? "분석이 완료되었습니다. 상세 과정은 펼쳐서 확인할 수 있습니다."
+                : progress.message ?? progress.stageLabel ?? "분석 작업을 진행하고 있습니다."}
             </p>
           </div>
         </div>
 
-        <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.06]">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-purple-400 transition-all duration-500"
-            style={{ width: `${Math.min(100, Math.max(0, progressValue))}%` }}
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="text-lg font-bold text-gray-100">{progressValue}%</span>
+          <ChevronDown
+            size={19}
+            className={`text-gray-400 transition-transform ${collapsed ? "-rotate-90" : "rotate-0"}`}
           />
         </div>
+      </button>
 
-        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {steps.map((step) => (
-            <article
-              key={step.stage}
-              className={`rounded-xl border p-4 transition ${stepBorderClass(
-                step.status
-              )}`}
-            >
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 shrink-0">
-                  <StepIcon status={step.status} />
-                </div>
+      <div className="h-1.5 overflow-hidden bg-white/[0.06]">
+        <div
+          className="h-full bg-gradient-to-r from-cyan-300 to-purple-400 transition-all duration-500"
+          style={{ width: `${Math.min(100, Math.max(0, progressValue))}%` }}
+        />
+      </div>
 
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h4 className="font-semibold text-gray-100">
-                      {formatStageLabel(step.stage)}
-                    </h4>
-
-                    {!step.required && (
-                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] text-gray-400">
-                        선택
-                      </span>
-                    )}
+      {!collapsed && (
+        <div className="border-t border-white/10 p-5 sm:p-6">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {steps.map((step) => (
+              <article
+                key={step.stage}
+                className={`rounded-xl border p-4 transition ${stepBorderClass(step.status)}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 shrink-0">
+                    <StepIcon status={step.status} />
                   </div>
 
-                  <p className="mt-2 text-sm leading-5 text-gray-400">
-                    {getStepMessage(step)}
-                  </p>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="font-semibold text-gray-100">
+                        {formatStageLabel(step.stage)}
+                      </h4>
+
+                      {!step.required && (
+                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-xs text-gray-400">
+                          선택
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="mt-2 text-sm leading-5 text-gray-300">
+                      {getStepMessage(step)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        {progress.failedSteps?.length > 0 && (
-          <div className="mt-5 rounded-xl border border-red-500/20 bg-red-950/10 p-4">
-            <p className="font-semibold text-red-200">
-              일부 작업에 실패했습니다.
-            </p>
-
-            <ul className="mt-2 space-y-1 text-sm text-red-200/80">
-              {progress.failedSteps.map((step) => (
-                <li key={step.stage}>
-                  {formatStageLabel(step.stage)}: {step.message}
-                </li>
-              ))}
-            </ul>
+              </article>
+            ))}
           </div>
-        )}
-      </div>
+
+          {progress.failedSteps?.length > 0 && (
+            <div className="mt-5 rounded-xl border border-red-500/20 bg-red-950/10 p-4">
+              <p className="font-semibold text-red-200">일부 작업에 실패했습니다.</p>
+
+              <ul className="mt-2 space-y-1 text-sm text-red-200/80">
+                {progress.failedSteps.map((step) => (
+                  <li key={step.stage}>
+                    {formatStageLabel(step.stage)}: {step.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }

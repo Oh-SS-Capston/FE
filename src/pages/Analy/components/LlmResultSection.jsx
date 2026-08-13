@@ -171,15 +171,6 @@ function hasRefinedRuleData(data) {
   );
 }
 
-function hasAnyLlmResult(normalized) {
-  return (
-    hasScenarioData(normalized?.scenarioSpecs) ||
-    hasSubsystemData(normalized?.subsystemSummaries) ||
-    hasApiData(normalized?.apiDocs) ||
-    hasFileTreeData(normalized?.fileTreeDocs) ||
-    hasRefinedRuleData(normalized?.refinedRules)
-  );
-}
 
 function formatLayer(layer) {
   if (!layer) {
@@ -1102,7 +1093,7 @@ function GuideSlotItem({ label, text, evidence }) {
   );
 }
 
-function FileTreePanel({ data }) {
+export function FileTreeDocsPanel({ data }) {
   const evidenceLocations = safeArray(
     pickFirst(data, ["evidenceLocations", "evidence_locations"])
   );
@@ -2051,6 +2042,7 @@ export default function LlmResultSection({
   regenerating = false,
   showCachedNotice = false,
   cachedAnalyzedAt = null,
+  showFileTreeTab = true,
 }) {
   const llm = useMemo(() => normalizeLlmResults(results), [results]);
   const cachedAnalyzedTimeLabel = useMemo(
@@ -2101,26 +2093,24 @@ export default function LlmResultSection({
       return;
     }
 
-    if (tabHasData[activeTab]) {
+    if ((showFileTreeTab || activeTab !== TAB.FILE_TREE) && tabHasData[activeTab]) {
       return;
     }
 
-    const next = [
+    const availableTabs = [
       TAB.SCENARIO,
       TAB.SUBSYSTEM,
       TAB.API,
-      TAB.FILE_TREE,
+      ...(showFileTreeTab ? [TAB.FILE_TREE] : []),
       TAB.REFINED_RULES,
-    ].find(
-      (tab) => tabHasData[tab]
-    );
+    ];
+
+    const next = availableTabs.find((tab) => tabHasData[tab]);
 
     if (next) {
       setActiveTab(next);
     }
-  }, [activeTab, tabHasData, userSelectedTab]);
-
-  const hasResult = hasAnyLlmResult(llm);
+  }, [activeTab, showFileTreeTab, tabHasData, userSelectedTab]);
 
   const tabs = [
     {
@@ -2153,7 +2143,9 @@ export default function LlmResultSection({
       count: counts.refinedRules,
       icon: ListChecks,
     },
-  ];
+  ].filter((tab) => showFileTreeTab || tab.key !== TAB.FILE_TREE);
+
+  const hasResult = tabs.some((tab) => tabHasData[tab.key]);
 
   const activeData =
     activeTab === TAB.SCENARIO
@@ -2207,9 +2199,10 @@ export default function LlmResultSection({
               LLM Result
             </h3>
 
-            <p className="mt-2 text-sm text-gray-500">
-              정적 분석 산출물을 바탕으로 생성한 시나리오, 서브시스템 요약,
-              API 문서, 파일 트리 설명입니다.
+            <p className="mt-2 text-sm text-gray-400">
+              {showFileTreeTab
+                ? "정적 분석 산출물을 바탕으로 생성한 시나리오, 서브시스템 요약, API 문서와 파일 설명입니다."
+                : "정적 분석 산출물을 바탕으로 생성한 시나리오, 서브시스템 요약, API 문서와 규칙입니다."}
             </p>
           </div>
 
@@ -2306,7 +2299,7 @@ export default function LlmResultSection({
               ) : activeTab === TAB.API && hasApiData(activeData) ? (
                 <ApiDocsPanel data={activeData} />
               ) : activeTab === TAB.FILE_TREE && hasFileTreeData(activeData) ? (
-                <FileTreePanel data={activeData} />
+                <FileTreeDocsPanel data={activeData} />
               ) : activeTab === TAB.REFINED_RULES &&
                 hasRefinedRuleData(activeData) ? (
                 <RefinedRulesPanel data={activeData} />
