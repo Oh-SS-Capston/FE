@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "../../app/config/env";
+import { formatUserMessage } from "../lib/userErrorMessage";
 
 export class ApiError extends Error {
   constructor(message, { status, code, result } = {}) {
@@ -57,7 +58,7 @@ export async function apiClient(path, options = {}) {
     : null;
 
   if (!response.ok || data?.isSuccess === false) {
-    throw new ApiError(data?.message ?? "API 요청에 실패했습니다.", {
+    throw new ApiError(formatUserMessage(data?.message, "API 요청에 실패했습니다."), {
       status: response.status,
       code: data?.code,
       result: data?.result,
