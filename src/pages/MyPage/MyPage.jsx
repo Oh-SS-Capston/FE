@@ -16,7 +16,10 @@ import {
   prepareTokenChargeCheckout,
   verifyTokenChargePayment,
 } from "../../features/payment/api/paymentApi";
-import { requestTokenChargePayment } from "../../features/payment/lib/portonePayment";
+import {
+  formatPaymentErrorMessage,
+  requestTokenChargePayment,
+} from "../../features/payment/lib/portonePayment";
 import {
   getMyTokenBalance,
   getMyTokenLedgers,
@@ -237,7 +240,7 @@ export default function MyPage() {
       );
     } catch (error) {
       setPaymentSuccess(false);
-      setPaymentMessage(error.message || "토큰 충전에 실패했습니다.");
+      setPaymentMessage(formatPaymentErrorMessage(error));
     } finally {
       setPaying(false);
     }
