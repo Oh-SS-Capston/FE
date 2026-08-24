@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { getArtifactContent } from "../../run/api/runApi";
 import {
+  formatUserErrorMessage,
+  formatUserMessage,
+} from "../../../shared/lib/userErrorMessage";
+import {
   getLicenseStepFailure,
   resolveLicenseAnalysisArtifactId,
 } from "../model/licenseArtifactResolver";
@@ -37,7 +41,7 @@ export function useLicenseAnalysisArtifact(progress, runId) {
         setState({
           analysis: null,
           loading: false,
-          error: stepFailure.message,
+          error: formatUserMessage(stepFailure.message),
         });
       }
       return;
@@ -80,8 +84,10 @@ export function useLicenseAnalysisArtifact(progress, runId) {
         setState({
           analysis: null,
           loading: false,
-          error:
-            error?.message ?? "라이선스 분석 산출물을 불러오지 못했습니다.",
+          error: formatUserErrorMessage(
+            error,
+            "라이선스 분석 산출물을 불러오지 못했습니다."
+          ),
         });
       });
 

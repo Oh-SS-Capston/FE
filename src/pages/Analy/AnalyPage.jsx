@@ -15,6 +15,10 @@ import { buildLicenseAnalysisPath } from "../../features/license/lib/licenseNavi
 import InsufficientTokenModal from "../../features/token/components/InsufficientTokenModal";
 import ReanalysisConfirmModal from "../../features/token/components/ReanalysisConfirmModal";
 import { TOKEN_COST } from "../../features/token/constants/tokenPolicy";
+import {
+  formatUserErrorMessage,
+  formatUserMessage,
+} from "../../shared/lib/userErrorMessage";
 
 import {
   createRepoRun,
@@ -541,7 +545,7 @@ export default function AnalyPage() {
         const data = await res.json();
         setRepoInfo(data);
       } catch (e) {
-        setRepoInfoError(e?.message ?? String(e));
+        setRepoInfoError(formatUserErrorMessage(e, String(e)));
       } finally {
         setRepoInfoLoading(false);
       }
@@ -587,7 +591,7 @@ export default function AnalyPage() {
         }
       } catch (e) {
         if (!cancelled) {
-          setTreeError(e?.message ?? String(e));
+          setTreeError(formatUserErrorMessage(e, String(e)));
         }
       } finally {
         if (!cancelled) {
@@ -679,7 +683,7 @@ export default function AnalyPage() {
 
       if (!artifactId) {
         if (classMapFailed) {
-          setClassDiagramError(classMapFailed.message);
+          setClassDiagramError(formatUserMessage(classMapFailed.message));
         }
 
         return;
@@ -705,7 +709,10 @@ export default function AnalyPage() {
         if (!cancelled) {
           setClassDiagram(null);
           setClassDiagramError(
-            e?.message ?? "클래스 다이어그램 산출물을 불러오지 못했습니다."
+            formatUserErrorMessage(
+              e,
+              "클래스 다이어그램 산출물을 불러오지 못했습니다."
+            )
           );
         }
       } finally {
@@ -763,7 +770,7 @@ export default function AnalyPage() {
         }
       } catch (e) {
         if (!cancelled) {
-          setLlmError(e?.message ?? "LLM 결과 산출물을 불러오지 못했습니다.");
+          setLlmError(formatUserErrorMessage(e, "LLM 결과 산출물을 불러오지 못했습니다."));
         }
       } finally {
         if (!cancelled) {
@@ -809,7 +816,7 @@ export default function AnalyPage() {
       } catch (e) {
         if (cancelled) return;
 
-        setProgressError(e?.message ?? "분석 진행 상태를 불러오지 못했습니다.");
+        setProgressError(formatUserErrorMessage(e, "분석 진행 상태를 불러오지 못했습니다."));
         timerId = window.setTimeout(poll, 3000);
       }
     };
@@ -878,7 +885,7 @@ export default function AnalyPage() {
         setLlmError("일부 LLM 결과를 새로고침하지 못했습니다.");
       }
     } catch (e) {
-      setLlmError(e?.message ?? "LLM 결과를 새로고침하지 못했습니다.");
+      setLlmError(formatUserErrorMessage(e, "LLM 결과를 새로고침하지 못했습니다."));
     } finally {
       setLlmLoading(false);
     }
@@ -932,7 +939,7 @@ export default function AnalyPage() {
         return;
       }
 
-      setLlmError(e?.message ?? "재생성 요청에 실패했습니다.");
+      setLlmError(formatUserErrorMessage(e, "재생성 요청에 실패했습니다."));
     } finally {
       setRebuildLoading(false);
     }
@@ -1213,7 +1220,12 @@ export default function AnalyPage() {
               <ClassDiagramSection
                 classDiagram={classDiagram}
                 loading={classDiagramLoading}
-                error={classDiagramError || classMapFailed?.message}
+                error={
+                  classDiagramError ||
+                  (classMapFailed?.message
+                    ? formatUserMessage(classMapFailed.message)
+                    : null)
+                }
               />
             )}
           </div>

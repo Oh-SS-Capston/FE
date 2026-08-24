@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getRunProgress } from "../api/runApi";
+import { formatUserErrorMessage } from "../../../shared/lib/userErrorMessage";
 
 function isActiveStatus(status) {
   return status === "QUEUED" || status === "RUNNING";
@@ -50,7 +51,7 @@ export function useRunProgressPolling(runId, options = {}) {
           return;
         }
 
-        setError(e?.message ?? "분석 진행 상태를 불러오지 못했습니다.");
+        setError(formatUserErrorMessage(e, "분석 진행 상태를 불러오지 못했습니다."));
         setLoading(false);
         timerId = window.setTimeout(poll, retryIntervalMs);
       }
