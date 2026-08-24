@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { getGithubStats } from "../../features/githubStats/api/githubStatsApi";
+import { formatUserErrorMessage } from "../../shared/lib/userErrorMessage";
 
 const CHART_WIDTH = 720;
 const CHART_HEIGHT = 250;
@@ -690,7 +691,7 @@ export default function GithubStatsPage() {
         setStats(data);
 
       } catch (e) {
-        setError(e?.message ?? "GitHub 통계량을 불러오지 못했습니다.");
+        setError(formatUserErrorMessage(e, "GitHub 통계량을 불러오지 못했습니다."));
       } finally {
         setLoading(false);
         setRefreshing(false);
