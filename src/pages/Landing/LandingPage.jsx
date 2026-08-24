@@ -8,6 +8,7 @@ import { useAuth } from "../../features/auth/model/AuthContext";
 import { createRepoRun, getRecentRuns } from "../../features/run/api/runApi";
 import InsufficientTokenModal from "../../features/token/components/InsufficientTokenModal";
 import { TOKEN_COST } from "../../features/token/constants/tokenPolicy";
+import { formatUserErrorMessage } from "../../shared/lib/userErrorMessage";
 import AnalysisRequestConfirmModal from "../../features/token/components/AnalysisRequestConfirmModal";
 import { getMyTokenBalance } from "../../features/token/api/tokenApi";
 
@@ -338,7 +339,7 @@ export default function LandingPage() {
         return;
       }
 
-      setAnalyzeError(error.message ?? "토큰 정보를 조회하지 못했습니다.");
+      setAnalyzeError(formatUserErrorMessage(error, "토큰 정보를 조회하지 못했습니다."));
     } finally {
       setAnalyzeLoading(false);
     }
@@ -390,7 +391,7 @@ export default function LandingPage() {
         return;
       }
 
-      setAnalyzeError(error.message ?? "레포지토리 분석 요청에 실패했습니다.");
+      setAnalyzeError(formatUserErrorMessage(error, "레포지토리 분석 요청에 실패했습니다."));
     } finally {
       setAnalysisConfirmLoading(false);
       setAnalyzeLoading(false);

@@ -7,6 +7,7 @@ import {
   Loader2,
   TriangleAlert,
 } from "lucide-react";
+import { formatUserMessage } from "../../../shared/lib/userErrorMessage";
 
 const STAGE_LABEL = {
   SNAPSHOT: "레포지토리 스냅샷 준비",
@@ -87,21 +88,31 @@ function getStepMessage(step) {
 
   if (step.status === "FAILED") {
     return (
-      step.errorMessage ??
-      step.message ??
+      (step.errorMessage ? formatUserMessage(step.errorMessage) : null) ??
+      (step.message ? formatUserMessage(step.message) : null) ??
       `${formatStageLabel(step.stage)} 단계에 실패했습니다.`
     );
   }
 
   if (step.status === "SKIPPED") {
-    return step.message ?? `${formatStageLabel(step.stage)} 단계를 건너뛰었습니다.`;
+    return (
+      (step.message ? formatUserMessage(step.message) : null) ??
+      `${formatStageLabel(step.stage)} 단계를 건너뛰었습니다.`
+    );
   }
 
   if (step.status === "RUNNING") {
-    return RUNNING_MESSAGE[step.stage] ?? step.message ?? "작업을 진행 중입니다.";
+    return (
+      RUNNING_MESSAGE[step.stage] ??
+      (step.message ? formatUserMessage(step.message) : null) ??
+      "작업을 진행 중입니다."
+    );
   }
 
-  return step.message ?? `${formatStageLabel(step.stage)} 대기 중입니다.`;
+  return (
+    (step.message ? formatUserMessage(step.message) : null) ??
+    `${formatStageLabel(step.stage)} 대기 중입니다.`
+  );
 }
 
 function StepIcon({ status }) {
@@ -203,7 +214,9 @@ export default function AnalyzeProgressPanel({ progress }) {
             <p className="mt-1 truncate text-sm text-gray-400">
               {completed
                 ? "분석이 완료되었습니다. 상세 과정은 펼쳐서 확인할 수 있습니다."
-                : progress.message ?? progress.stageLabel ?? "분석 작업을 진행하고 있습니다."}
+                : progress.message
+                  ? formatUserMessage(progress.message)
+                  : progress.stageLabel ?? "분석 작업을 진행하고 있습니다."}
             </p>
           </div>
         </div>
@@ -266,7 +279,8 @@ export default function AnalyzeProgressPanel({ progress }) {
               <ul className="mt-2 space-y-1 text-sm text-red-200/80">
                 {progress.failedSteps.map((step) => (
                   <li key={step.stage}>
-                    {formatStageLabel(step.stage)}: {step.message}
+                    {formatStageLabel(step.stage)}:{" "}
+                    {formatUserMessage(step.message)}
                   </li>
                 ))}
               </ul>

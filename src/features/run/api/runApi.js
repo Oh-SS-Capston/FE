@@ -1,4 +1,5 @@
 import { apiClient } from "../../../shared/api/client";
+import { formatUserErrorMessage } from "../../../shared/lib/userErrorMessage";
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -162,7 +163,7 @@ export async function getRunLlmResults(runId) {
         output[resultField] = null;
         output._meta[metaField] = {
           artifactId,
-          error: e?.message || "artifact fetch failed",
+          error: formatUserErrorMessage(e, "artifact fetch failed"),
         };
       }
     })

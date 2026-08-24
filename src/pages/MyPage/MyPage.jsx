@@ -16,11 +16,15 @@ import {
   prepareTokenChargeCheckout,
   verifyTokenChargePayment,
 } from "../../features/payment/api/paymentApi";
-import { requestTokenChargePayment } from "../../features/payment/lib/portonePayment";
+import {
+  formatPaymentErrorMessage,
+  requestTokenChargePayment,
+} from "../../features/payment/lib/portonePayment";
 import {
   getMyTokenBalance,
   getMyTokenLedgers,
 } from "../../features/token/api/tokenApi";
+import { formatUserErrorMessage } from "../../shared/lib/userErrorMessage";
 
 const CHARGE_OPTIONS = [2000, 5000, 10000];
 const TOKEN_REFRESH_DELAY_MS = 1200;
@@ -130,7 +134,7 @@ export default function MyPage() {
       );
     } catch (error) {
       setNicknameAvailable(false);
-      setNicknameMessage(error.message || "닉네임 확인에 실패했습니다.");
+      setNicknameMessage(formatUserErrorMessage(error, "닉네임 확인에 실패했습니다."));
     } finally {
       setCheckingNickname(false);
     }
@@ -151,7 +155,7 @@ export default function MyPage() {
       setNicknameMessage("닉네임이 변경되었습니다.");
     } catch (error) {
       setNicknameAvailable(false);
-      setNicknameMessage(error.message || "닉네임 변경에 실패했습니다.");
+      setNicknameMessage(formatUserErrorMessage(error, "닉네임 변경에 실패했습니다."));
     } finally {
       setSavingNickname(false);
     }
@@ -237,7 +241,7 @@ export default function MyPage() {
       );
     } catch (error) {
       setPaymentSuccess(false);
-      setPaymentMessage(error.message || "토큰 충전에 실패했습니다.");
+      setPaymentMessage(formatPaymentErrorMessage(error));
     } finally {
       setPaying(false);
     }
@@ -249,7 +253,7 @@ export default function MyPage() {
       await deleteAccount();
     } catch (error) {
       setPaymentSuccess(false);
-      setPaymentMessage(error.message || "회원 탈퇴에 실패했습니다.");
+      setPaymentMessage(formatUserErrorMessage(error, "회원 탈퇴에 실패했습니다."));
       setDeleting(false);
       setOpenDeleteModal(false);
     }

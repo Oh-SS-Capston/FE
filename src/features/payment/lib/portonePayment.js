@@ -1,4 +1,5 @@
 import * as PortOne from "@portone/browser-sdk/v2";
+import { formatUserErrorMessage } from "../../../shared/lib/userErrorMessage";
 
 function toPortOneCurrency(currency) {
   if (!currency) {
@@ -10,6 +11,13 @@ function toPortOneCurrency(currency) {
   }
 
   return `CURRENCY_${currency}`;
+}
+
+export function formatPaymentErrorMessage(error) {
+  return formatUserErrorMessage(
+    error,
+    "토큰 충전에 실패했습니다. 잠시 후 다시 시도해주세요."
+  );
 }
 
 export async function requestTokenChargePayment(checkout) {
@@ -33,7 +41,10 @@ export async function requestTokenChargePayment(checkout) {
   }
 
   if (response.code !== undefined) {
-    throw new Error(response.message || "결제가 취소되었거나 실패했습니다.");
+    const error = new Error(formatPaymentErrorMessage(response));
+    error.code = response.code;
+    error.rawMessage = response.message;
+    throw error;
   }
 
   return response;

@@ -4,6 +4,7 @@ import {
   getArtifactJson,
   getRunProgress,
 } from "../../../features/run/api/runApi";
+import { formatUserErrorMessage } from "../../../shared/lib/userErrorMessage";
 import ClassDiagramSection from "./ClassDiagramSection";
 
 const OVERVIEW_KEY = "OVERVIEW";
@@ -241,7 +242,7 @@ export default function ClassMapWorkspace({
         [key]: diagram,
       }));
     } catch (error) {
-      setDetailError(error?.message ?? "군집 상세 다이어그램을 불러오지 못했습니다.");
+      setDetailError(formatUserErrorMessage(error, "군집 상세 다이어그램을 불러오지 못했습니다."));
     } finally {
       setLoadingKey(null);
     }
