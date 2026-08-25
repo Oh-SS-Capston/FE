@@ -1,4 +1,5 @@
 import { Clock3, History } from "lucide-react";
+import Badge from "../../../shared/components/ui/Badge";
 
 function getRepoLabel(item) {
   if (typeof item === "string") {
@@ -51,26 +52,26 @@ export default function SearchHistory({
     <section>
       <div className="flex items-center justify-between gap-3 mb-8">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="p-2 bg-white/5 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] p-2">
             <History size={24} className="text-cyan-300" />
           </div>
 
-          <h3 className="truncate text-2xl font-bold tracking-wide">
-            Recent Explorations
+          <h3 className="truncate text-2xl font-semibold tracking-wide">
+            최근 분석
           </h3>
         </div>
       </div>
 
       {!authenticated ? (
-        <div className="p-5 bg-white/[0.02] backdrop-blur-md border border-white/5 rounded-2xl text-gray-500">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 text-gray-500">
           로그인 후 사용자별 분석 기록을 확인할 수 있습니다.
         </div>
       ) : loading ? (
-        <div className="p-5 bg-white/[0.02] backdrop-blur-md border border-white/5 rounded-2xl text-gray-500">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 text-gray-500">
           최근 분석 기록을 불러오는 중입니다.
         </div>
       ) : items.length === 0 ? (
-        <div className="p-5 bg-white/[0.02] backdrop-blur-md border border-white/5 rounded-2xl text-gray-500">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 text-gray-500">
           아직 분석 기록이 없습니다. 레포지토리를 분석해보세요.
         </div>
       ) : (
@@ -87,7 +88,7 @@ export default function SearchHistory({
                 key={key}
                 type="button"
                 onClick={() => onClickItem(item)}
-                className="group w-full min-w-0 text-left p-5 bg-white/[0.02] backdrop-blur-md border border-white/5 rounded-2xl hover:bg-white/[0.06] hover:border-white/20 transition-all flex justify-between items-center gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.2)]"
+                className="group flex w-full min-w-0 items-center justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 text-left transition-colors hover:bg-[var(--surface-hover)]"
               >
                 <div className="min-w-0">
                   <p className="min-w-0 truncate text-lg text-gray-300 group-hover:text-white transition-colors font-medium">
@@ -97,13 +98,13 @@ export default function SearchHistory({
                   {typeof item !== "string" && (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       {item.status && (
-                        <span
-                          className={`rounded-full border px-2 py-0.5 text-[11px] ${statusClassName(
+                        <Badge
+                          className={statusClassName(
                             item.status
-                          )}`}
+                          )}
                         >
                           {item.status}
-                        </span>
+                        </Badge>
                       )}
 
                       {item.createdAt && (
