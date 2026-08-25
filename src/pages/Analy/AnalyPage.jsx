@@ -7,7 +7,6 @@ import ClassDiagramSection from "./components/ClassDiagramSection";
 import DirectoryStructureSection from "./components/DirectoryStructureSection";
 import AnalyzeProgressPanel from "./components/AnalyzeProgressPanel";
 import LlmResultSection from "./components/LlmResultSection";
-import PackageClassDocsSection from "./components/PackageClassDocsSection";
 import LicenseAnalysisSection from "../../features/license/components/LicenseAnalysisSection";
 import { useLicenseAnalysisArtifact } from "../../features/license/hooks/useLicenseAnalysisArtifact";
 import { buildLicenseAnalysisPath } from "../../features/license/lib/licenseNavigation";
