@@ -16,6 +16,14 @@ const STAGE_LABEL = {
   EXTRACTION: "소스 코드와 바이트코드 분석",
   GRAPHSTORE: "코드 구조 그래프 저장",
   CLUSTER: "주요 모듈과 군집 분석",
+  SUPER_CLUSTER: "상위 군집 분석",
+  SUPERCLUSTER: "상위 군집 분석",
+  ENTRYPOINT: "진입점 분석",
+  ENTRY_POINT: "진입점 분석",
+  PUBLICAPI: "공개 API 분석",
+  PUBLIC_API: "공개 API 분석",
+  API_FLOW: "API 흐름 분석",
+  API_FLOW_TRACE: "API 흐름 추적",
   CLASSMAP: "클래스 다이어그램 생성",
   RULE: "규칙 후보 추출",
   LLM: "LLM 분석 결과 생성",
@@ -33,6 +41,14 @@ const SUCCESS_MESSAGE = {
   EXTRACTION: "소스 코드와 바이트코드 분석이 완료됐습니다.",
   GRAPHSTORE: "코드 구조 그래프 저장이 완료됐습니다.",
   CLUSTER: "주요 모듈과 군집 분석이 완료됐습니다.",
+  SUPER_CLUSTER: "상위 군집 분석이 완료됐습니다.",
+  SUPERCLUSTER: "상위 군집 분석이 완료됐습니다.",
+  ENTRYPOINT: "진입점 분석이 완료됐습니다.",
+  ENTRY_POINT: "진입점 분석이 완료됐습니다.",
+  PUBLICAPI: "공개 API 분석이 완료됐습니다.",
+  PUBLIC_API: "공개 API 분석이 완료됐습니다.",
+  API_FLOW: "API 흐름 분석이 완료됐습니다.",
+  API_FLOW_TRACE: "API 흐름 추적이 완료됐습니다.",
   CLASSMAP: "클래스 다이어그램 생성이 완료됐습니다.",
   RULE: "규칙 후보 추출이 완료됐습니다.",
   LLM: "LLM 분석 결과 생성이 완료됐습니다.",
@@ -50,6 +66,14 @@ const RUNNING_MESSAGE = {
   EXTRACTION: "소스 코드와 바이트코드를 분석 중입니다.",
   GRAPHSTORE: "코드 구조 그래프를 저장 중입니다.",
   CLUSTER: "주요 모듈과 군집을 분석 중입니다.",
+  SUPER_CLUSTER: "상위 군집을 분석 중입니다.",
+  SUPERCLUSTER: "상위 군집을 분석 중입니다.",
+  ENTRYPOINT: "진입점을 분석 중입니다.",
+  ENTRY_POINT: "진입점을 분석 중입니다.",
+  PUBLICAPI: "공개 API를 분석 중입니다.",
+  PUBLIC_API: "공개 API를 분석 중입니다.",
+  API_FLOW: "API 흐름을 분석 중입니다.",
+  API_FLOW_TRACE: "API 흐름을 추적 중입니다.",
   CLASSMAP: "클래스 다이어그램을 생성 중입니다.",
   RULE: "규칙 후보를 추출 중입니다.",
   LLM: "LLM 분석 결과를 생성 중입니다.",
@@ -70,13 +94,54 @@ function formatStageLabel(stage) {
   }
 
   if (stage.startsWith("LLM_")) {
-    return `LLM ${stage
-      .replace("LLM_", "")
-      .toLowerCase()
-      .replaceAll("_", " ")}`;
+    return `LLM ${formatStageKeyword(stage.replace("LLM_", ""))}`;
   }
 
-  return stage;
+  return formatStageKeyword(stage);
+}
+
+function formatStageKeyword(value) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replaceAll("-", "_");
+
+  const keywordMap = {
+    SNAPSHOT: "레포지토리 스냅샷 준비",
+    LICENSE: "대표 라이선스 분석",
+    BUILD: "빌드 환경 분석",
+    EXTRACTION: "소스 코드와 바이트코드 분석",
+    GRAPHSTORE: "코드 구조 그래프 저장",
+    GRAPH_STORE: "코드 구조 그래프 저장",
+    CLUSTER: "군집 분석",
+    SUPER_CLUSTER: "상위 군집 분석",
+    SUPERCLUSTER: "상위 군집 분석",
+    ENTRYPOINT: "진입점 분석",
+    ENTRY_POINT: "진입점 분석",
+    PUBLICAPI: "공개 API 분석",
+    PUBLIC_API: "공개 API 분석",
+    API_FLOW: "API 흐름 분석",
+    API_FLOW_TRACE: "API 흐름 추적",
+    FLOW_TRACE: "흐름 추적",
+    CLASSMAP: "클래스 다이어그램 생성",
+    CLASS_MAP: "클래스 다이어그램 생성",
+    RULE: "규칙 후보 추출",
+    REFINED_RULES: "정제 규칙 생성",
+    SCENARIO_SPECS: "시나리오 생성",
+    SUBSYSTEM_SUMMARIES: "서브시스템 요약 생성",
+    API_DOCS: "API 문서 생성",
+    FILE_TREE_DOCS: "파일 트리 문서 생성",
+  };
+
+  if (keywordMap[normalized]) {
+    return keywordMap[normalized];
+  }
+
+  return String(value ?? "")
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .toLowerCase();
 }
 
 function getStepMessage(step) {
@@ -141,6 +206,25 @@ function stepStatusClass(status) {
   if (status === "RUNNING") return "text-cyan-200";
   if (status === "SKIPPED") return "text-yellow-200";
   return "text-gray-500";
+}
+
+function formatStepStatus(status) {
+  switch (status) {
+    case "SUCCESS":
+      return "완료";
+    case "FAILED":
+      return "실패";
+    case "RUNNING":
+      return "진행 중";
+    case "SKIPPED":
+      return "건너뜀";
+    case "PENDING":
+    case undefined:
+    case null:
+      return "대기";
+    default:
+      return formatStageKeyword(status);
+  }
 }
 
 function isCompleted(progress) {
@@ -230,47 +314,40 @@ export default function AnalyzeProgressPanel({ progress }) {
       </div>
 
       {!collapsed && (
-        <div className="border-t border-white/10 p-5 sm:p-6">
-          <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)] divide-y divide-[var(--border)]">
+        <div className="p-5 sm:p-6">
+          <div className="grid gap-x-8 gap-y-5 md:grid-cols-2 xl:grid-cols-3">
             {steps.map((step, index) => (
               <article
                 key={step.stage}
-                className="grid gap-3 px-4 py-4 transition-colors hover:bg-[var(--surface-hover)] sm:grid-cols-[auto_auto_minmax(0,1fr)_auto] sm:items-start"
+                className="grid min-w-0 gap-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start"
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-xs font-semibold text-gray-400">
-                  {index + 1}
-                </span>
-
-                <div className="flex items-start gap-3 sm:contents">
+                <div className="flex items-start gap-3">
+                  <span className="mt-1 w-5 shrink-0 text-xs font-semibold text-gray-500">
+                    {index + 1}
+                  </span>
                   <div className="mt-1 shrink-0">
                     <StepIcon status={step.status} />
                   </div>
 
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
                       <h4 className="font-semibold text-gray-100">
                         {formatStageLabel(step.stage)}
                       </h4>
-
-                      {!step.required && (
-                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-xs text-gray-400">
-                          선택
-                        </span>
-                      )}
                     </div>
 
-                    <p className="mt-1 text-sm leading-5 text-gray-300">
+                    <p className="mt-1 text-sm leading-5 text-gray-400">
                       {getStepMessage(step)}
                     </p>
-                  </div>
 
-                  <span
-                    className={`text-xs font-semibold uppercase tracking-wide ${stepStatusClass(
-                      step.status
-                    )}`}
-                  >
-                    {step.status ?? "PENDING"}
-                  </span>
+                    <span
+                      className={`mt-2 block text-xs font-semibold uppercase tracking-wide ${stepStatusClass(
+                        step.status
+                      )}`}
+                    >
+                      {formatStepStatus(step.status)}
+                    </span>
+                  </div>
                 </div>
               </article>
             ))}

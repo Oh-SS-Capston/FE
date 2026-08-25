@@ -83,7 +83,7 @@ function MetaItem({ icon: Icon, label, value, href, mono = false }) {
         href={href}
         target="_blank"
         rel="noreferrer"
-        className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 transition hover:border-cyan-300/30 hover:bg-cyan-300/[0.06]"
+        className="flex min-w-0 items-center gap-2 text-gray-400 transition hover:text-cyan-100"
       >
         {content}
       </a>
@@ -91,7 +91,7 @@ function MetaItem({ icon: Icon, label, value, href, mono = false }) {
   }
 
   return (
-    <div className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+    <div className="flex min-w-0 items-center gap-2 text-gray-400">
       {content}
     </div>
   );
@@ -149,7 +149,7 @@ export default function RepoInfoSection({
               </div>
             )}
 
-            <div className="mt-5 grid gap-2 md:grid-cols-2 2xl:grid-cols-4">
+            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2">
               <MetaItem
                 icon={GitCommitHorizontal}
                 label="Commit"

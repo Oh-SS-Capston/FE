@@ -122,7 +122,7 @@ export default function DirectoryStructureSection({
 
           <div className="max-h-[680px] overflow-auto p-3">
             {loading && (
-              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm text-gray-300">
+              <div className="flex items-center gap-3 px-1 py-3 text-sm text-gray-300">
                 <Loader2 size={16} className="animate-spin" />
                 {commitSha
                   ? "Commit 기준 디렉토리를 불러오는 중입니다."
@@ -137,7 +137,7 @@ export default function DirectoryStructureSection({
             )}
 
             {!loading && !error && (!tree || tree.length === 0) && (
-              <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm text-gray-400">
+              <div className="px-1 py-3 text-sm text-gray-400">
                 {commitSha
                   ? "표시할 디렉토리 구조가 없습니다."
                   : "Commit SHA가 확인되면 디렉토리를 조회합니다."}
@@ -168,7 +168,7 @@ export default function DirectoryStructureSection({
 
           <div className="max-h-[680px] overflow-auto p-4">
             {docsLoading && (
-              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm text-gray-300">
+              <div className="flex items-center gap-3 px-1 py-3 text-sm text-gray-300">
                 <Loader2 size={16} className="animate-spin" />
                 파일 분석 문서를 불러오는 중입니다.
               </div>

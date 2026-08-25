@@ -181,8 +181,10 @@ function packageGroupLabel(packageName) {
 }
 
 function badgeClassName(badge) {
-  switch (badge) {
+  switch (normalizeBadgeKey(badge)) {
     case "start_here":
+    case "entrypoint":
+    case "entry_point":
       return "border-purple-400/30 bg-purple-400/10 text-purple-200";
     case "extension_point":
       return "border-yellow-400/30 bg-yellow-400/10 text-yellow-200";
@@ -197,29 +199,88 @@ function badgeClassName(badge) {
   }
 }
 
+function normalizeBadgeKey(badge) {
+  return String(badge ?? "")
+    .trim()
+    .toLowerCase()
+    .replaceAll("-", "_");
+}
+
 function badgeLabel(badge) {
-  switch (badge) {
+  const normalized = normalizeBadgeKey(badge);
+
+  switch (normalized) {
     case "start_here":
-      return "start here";
+    case "entrypoint":
+    case "entry_point":
+      return "진입점";
+    case "publicapi":
+    case "public_api":
+      return "공개 API";
+    case "api_flow":
+      return "API 흐름";
+    case "api_flow_trace":
+      return "API 흐름 추적";
+    case "flow_trace":
+      return "흐름 추적";
     case "extension_point":
-      return "extension";
+      return "확장 지점";
     case "input_model":
-      return "input";
+      return "입력 모델";
     case "output_model":
-      return "output";
+      return "출력 모델";
     case "config":
-      return "config";
+      return "설정";
+    case "super_cluster":
+    case "supercluster":
+      return "상위 군집";
+    case "cluster":
+      return "군집";
+    case "controller":
+      return "컨트롤러";
+    case "service":
+      return "서비스";
+    case "repository":
+      return "저장소 계층";
+    case "entity":
+      return "엔티티";
+    case "dto":
+      return "전송 모델";
+    case "utility":
+    case "util":
+      return "유틸리티";
+    case "factory":
+      return "생성 팩토리";
+    case "adapter":
+      return "어댑터";
+    case "handler":
+      return "처리기";
     default:
-      return badge;
+      return humanizeTechnicalLabel(badge);
   }
 }
 
+function humanizeTechnicalLabel(value) {
+  const text = String(value ?? "").trim();
+
+  if (!text) {
+    return "-";
+  }
+
+  return text
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .toLowerCase();
+}
+
 function isEntryPoint(node) {
-  return node.badges?.includes("start_here");
+  return node.badges?.some((badge) =>
+    ["start_here", "entrypoint", "entry_point"].includes(normalizeBadgeKey(badge))
+  );
 }
 
 function isExtensionPoint(node) {
-  return node.badges?.includes("extension_point");
+  return node.badges?.some((badge) => normalizeBadgeKey(badge) === "extension_point");
 }
 
 function isFocusedNode(node, focusMode) {
