@@ -14,7 +14,7 @@ export default function LicenseMetricCard({
         </span>
       </div>
 
-      <p className={`mt-3 text-2xl font-black ${tone}`}>{value}</p>
+      <p className={`mt-3 text-2xl font-semibold ${tone}`}>{value}</p>
 
       {hint && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
     </div>

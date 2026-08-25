@@ -73,7 +73,7 @@ function ChecklistItem({ item, checked, onToggle }) {
 
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-2 font-black text-slate-100">
+          <span className="inline-flex items-center gap-2 font-semibold text-slate-100">
             <Icon size={17} className={checked ? "text-emerald-100" : "text-cyan-100"} />
             {item.label}
           </span>
@@ -114,8 +114,7 @@ export default function LicenseReviewChecklist({ analysis, runId, repo }) {
   }
 
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080817]/75 shadow-[0_24px_90px_rgba(0,0,0,0.38)] backdrop-blur-xl">
-      <div className="h-1 bg-gradient-to-r from-transparent via-emerald-300/45 to-transparent" />
+    <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
 
       <div className="p-6 lg:p-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -124,7 +123,7 @@ export default function LicenseReviewChecklist({ analysis, runId, repo }) {
               <ClipboardCheck size={14} />
               Review Checklist
             </div>
-            <h3 className="mt-4 text-2xl font-black text-white">
+            <h3 className="mt-4 text-2xl font-semibold text-white">
               수동 검토 체크리스트
             </h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
@@ -137,7 +136,7 @@ export default function LicenseReviewChecklist({ analysis, runId, repo }) {
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
                 Completed
               </p>
-              <p className="mt-2 text-2xl font-black text-emerald-100">
+              <p className="mt-2 text-2xl font-semibold text-emerald-100">
                 {progress.completed}/{progress.total}
               </p>
             </div>
@@ -145,7 +144,7 @@ export default function LicenseReviewChecklist({ analysis, runId, repo }) {
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
                 Remaining
               </p>
-              <p className="mt-2 text-2xl font-black text-cyan-100">
+              <p className="mt-2 text-2xl font-semibold text-cyan-100">
                 {progress.remaining}
               </p>
             </div>
@@ -157,7 +156,7 @@ export default function LicenseReviewChecklist({ analysis, runId, repo }) {
             <div className="min-w-0 flex-1">
               <div className="h-3 overflow-hidden rounded-full border border-white/10 bg-white/[0.04]">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-300 via-cyan-300 to-sky-300 transition-all"
+                  className="h-full rounded-full bg-emerald-300 transition-all"
                   style={{ width: `${progress.percent}%` }}
                 />
               </div>

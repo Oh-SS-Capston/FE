@@ -59,7 +59,7 @@ function LicenseEmptyState({ state }) {
 
   return (
     <section
-      className={`overflow-hidden rounded-[1.75rem] border ${tone.border} ${tone.bg} backdrop-blur-xl`}
+      className={`overflow-hidden rounded-xl border ${tone.border} ${tone.bg}`}
     >
       <div className="p-6 lg:p-7">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -68,7 +68,7 @@ function LicenseEmptyState({ state }) {
               <Icon size={20} />
             </div>
             <div>
-              <h3 className="font-black text-white">{resolvedState.title}</h3>
+              <h3 className="font-semibold text-white">{resolvedState.title}</h3>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
                 {resolvedState.description}
               </p>
@@ -76,7 +76,7 @@ function LicenseEmptyState({ state }) {
           </div>
 
           <span
-            className={`w-fit rounded-full border px-3 py-1 text-xs font-black ${tone.badge}`}
+            className={`w-fit rounded-full border px-3 py-1 text-xs font-medium ${tone.badge}`}
           >
             {resolvedState.badge}
           </span>
@@ -88,7 +88,7 @@ function LicenseEmptyState({ state }) {
 
 function LicenseLoadingState() {
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080817]/70 p-6 backdrop-blur-xl">
+    <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
       <div className="animate-pulse space-y-5">
         <div className="h-5 w-48 rounded bg-white/10" />
         <div className="grid gap-4 lg:grid-cols-4">
@@ -103,7 +103,7 @@ function LicenseLoadingState() {
 
 function LicenseErrorState({ error }) {
   return (
-    <section className="rounded-[1.75rem] border border-red-400/20 bg-red-950/10 p-6 backdrop-blur-xl">
+    <section className="rounded-xl border border-red-400/20 bg-red-950/10 p-6">
       <div className="flex items-start gap-3 text-red-100">
         <AlertTriangle size={20} className="mt-0.5 shrink-0" />
         <div>
@@ -120,7 +120,7 @@ function LicenseErrorState({ error }) {
 function LicenseHeroCard({ license }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-3xl border ${license.tone.border} bg-gradient-to-br ${license.tone.bg} p-6 xl:col-span-2`}
+      className={`relative overflow-hidden rounded-xl border ${license.tone.border} bg-[var(--surface-secondary)] p-6 xl:col-span-2`}
     >
       <div className="absolute right-5 top-5 rounded-full border border-white/10 bg-white/[0.05] p-3 text-white/70">
         <ShieldCheck size={22} />
@@ -130,7 +130,7 @@ function LicenseHeroCard({ license }) {
         Detected SPDX
       </p>
       <p
-        className={`mt-4 break-all text-5xl font-black leading-none ${license.tone.text} md:text-6xl`}
+        className={`mt-4 break-all text-5xl font-semibold leading-none ${license.tone.text} md:text-6xl`}
       >
         {license.spdxId}
       </p>
@@ -171,9 +171,8 @@ export default function LicenseAnalysisSection({
 
   return (
     <section
-      className={`overflow-hidden rounded-[1.75rem] border ${license.tone.border} bg-[#080817]/75 shadow-[0_24px_90px_rgba(0,0,0,0.42)] backdrop-blur-xl`}
+      className={`overflow-hidden rounded-xl border ${license.tone.border} bg-[var(--surface)]`}
     >
-      <div className={`h-1 bg-gradient-to-r ${license.tone.bg}`} />
 
       <div className="p-6 lg:p-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
@@ -188,7 +187,7 @@ export default function LicenseAnalysisSection({
               </span>
             </div>
 
-            <h3 className="mt-4 text-2xl font-black text-white md:text-3xl">
+            <h3 className="mt-4 text-2xl font-semibold text-white md:text-3xl">
               대표 라이선스 분석
             </h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
@@ -199,7 +198,7 @@ export default function LicenseAnalysisSection({
 
           <div className="flex flex-wrap items-center gap-2">
             <div
-              className={`w-fit rounded-full border px-4 py-2 text-sm font-black ${license.tone.chip}`}
+              className={`w-fit rounded-full border px-4 py-2 text-sm font-medium ${license.tone.chip}`}
             >
               {license.manualReviewRequired ? "검토 필요" : "자동 판단 가능"}
             </div>
@@ -262,7 +261,7 @@ export default function LicenseAnalysisSection({
                 <FileSearch size={18} />
               </div>
               <div>
-                <h4 className="font-black text-white">판단 근거</h4>
+                <h4 className="font-semibold text-white">판단 근거</h4>
                 <p className="text-sm text-gray-500">
                   {license.evidences.length}개의 파일 근거가 연결되었습니다.
                 </p>

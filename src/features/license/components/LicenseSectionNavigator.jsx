@@ -40,7 +40,7 @@ function StatBadge({ label, value, tone = "text-slate-100" }) {
       <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-500">
         {label}
       </p>
-      <p className={`mt-1 truncate text-sm font-black ${tone}`}>{value}</p>
+      <p className={`mt-1 truncate text-sm font-semibold ${tone}`}>{value}</p>
     </div>
   );
 }
@@ -77,14 +77,14 @@ export default function LicenseSectionNavigator({ analysis }) {
     : "text-emerald-100";
 
   return (
-    <nav className="sticky top-4 z-20 rounded-[1.5rem] border border-white/10 bg-[#080817]/85 p-3 shadow-[0_18px_60px_rgba(0,0,0,0.32)] backdrop-blur-xl">
+    <nav className="sticky top-4 z-20 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex items-center gap-2 px-1">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-300/10 text-emerald-100">
             <ShieldCheck size={17} />
           </span>
           <div>
-            <p className="text-sm font-black text-white">라이선스 보기</p>
+            <p className="text-sm font-semibold text-white">라이선스 보기</p>
             <p className="text-xs text-gray-500">필요한 검토 영역으로 바로 이동</p>
           </div>
         </div>

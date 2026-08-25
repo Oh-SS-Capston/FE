@@ -46,7 +46,7 @@ function ActionButton({ icon: Icon, label, description, onClick, disabled }) {
         </span>
 
         <span className="min-w-0">
-          <span className="block font-black text-slate-100">{label}</span>
+          <span className="block font-semibold text-slate-100">{label}</span>
           <span className="mt-1 block text-sm leading-5 text-gray-500">
             {description}
           </span>
@@ -128,8 +128,7 @@ export default function LicenseReportActions({ analysis, runId, repo }) {
   };
 
   return (
-    <section className="mt-8 overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080817]/75 shadow-[0_20px_70px_rgba(0,0,0,0.34)] backdrop-blur-xl">
-      <div className="h-1 bg-gradient-to-r from-transparent via-sky-300/45 to-transparent" />
+    <section className="mt-8 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
 
       <div className="p-6 lg:p-7">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -139,7 +138,7 @@ export default function LicenseReportActions({ analysis, runId, repo }) {
               Report Actions
             </div>
 
-            <h3 className="mt-4 text-2xl font-black text-white">
+            <h3 className="mt-4 text-2xl font-semibold text-white">
               리포트 액션
             </h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">

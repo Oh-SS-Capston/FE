@@ -128,8 +128,7 @@ export default function LicenseEvidenceExplorer({ analysis }) {
   }
 
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080817]/75 shadow-[0_24px_90px_rgba(0,0,0,0.38)] backdrop-blur-xl">
-      <div className="h-1 bg-gradient-to-r from-transparent via-cyan-300/40 to-transparent" />
+    <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
 
       <div className="p-6 lg:p-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -138,7 +137,7 @@ export default function LicenseEvidenceExplorer({ analysis }) {
               <FileSearch size={14} />
               Evidence Explorer
             </div>
-            <h3 className="mt-4 text-2xl font-black text-white">
+            <h3 className="mt-4 text-2xl font-semibold text-white">
               판단 근거 탐색
             </h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
@@ -152,7 +151,7 @@ export default function LicenseEvidenceExplorer({ analysis }) {
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
                 Evidence
               </p>
-              <p className="mt-2 text-2xl font-black text-cyan-100">
+              <p className="mt-2 text-2xl font-semibold text-cyan-100">
                 {evidences.length}
               </p>
             </div>
@@ -160,7 +159,7 @@ export default function LicenseEvidenceExplorer({ analysis }) {
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
                 Sources
               </p>
-              <p className="mt-2 text-2xl font-black text-slate-100">
+              <p className="mt-2 text-2xl font-semibold text-slate-100">
                 {sourceOptions.length}
               </p>
             </div>
@@ -169,7 +168,7 @@ export default function LicenseEvidenceExplorer({ analysis }) {
                 Review
               </p>
               <p
-                className={`mt-2 text-2xl font-black ${
+                className={`mt-2 text-2xl font-semibold ${
                   license.manualReviewRequired ? "text-amber-100" : "text-emerald-100"
                 }`}
               >

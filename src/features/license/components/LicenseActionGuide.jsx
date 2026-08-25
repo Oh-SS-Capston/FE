@@ -204,8 +204,7 @@ export default function LicenseActionGuide({ analysis }) {
   const actionItems = buildActionItems(license);
 
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080817]/75 shadow-[0_24px_90px_rgba(0,0,0,0.38)] backdrop-blur-xl">
-      <div className="h-1 bg-gradient-to-r from-transparent via-emerald-300/40 to-transparent" />
+    <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
 
       <div className="p-6 lg:p-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -214,7 +213,7 @@ export default function LicenseActionGuide({ analysis }) {
               <CheckCircle2 size={14} />
               Review Guide
             </div>
-            <h3 className="mt-4 text-2xl font-black text-white">
+            <h3 className="mt-4 text-2xl font-semibold text-white">
               검토 가이드
             </h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
@@ -227,7 +226,7 @@ export default function LicenseActionGuide({ analysis }) {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
               SPDX
             </p>
-            <p className="mt-1 break-all text-xl font-black text-slate-100">
+            <p className="mt-1 break-all text-xl font-semibold text-slate-100">
               {license.spdxId}
             </p>
           </div>
@@ -241,7 +240,7 @@ export default function LicenseActionGuide({ analysis }) {
               </div>
 
               <div>
-                <h4 className={`text-lg font-black ${tone.title}`}>
+                <h4 className={`text-lg font-semibold ${tone.title}`}>
                   {decision.title}
                 </h4>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-300">
@@ -251,7 +250,7 @@ export default function LicenseActionGuide({ analysis }) {
             </div>
 
             <span
-              className={`w-fit rounded-full border px-3 py-1 text-xs font-black ${tone.badge}`}
+              className={`w-fit rounded-full border px-3 py-1 text-xs font-medium ${tone.badge}`}
             >
               {decision.badge}
             </span>
