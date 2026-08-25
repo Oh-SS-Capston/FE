@@ -4,7 +4,6 @@ import {
   Controls,
   Handle,
   MarkerType,
-  MiniMap,
   Position,
   ReactFlow,
   useNodesInitialized,
@@ -1462,15 +1461,19 @@ function ViewportController({ request }) {
         ? request.nodeIds.map((id) => ({ id }))
         : undefined;
 
-    const fitTimer = window.setTimeout(() => {
+    const runFitView = (duration = 500) => {
       reactFlow.fitView({
         nodes: targetNodes,
         padding: request.padding,
-        duration: 500,
+        duration,
         minZoom: request.minZoom,
         maxZoom: request.maxZoom,
       });
-    }, 80);
+    };
+
+    const fitTimers = [80, ...(request.retryDelays ?? [])].map((delay) =>
+      window.setTimeout(() => runFitView(delay === 80 ? 500 : 300), delay)
+    );
 
     /*
      * 주변 보기에서는 fitView 이후 선택 노드를 다시 중앙에 두고
@@ -1508,7 +1511,7 @@ function ViewportController({ request }) {
     }, 650);
 
     return () => {
-      window.clearTimeout(fitTimer);
+      fitTimers.forEach((timer) => window.clearTimeout(timer));
       window.clearTimeout(centerTimer);
     };
   }, [
@@ -1521,6 +1524,7 @@ function ViewportController({ request }) {
     request?.maxZoom,
     request?.centerNodeId,
     request?.focusZoom,
+    request?.retryDelays,
   ]);
 
   return null;
@@ -1605,6 +1609,12 @@ function FlowCanvas({
           nodesDraggable={false}
           nodesConnectable={false}
           elementsSelectable
+          fitView
+          fitViewOptions={{
+            padding: 0.12,
+            minZoom: 0.06,
+            maxZoom: 0.9,
+          }}
           minZoom={0.06}
           maxZoom={1.5}
           elevateEdgesOnSelect={false}
@@ -1614,14 +1624,6 @@ function FlowCanvas({
           <ViewportController request={viewportRequest} />
 
           <Background gap={22} size={1} color="rgba(255,255,255,0.06)" />
-          <MiniMap
-            pannable
-            zoomable
-            nodeColor={(node) =>
-              node.type === "diagramGroup" ? "#334155" : "#22d3ee"
-            }
-            maskColor="rgba(0,0,0,0.55)"
-          />
           <Controls showInteractive={false} />
         </ReactFlow>
       )}
@@ -1923,8 +1925,41 @@ export default function ClassDiagramSection({
       maxZoom: options.maxZoom ?? 1.15,
       centerNodeId: options.centerNodeId ?? null,
       focusZoom: options.focusZoom ?? null,
+      retryDelays: options.retryDelays ?? [],
     }));
   }, []);
+
+  const fitOverview = useCallback(
+    (duration = 500) => {
+      if (!reactFlowInstance || nodes.length === 0) {
+        return;
+      }
+
+      reactFlowInstance.fitView({
+        padding: 0.12,
+        duration,
+        minZoom: 0.06,
+        maxZoom: 0.9,
+      });
+    },
+    [nodes.length, reactFlowInstance]
+  );
+
+  const fitNeighborhood = useCallback(
+    (duration = 500) => {
+      if (!reactFlowInstance || nodes.length === 0) {
+        return;
+      }
+
+      reactFlowInstance.fitView({
+        padding: nodes.length <= 5 ? 0.28 : 0.22,
+        duration,
+        minZoom: 0.06,
+        maxZoom: 0.95,
+      });
+    },
+    [nodes.length, reactFlowInstance]
+  );
 
   useEffect(() => {
     if (nodes.length === 0) {
@@ -1941,28 +1976,11 @@ export default function ClassDiagramSection({
       const targetIds = classNodeIds.length > 0 ? classNodeIds : allNodeIds;
       const targetCount = targetIds.length;
 
-      const focusZoom =
-        targetCount <= 2
-          ? 1.05
-          : targetCount <= 5
-            ? 0.82
-            : targetCount <= 9
-              ? 0.66
-              : 0.52;
-
       requestFitView(targetIds, {
-        padding: targetCount <= 5 ? 0.2 : 0.16,
-        minZoom:
-          targetCount <= 2
-            ? 0.85
-            : targetCount <= 5
-              ? 0.65
-              : targetCount <= 9
-                ? 0.5
-                : 0.38,
-        maxZoom: 1.25,
-        centerNodeId: selectedNodeId,
-        focusZoom,
+        padding: targetCount <= 5 ? 0.28 : 0.22,
+        minZoom: 0.06,
+        maxZoom: 0.95,
+        retryDelays: [300, 900],
       });
 
       return;
@@ -2001,6 +2019,7 @@ export default function ClassDiagramSection({
       padding: 0.12,
       minZoom: 0.06,
       maxZoom: 0.9,
+      retryDelays: [300, 900],
     });
   }, [
     nodes,
@@ -2011,6 +2030,43 @@ export default function ClassDiagramSection({
     selectedNodeId,
     requestFitView,
   ]);
+
+  useEffect(() => {
+    if (
+      viewMode !== VIEW_MODE.OVERVIEW ||
+      focusMode !== FOCUS_MODE.ALL ||
+      !reactFlowInstance ||
+      nodes.length === 0
+    ) {
+      return;
+    }
+
+    const timers = [0, 250, 750, 1500].map((delay) =>
+      window.setTimeout(() => fitOverview(delay === 0 ? 500 : 250), delay)
+    );
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, [fitOverview, focusMode, nodes.length, reactFlowInstance, viewMode]);
+
+  useEffect(() => {
+    if (
+      viewMode !== VIEW_MODE.NEIGHBORHOOD ||
+      !reactFlowInstance ||
+      nodes.length === 0
+    ) {
+      return;
+    }
+
+    const timers = [0, 250, 750, 1500].map((delay) =>
+      window.setTimeout(() => fitNeighborhood(delay === 0 ? 500 : 250), delay)
+    );
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, [fitNeighborhood, nodes.length, reactFlowInstance, selectedNodeId, viewMode]);
 
   const resetToOverview = useCallback(() => {
     setViewMode(VIEW_MODE.OVERVIEW);
