@@ -125,7 +125,7 @@ function useScrollLinkedStyle(options = {}) {
   return [ref, style];
 }
 
-function FeaturedPlanetCard({
+function ExampleRepositoryCard({
   item,
   analyzeLoading,
   analyzeDisabled,
@@ -156,7 +156,7 @@ function FeaturedPlanetCard({
       {analyzeDisabled && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#030306]/35 backdrop-blur-[1px]">
           <span className="rounded-full border border-[var(--border)] bg-[var(--surface-secondary)] px-3 py-1 text-xs font-semibold text-white/55">
-            Login Required
+            로그인 필요
           </span>
         </div>
       )}
@@ -303,7 +303,7 @@ export default function LandingPage() {
   };
 
   /*
-   * 직접 URL 입력 Analyze 버튼과 Featured Planets 클릭이 모두 이 함수를 탑니다.
+   * 직접 URL 입력 분석 버튼과 예시 레포지토리 클릭이 모두 이 함수를 탑니다.
    * 여기서는 실제 분석 요청을 보내지 않고, 현재 토큰을 조회한 뒤 확인 모달만 엽니다.
    */
   const handleAnalyze = async (raw) => {
@@ -419,7 +419,7 @@ export default function LandingPage() {
     );
   };
 
-  const featuredPlanets = [
+  const exampleRepositories = [
     {
       name: "apache/commons-cli",
       lang: "Java Library",
@@ -471,15 +471,14 @@ export default function LandingPage() {
         <section className="landing-hero flex min-h-[calc(100vh+120px)] w-full flex-col items-center justify-center pt-24 pb-36 text-center">
           <div className="mb-12">
             <h2 className="mb-8 text-3xl font-semibold leading-tight tracking-tight text-[var(--text-primary)] md:text-5xl">
-              Open-source code, mapped.
+              Open Source Intelligence Platform
             </h2>
 
             <p className="text-sm md:text-base text-gray-400 font-light max-w-3xl mx-auto leading-relaxed">
-              GitHub 레포지토리를 분석하여{" "}
-              <span className="font-semibold text-cyan-200">
-                시각적인 우주
-              </span>
-              로 펼쳐드립니다.
+              처음 접하는 저장소의 구조, 공개 API, 호출 관계, 모듈 관계,
+              개발 규칙을 정적 분석하고
+              <br />
+              근거가 연결된 온보딩 문서를 자동 생성합니다.
             </p>
           </div>
 
@@ -501,7 +500,7 @@ export default function LandingPage() {
           </div>
 
           <div className="landing-scroll-hint mt-16 flex flex-col items-center gap-2 text-xs font-medium uppercase tracking-[0.3em] text-cyan-100/50">
-            <span>Scroll</span>
+            <span>아래로 이동</span>
             <span className="h-8 w-px rounded-full bg-cyan-300/45" />
           </div>
         </section>
@@ -509,7 +508,7 @@ export default function LandingPage() {
         {/* 스크롤 위치에 따라 계속 움직이는 영역 */}
         <section className="w-full pb-[42vh] md:pb-[36vh]">
           <div className="w-full grid md:grid-cols-2 gap-16 items-start">
-            {/* Recent Explorations */}
+            {/* 최근 분석 */}
             <div
               ref={recentRef}
               style={recentStyle}
@@ -523,7 +522,7 @@ export default function LandingPage() {
               />
             </div>
 
-            {/* Featured Planets */}
+            {/* 예시 레포지토리 */}
             <section>
               <div
                 ref={featuredHeaderRef}
@@ -535,13 +534,13 @@ export default function LandingPage() {
                 </div>
 
                 <h3 className="text-2xl font-semibold tracking-wide">
-                  Try an example
+                  예시 레포지토리
                 </h3>
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                {featuredPlanets.map((item) => (
-                  <FeaturedPlanetCard
+                {exampleRepositories.map((item) => (
+                  <ExampleRepositoryCard
                     key={item.name}
                     item={item}
                     analyzeLoading={analyzeLoading}
