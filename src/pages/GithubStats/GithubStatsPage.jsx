@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertCircle,
@@ -665,6 +665,7 @@ export default function GithubStatsPage() {
   const repoParam = location.state?.repo ?? searchParams.get("repo");
 
   const [stats, setStats] = useState(null);
+  const statsRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -674,6 +675,9 @@ export default function GithubStatsPage() {
     [repoParam, stats]
   );
 
+  useEffect(() => {
+    statsRef.current = stats;
+  }, [stats]);
   const loadStats = useCallback(
     async ({ forceRefresh = false, silent = false } = {}) => {
       if (!runId) return;
@@ -691,6 +695,27 @@ export default function GithubStatsPage() {
         setStats(data);
 
       } catch (e) {
+        if (forceRefresh) {
+          try {
+            const cachedData = await getGithubStats(runId, {
+              forceRefresh: false,
+            });
+
+            setStats(cachedData);
+            setError(
+              "최신 GitHub 데이터를 갱신하지 못해 기존 통계를 표시하고 있습니다. 잠시 후 다시 시도해주세요."
+            );
+            return;
+          } catch {
+            if (statsRef.current) {
+              setError(
+                "최신 GitHub 데이터를 갱신하지 못해 기존 통계를 표시하고 있습니다. 잠시 후 다시 시도해주세요."
+              );
+              return;
+            }
+          }
+        }
+
         setError(formatUserErrorMessage(e, "GitHub 통계량을 불러오지 못했습니다."));
       } finally {
         setLoading(false);
