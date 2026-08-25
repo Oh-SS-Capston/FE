@@ -34,7 +34,7 @@ export default function LoginModal({ onClose }) {
         aria-hidden
       />
 
-      <div className="relative my-auto w-full max-w-md overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+      <div className="relative my-auto w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         <div className="p-8">
           <div className="flex items-center justify-between mb-8">
             <h2
@@ -54,8 +54,9 @@ export default function LoginModal({ onClose }) {
             </button>
           </div>
 
-          <p className="mb-6 text-sm text-gray-400 leading-relaxed">
-            Google 계정으로 로그인하면 OSS 분석 요청을 생성할 수 있습니다.
+          <p className="mb-6 max-w-sm text-sm leading-relaxed text-gray-400">
+            Google 계정으로 로그인하면<br className="hidden sm:block" />
+            OSS 분석 요청을 생성할 수 있습니다.
           </p>
 
           <button
