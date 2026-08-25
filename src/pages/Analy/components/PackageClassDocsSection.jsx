@@ -271,15 +271,7 @@ export default function PackageClassDocsSection({
   };
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl">
-      <div
-        className="h-1 opacity-60"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, rgba(34,211,238,0.45), rgba(250,204,21,0.45), transparent)",
-        }}
-      />
-
+    <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
       <div className="p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>

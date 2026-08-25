@@ -1109,17 +1109,17 @@ function UmlClassNode({ data }) {
   const isTopBottom = data.handleDirection === "TB";
 
   const focusClassName = data.isSelected
-    ? "border-white shadow-[0_0_0_2px_rgba(255,255,255,0.85),0_0_36px_rgba(34,211,238,0.35)]"
+    ? "border-white"
     : data.isRelatedToSelection
-      ? "border-cyan-200 shadow-[0_0_0_1px_rgba(165,243,252,0.45),0_0_22px_rgba(34,211,238,0.18)]"
+      ? "border-cyan-200"
       : data.isDimmed
         ? "border-white/5 opacity-[0.08] grayscale"
         : data.isEntryPoint && data.isExtensionPoint
-          ? "border-fuchsia-300 shadow-[0_0_0_1px_rgba(216,180,254,0.6),0_0_28px_rgba(250,204,21,0.22),0_0_28px_rgba(192,132,252,0.28)]"
+          ? "border-fuchsia-300"
           : data.isEntryPoint
-            ? "border-purple-300 shadow-[0_0_0_1px_rgba(216,180,254,0.55),0_0_28px_rgba(192,132,252,0.28)]"
+            ? "border-purple-300"
             : data.isExtensionPoint
-              ? "border-yellow-300 shadow-[0_0_0_1px_rgba(253,224,71,0.55),0_0_28px_rgba(250,204,21,0.25)]"
+              ? "border-yellow-300"
               : "border-white/15";
 
   return (
@@ -1190,7 +1190,7 @@ function UmlClassNode({ data }) {
 function DiagramGroupNode({ data }) {
   return (
     <div
-      className="h-full w-full rounded-2xl border bg-white/[0.025] shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+      className="h-full w-full rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)]"
       style={{
         borderColor: `${data.accentColor}55`,
       }}
@@ -1271,11 +1271,11 @@ function EdgeToggle({ edgeType, checked, count, onChange }) {
 
 function LayoutToggle({ value, onChange }) {
   return (
-    <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
+    <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] p-1">
       <button
         type="button"
         onClick={() => onChange("TB")}
-        className={`rounded-full px-3 py-1.5 text-xs transition ${
+        className={`rounded-md px-3 py-1.5 text-xs transition ${
           value === "TB"
             ? "bg-cyan-400/15 text-cyan-200"
             : "text-gray-400 hover:text-gray-200"
@@ -1287,7 +1287,7 @@ function LayoutToggle({ value, onChange }) {
       <button
         type="button"
         onClick={() => onChange("LR")}
-        className={`rounded-full px-3 py-1.5 text-xs transition ${
+        className={`rounded-md px-3 py-1.5 text-xs transition ${
           value === "LR"
             ? "bg-cyan-400/15 text-cyan-200"
             : "text-gray-400 hover:text-gray-200"
@@ -1301,11 +1301,11 @@ function LayoutToggle({ value, onChange }) {
 
 function GroupModeToggle({ value, onChange }) {
   return (
-    <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
+    <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] p-1">
       <button
         type="button"
         onClick={() => onChange(GROUP_MODE.PACKAGE)}
-        className={`rounded-full px-3 py-1.5 text-xs transition ${
+        className={`rounded-md px-3 py-1.5 text-xs transition ${
           value === GROUP_MODE.PACKAGE
             ? "bg-purple-400/15 text-purple-200"
             : "text-gray-400 hover:text-gray-200"
@@ -1317,7 +1317,7 @@ function GroupModeToggle({ value, onChange }) {
       <button
         type="button"
         onClick={() => onChange(GROUP_MODE.LAYER)}
-        className={`rounded-full px-3 py-1.5 text-xs transition ${
+        className={`rounded-md px-3 py-1.5 text-xs transition ${
           value === GROUP_MODE.LAYER
             ? "bg-purple-400/15 text-purple-200"
             : "text-gray-400 hover:text-gray-200"
@@ -1336,11 +1336,11 @@ function FocusModeToggle({
   extensionPointCount,
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
+    <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] p-1">
       <button
         type="button"
         onClick={() => onChange(FOCUS_MODE.ALL)}
-        className={`rounded-full px-3 py-1.5 text-xs transition ${
+        className={`rounded-md px-3 py-1.5 text-xs transition ${
           value === FOCUS_MODE.ALL
             ? "bg-white/10 text-white"
             : "text-gray-400 hover:text-gray-200"
@@ -1352,7 +1352,7 @@ function FocusModeToggle({
       <button
         type="button"
         onClick={() => onChange(FOCUS_MODE.ENTRY_POINT)}
-        className={`rounded-full px-3 py-1.5 text-xs transition ${
+        className={`rounded-md px-3 py-1.5 text-xs transition ${
           value === FOCUS_MODE.ENTRY_POINT
             ? "bg-purple-400/15 text-purple-200"
             : "text-gray-400 hover:text-gray-200"
@@ -1364,7 +1364,7 @@ function FocusModeToggle({
       <button
         type="button"
         onClick={() => onChange(FOCUS_MODE.EXTENSION_POINT)}
-        className={`rounded-full px-3 py-1.5 text-xs transition ${
+        className={`rounded-md px-3 py-1.5 text-xs transition ${
           value === FOCUS_MODE.EXTENSION_POINT
             ? "bg-yellow-400/15 text-yellow-200"
             : "text-gray-400 hover:text-gray-200"
@@ -2138,7 +2138,7 @@ export default function ClassDiagramSection({
 
   if (loading) {
     return (
-      <section className="rounded-2xl border border-white/10 bg-[#0a0a1a]/60 p-6">
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
         <div className="flex items-center gap-3 text-gray-300">
           <Loader2 size={20} className="animate-spin" />
           <span>클래스다이어그램을 생성하고 불러오는 중입니다.</span>
@@ -2149,7 +2149,7 @@ export default function ClassDiagramSection({
 
   if (error) {
     return (
-      <section className="rounded-2xl border border-red-500/20 bg-red-950/10 p-6">
+      <section className="rounded-xl border border-red-500/20 bg-red-950/10 p-6">
         <div className="flex items-start gap-3">
           <TriangleAlert size={20} className="mt-0.5 text-red-300" />
           <div>
@@ -2165,7 +2165,7 @@ export default function ClassDiagramSection({
 
   if (!classDiagram) {
     return (
-      <section className="rounded-2xl border border-white/10 bg-[#0a0a1a]/60 p-6">
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
         <div className="flex items-start gap-3">
           <Box size={20} className="mt-0.5 text-gray-400" />
           <div>
@@ -2182,16 +2182,8 @@ export default function ClassDiagramSection({
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl">
-      <div
-        className="h-1 opacity-60"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, rgba(34,211,238,0.5), rgba(168,85,247,0.5), transparent)",
-        }}
-      />
-
-      <div className="border-b border-white/10 p-6">
+    <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+      <div className="border-b border-[var(--border)] p-6">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="flex items-center gap-2">

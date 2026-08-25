@@ -8,6 +8,8 @@ import {
   Loader2,
   TriangleAlert,
 } from "lucide-react";
+import Badge from "../../../shared/components/ui/Badge";
+import Panel from "../../../shared/components/ui/Panel";
 
 function formatAnalyzedAt(value) {
   if (!value) {
@@ -113,25 +115,17 @@ export default function RepoInfoSection({
   const StatusIcon = status?.icon;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl">
-      <div
-        className="h-1 opacity-60"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, rgba(34,211,238,0.5), rgba(168,85,247,0.5), transparent)",
-        }}
-      />
-
+    <Panel padding="none" className="overflow-hidden">
       <div className="p-6 sm:p-8">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] p-3">
                 <Github size={24} className="text-gray-300" />
               </div>
 
               <div className="min-w-0">
-                <h1 className="truncate bg-gradient-to-r from-cyan-200 to-purple-300 bg-clip-text text-2xl font-bold text-transparent sm:text-3xl">
+                <h1 className="truncate text-2xl font-semibold text-[var(--text-primary)] sm:text-3xl">
                   {info?.full_name ?? repo}
                 </h1>
                 {loading ? (
@@ -184,7 +178,7 @@ export default function RepoInfoSection({
             <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
               {status && (
                 <span
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-semibold ${status.className}`}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-medium ${status.className}`}
                 >
                   <StatusIcon
                     size={15}
@@ -195,14 +189,14 @@ export default function RepoInfoSection({
               )}
 
               {info?.language && (
-                <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-gray-300">
+                <Badge>
                   {info.language}
-                </span>
+                </Badge>
               )}
               {info?.license?.spdx_id && (
-                <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-gray-300">
+                <Badge>
                   {info.license.spdx_id}
-                </span>
+                </Badge>
               )}
               {typeof info?.stargazers_count === "number" && (
                 <span className="text-gray-400">
@@ -228,13 +222,13 @@ export default function RepoInfoSection({
               href={info.html_url}
               target="_blank"
               rel="noreferrer"
-              className="shrink-0 rounded-xl border border-purple-300/20 bg-purple-300/10 px-4 py-2.5 text-sm font-semibold text-purple-100 transition hover:border-purple-300/40 hover:bg-purple-300/20"
+              className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-hover)]"
             >
               GitHub에서 보기 →
             </a>
           )}
         </div>
       </div>
-    </section>
+    </Panel>
   );
 }

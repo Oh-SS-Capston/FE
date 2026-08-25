@@ -135,12 +135,12 @@ function StepIcon({ status }) {
   return <Circle size={18} className="text-gray-600" />;
 }
 
-function stepBorderClass(status) {
-  if (status === "SUCCESS") return "border-emerald-400/20 bg-emerald-400/[0.04]";
-  if (status === "FAILED") return "border-red-400/20 bg-red-400/[0.04]";
-  if (status === "RUNNING") return "border-cyan-400/20 bg-cyan-400/[0.04]";
-  if (status === "SKIPPED") return "border-yellow-400/20 bg-yellow-400/[0.04]";
-  return "border-white/10 bg-white/[0.025]";
+function stepStatusClass(status) {
+  if (status === "SUCCESS") return "text-emerald-200";
+  if (status === "FAILED") return "text-red-200";
+  if (status === "RUNNING") return "text-cyan-200";
+  if (status === "SKIPPED") return "text-yellow-200";
+  return "text-gray-500";
 }
 
 function isCompleted(progress) {
@@ -160,7 +160,7 @@ export default function AnalyzeProgressPanel({ progress }) {
 
   if (!progress) {
     return (
-      <section className="rounded-2xl border border-white/10 bg-[#0a0a1a]/60 p-6">
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
         <div className="flex items-center gap-3 text-gray-300">
           <Loader2 size={18} className="animate-spin" />
           <span>분석 상태를 불러오는 중입니다.</span>
@@ -175,15 +175,7 @@ export default function AnalyzeProgressPanel({ progress }) {
   const failedCount = steps.filter((step) => step.status === "FAILED").length;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl">
-      <div
-        className="h-1 opacity-60"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, rgba(34,211,238,0.5), rgba(168,85,247,0.5), transparent)",
-        }}
-      />
-
+    <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
       <button
         type="button"
         aria-expanded={!collapsed}
@@ -230,23 +222,27 @@ export default function AnalyzeProgressPanel({ progress }) {
         </div>
       </button>
 
-      <div className="h-1.5 overflow-hidden bg-white/[0.06]">
+      <div className="h-1.5 overflow-hidden bg-[var(--surface-secondary)]">
         <div
-          className="h-full bg-gradient-to-r from-cyan-300 to-purple-400 transition-all duration-500"
+          className="h-full bg-cyan-300 transition-all duration-500"
           style={{ width: `${Math.min(100, Math.max(0, progressValue))}%` }}
         />
       </div>
 
       {!collapsed && (
         <div className="border-t border-white/10 p-5 sm:p-6">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {steps.map((step) => (
+          <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)] divide-y divide-[var(--border)]">
+            {steps.map((step, index) => (
               <article
                 key={step.stage}
-                className={`rounded-xl border p-4 transition ${stepBorderClass(step.status)}`}
+                className="grid gap-3 px-4 py-4 transition-colors hover:bg-[var(--surface-hover)] sm:grid-cols-[auto_auto_minmax(0,1fr)_auto] sm:items-start"
               >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 shrink-0">
+                <span className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-xs font-semibold text-gray-400">
+                  {index + 1}
+                </span>
+
+                <div className="flex items-start gap-3 sm:contents">
+                  <div className="mt-1 shrink-0">
                     <StepIcon status={step.status} />
                   </div>
 
@@ -263,10 +259,18 @@ export default function AnalyzeProgressPanel({ progress }) {
                       )}
                     </div>
 
-                    <p className="mt-2 text-sm leading-5 text-gray-300">
+                    <p className="mt-1 text-sm leading-5 text-gray-300">
                       {getStepMessage(step)}
                     </p>
                   </div>
+
+                  <span
+                    className={`text-xs font-semibold uppercase tracking-wide ${stepStatusClass(
+                      step.status
+                    )}`}
+                  >
+                    {step.status ?? "PENDING"}
+                  </span>
                 </div>
               </article>
             ))}

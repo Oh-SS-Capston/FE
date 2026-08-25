@@ -2182,15 +2182,7 @@ export default function LlmResultSection({
   };
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl">
-      <div
-        className="h-1 opacity-60"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, rgba(250,204,21,0.45), rgba(168,85,247,0.5), transparent)",
-        }}
-      />
-
+    <section className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
       <div className="p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -2211,7 +2203,7 @@ export default function LlmResultSection({
               type="button"
               onClick={onRefresh}
               disabled={!onRefresh || regenerating}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-gray-300 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-2 text-sm text-gray-300 transition hover:bg-[var(--surface-hover)] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
               LLM 결과 새로고침
@@ -2221,7 +2213,7 @@ export default function LlmResultSection({
               type="button"
               onClick={handleOpenRegenerateModal}
               disabled={!onRegenerate || regenerating}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/15 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <RefreshCw size={15} className={regenerating ? "animate-spin" : ""} />
               {regenerating ? "재생성 요청 중..." : "재생성"}
@@ -2233,7 +2225,7 @@ export default function LlmResultSection({
           <div className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-50">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p>기존 분석 결과 · 최근 분석 {cachedAnalyzedTimeLabel}</p>
-              <span className="rounded-full border border-cyan-300/30 bg-cyan-400/15 px-2 py-0.5 text-[11px] font-semibold text-cyan-100">
+              <span className="rounded-full border border-cyan-300/30 bg-cyan-400/15 px-2 py-0.5 text-[11px] font-medium text-cyan-100">
                 기존 분석 결과
               </span>
             </div>
@@ -2262,7 +2254,7 @@ export default function LlmResultSection({
 
         {hasResult && (
           <>
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-5 grid gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)] p-1 md:grid-cols-5">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const active = activeTab === tab.key;
@@ -2275,15 +2267,15 @@ export default function LlmResultSection({
                       setUserSelectedTab(true);
                       setActiveTab(tab.key);
                     }}
-                    className={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
                       active
-                        ? "border-yellow-300/30 bg-yellow-300/10 text-yellow-100"
-                        : "border-white/10 bg-white/[0.03] text-gray-400 hover:bg-white/[0.06] hover:text-gray-200"
+                        ? "border-cyan-300/35 bg-[var(--surface-hover)] text-gray-100"
+                        : "border-transparent text-gray-400 hover:bg-[var(--surface-hover)] hover:text-gray-200"
                     }`}
                   >
                     <Icon size={15} />
                     <span>{tab.label}</span>
-                    <span className="rounded-full border border-white/10 bg-black/20 px-1.5 py-0.5 text-[10px]">
+                    <span className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-[10px]">
                       {tab.count}
                     </span>
                   </button>
