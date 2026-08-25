@@ -76,6 +76,149 @@ function formatShortDate(value) {
   return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
+function formatChartDateLabel(value) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return formatShortDate(value);
+}
+
+function toFiniteNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function normalizeStarTrendData(stats) {
+  const candidates = [
+    stats?.starTrend,
+    stats?.starHistory,
+    stats?.starsHistory,
+    stats?.stargazerHistory,
+    stats?.activity?.starTrend,
+    stats?.activity?.starHistory,
+    stats?.activity?.starsHistory,
+    stats?.activity?.dailyStarCounts,
+    stats?.activity?.recent28dDailyStarCounts,
+    stats?.activity?.recent28dDailyStarHistory,
+    stats?.summary?.starTrend,
+    stats?.summary?.starHistory,
+  ];
+
+  const source = candidates
+    .map((candidate) => {
+      if (Array.isArray(candidate)) {
+        return candidate;
+      }
+
+      return candidate?.points ?? candidate?.items ?? candidate?.data ?? candidate?.values;
+    })
+    .find((candidate) => Array.isArray(candidate));
+
+  if (!source) {
+    return [];
+  }
+
+  return source
+    .map((item, index) => {
+      const date =
+        item?.date ??
+        item?.day ??
+        item?.collectedAt ??
+        item?.capturedAt ??
+        item?.timestamp ??
+        item?.createdAt ??
+        item?.label;
+      const stars = toFiniteNumber(
+        item?.stars ??
+          item?.starCount ??
+          item?.stargazers ??
+          item?.stargazersCount ??
+          item?.stargazers_count ??
+          item?.count ??
+          item?.value
+      );
+
+      if (!date || stars === null) {
+        return null;
+      }
+
+      return {
+        date,
+        stars,
+        key: `${date}-${index}`,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      const aTime = new Date(a.date).getTime();
+      const bTime = new Date(b.date).getTime();
+
+      if (Number.isNaN(aTime) || Number.isNaN(bTime)) {
+        return 0;
+      }
+
+      return aTime - bTime;
+    });
+}
+
+function buildStarTrendData(stats, summary) {
+  const historicalData = normalizeStarTrendData(stats);
+
+  if (historicalData.length > 0) {
+    return {
+      data: historicalData,
+      sourceLabel: "수집된 스타 히스토리",
+    };
+  }
+
+  const currentStars = toFiniteNumber(summary?.stars);
+
+  if (currentStars === null) {
+    return {
+      data: [],
+      sourceLabel: "스타 데이터 없음",
+    };
+  }
+
+  const starDelta = toFiniteNumber(summary?.starDelta28d);
+
+  if (starDelta !== null) {
+    return {
+      data: [
+        {
+          date: "이전 수집",
+          stars: Math.max(0, currentStars - starDelta),
+          key: "previous-stars",
+        },
+        {
+          date: "현재",
+          stars: currentStars,
+          key: "current-stars",
+        },
+      ],
+      sourceLabel: "현재 스타 수와 지난 수집 대비 변화량",
+    };
+  }
+
+  return {
+    data: [
+      {
+        date: "현재",
+        stars: currentStars,
+        key: "current-stars",
+      },
+    ],
+    sourceLabel: "현재 스타 수",
+  };
+}
+
 function formatRelease(repository) {
   if (!repository?.latestRelease) {
     return "-";
@@ -98,6 +241,18 @@ function formatDelta(value, unit = "") {
 
   return `${sign} ${abs}${unit} (지난 수집 대비)`;
 }
+
+function formatPeriodDelta(value, unit = "") {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "";
+  }
+
+  const number = Number(value);
+  const sign = number > 0 ? "↑" : number < 0 ? "↓" : "→";
+  const abs = Math.abs(number).toLocaleString("ko-KR");
+
+  return `${sign} ${abs}${unit} (기간 내 변화)`;
+}
 function GlassPanel({ children, className = "" }) {
   return (
     <section
@@ -108,27 +263,18 @@ function GlassPanel({ children, className = "" }) {
   );
 }
 
-function MetricCard({ icon: Icon, label, value, helper, accent = "cyan" }) {
-  const accentMap = {
-    yellow: "text-yellow-300",
-    purple: "text-purple-300",
-    cyan: "text-cyan-300",
-    blue: "text-blue-300",
-  };
-
+function MetricItem({ icon: Icon, label, value, helper, accent = "text-slate-400" }) {
   return (
-    <article className="rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)] p-5">
-      <div className="flex items-center gap-3">
-        <Icon size={24} className={accentMap[accent] ?? accentMap.cyan} />
-        <span className="text-sm font-bold text-gray-200">{label}</span>
-      </div>
-
-      <p className="mt-5 text-3xl font-semibold tracking-tight text-white">{value}</p>
-
-      <p className={`mt-3 text-sm ${helper?.startsWith("↓") ? "text-slate-300" : "text-slate-300"}`}>
+    <div className="min-w-0">
+      <p className="flex items-center gap-2 text-sm font-medium text-slate-400">
+        <Icon size={16} className={accent} />
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-semibold tracking-tight text-white">{value}</p>
+      <p className="mt-1 truncate text-xs text-slate-500" title={helper}>
         {helper}
       </p>
-    </article>
+    </div>
   );
 }
 
@@ -214,24 +360,175 @@ function RepositoryHero({ repository, summary }) {
   );
 }
 
-function StarTrendChart({ repository, summary }) {
+function StarTrendChart({ stats, summary }) {
+  const { data, sourceLabel } = buildStarTrendData(stats, summary);
+  const firstStars = data[0]?.stars ?? null;
+  const lastStars = data[data.length - 1]?.stars ?? null;
+  const change = firstStars !== null && lastStars !== null ? lastStars - firstStars : null;
+
+  const width = 680;
+  const height = 270;
+  const padding = { top: 28, right: 28, bottom: 42, left: 58 };
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
+  const rawMinStars = data.length > 0 ? Math.min(...data.map((item) => item.stars)) : 0;
+  const rawMaxStars = data.length > 0 ? Math.max(...data.map((item) => item.stars)) : 1;
+  const minStars = rawMinStars === rawMaxStars ? Math.max(0, rawMinStars - 1) : rawMinStars;
+  const maxStars = rawMinStars === rawMaxStars ? rawMaxStars + 1 : rawMaxStars;
+  const valueRange = Math.max(1, maxStars - minStars);
+  const points = data.map((item, index) => {
+    const x =
+      padding.left +
+      (data.length === 1 ? innerWidth / 2 : (index / (data.length - 1)) * innerWidth);
+    const y = padding.top + innerHeight - ((item.stars - minStars) / valueRange) * innerHeight;
+
+    return { ...item, x, y };
+  });
+  const linePath =
+    points.length === 1
+      ? `M ${padding.left} ${points[0].y} L ${width - padding.right} ${points[0].y}`
+      : points
+          .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+          .join(" ");
+  const areaPath =
+    points.length > 0
+      ? points.length === 1
+        ? `M ${padding.left} ${points[0].y} L ${width - padding.right} ${points[0].y} L ${
+            width - padding.right
+          } ${padding.top + innerHeight} L ${padding.left} ${padding.top + innerHeight} Z`
+        : `${linePath} L ${points[points.length - 1].x} ${padding.top + innerHeight} L ${
+            points[0].x
+          } ${padding.top + innerHeight} Z`
+      : "";
+  const yTicks = [0, 0.5, 1].map((ratio) => ({
+    ratio,
+    value: Math.round(minStars + valueRange * ratio),
+    y: padding.top + innerHeight * (1 - ratio),
+  }));
+  const xLabelIndexes = Array.from(
+    new Set([
+      0,
+      Math.floor((data.length - 1) / 2),
+      data.length - 1,
+    ])
+  ).filter((index) => index >= 0 && index < data.length);
+
   return (
     <GlassPanel className="p-6">
-      <div className="mb-5 flex items-center justify-between gap-4">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Star size={23} className="text-yellow-300" />
           <h2 className="text-xl font-semibold text-white">스타 추이</h2>
         </div>
+
+        {data.length > 0 && (
+          <div className="text-right text-sm text-slate-300">
+            <span className="font-semibold text-white">{compactNumber(lastStars)}</span>
+            <span className="ml-2 text-slate-500">
+              {formatPeriodDelta(change)}
+            </span>
+          </div>
+        )}
       </div>
 
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)] p-5">
-        <p className="text-sm leading-6 text-slate-300">
-          GitHub REST API 응답에는 과거 스타 누적 데이터가 포함되지 않습니다. 현재 스타 수를 기반으로 추정 곡선을 만들지 않고, 실제로 제공되는 현재 수치만 표시합니다.
-        </p>
-        <p className="mt-4 text-3xl font-semibold text-white">
-          {compactNumber(summary?.stars)}
-        </p>
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-400">
+        <span>
+          현재 스타 <span className="font-semibold text-slate-100">{compactNumber(summary?.stars)}</span>
+        </span>
+        <span className="hidden h-1 w-1 rounded-full bg-slate-600 sm:inline-block" />
+        <span>
+          차트 기준 <span className="font-medium text-slate-300">{sourceLabel}</span>
+        </span>
       </div>
+
+      {data.length === 0 ? (
+        <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-white/10 bg-white/[0.02] text-slate-500">
+          표시할 스타 데이터가 없습니다.
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025] p-2">
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            className="h-[300px] w-full"
+            role="img"
+            aria-label="스타 누적 추이 차트"
+          >
+            <defs>
+              <linearGradient id="starTrendLine" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#facc15" />
+                <stop offset="100%" stopColor="#22d3ee" />
+              </linearGradient>
+              <linearGradient id="starTrendArea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#facc15" stopOpacity="0.22" />
+                <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+
+            {yTicks.map((tick) => (
+              <g key={tick.ratio}>
+                <line
+                  x1={padding.left}
+                  y1={tick.y}
+                  x2={width - padding.right}
+                  y2={tick.y}
+                  stroke="rgba(255,255,255,0.08)"
+                  strokeDasharray={tick.ratio === 0 ? "0" : "4 4"}
+                />
+                <text
+                  x={padding.left - 12}
+                  y={tick.y + 4}
+                  textAnchor="end"
+                  fill="rgba(226,232,240,0.68)"
+                  fontSize="12"
+                >
+                  {compactNumber(tick.value)}
+                </text>
+              </g>
+            ))}
+
+            <path d={areaPath} fill="url(#starTrendArea)" />
+            <path
+              d={linePath}
+              fill="none"
+              stroke="url(#starTrendLine)"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+
+            {points.map((point, index) => (
+              <circle
+                key={point.key}
+                cx={point.x}
+                cy={point.y}
+                r={index === points.length - 1 ? 5 : 3.5}
+                fill={index === points.length - 1 ? "#facc15" : "#22d3ee"}
+                stroke="#0D0F16"
+                strokeWidth="2"
+              >
+                <title>{`${formatDate(point.date)}: ${formatNumber(point.stars)} stars`}</title>
+              </circle>
+            ))}
+
+            {xLabelIndexes.map((index) => {
+              const point = points[index];
+
+              return (
+                <text
+                  key={`${point.key}-label`}
+                  x={point.x}
+                  y={height - 14}
+                  textAnchor="middle"
+                  fill="rgba(226,232,240,0.72)"
+                  fontSize="12"
+                >
+                  {formatChartDateLabel(point.date)}
+                </text>
+              );
+            })}
+          </svg>
+        </div>
+      )}
     </GlassPanel>
   );
 }
@@ -250,6 +547,7 @@ function IssueActivityChart({ activity }) {
     (sum, item) => sum + Number(item.issuesClosed ?? 0),
     0
   );
+  const hasIssueActivity = createdTotal + closedTotal > 0;
 
   const maxValue = Math.max(
     1,
@@ -287,23 +585,22 @@ function IssueActivityChart({ activity }) {
         </div>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-purple-300/15 bg-purple-400/[0.06] px-4 py-3">
-          <p className="text-xs font-bold text-purple-200">생성된 이슈</p>
-          <p className="mt-1 text-2xl font-semibold text-white">{formatNumber(createdTotal)}</p>
-        </div>
-        <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.06] px-4 py-3">
-          <p className="text-xs font-bold text-cyan-200">해결한 이슈</p>
-          <p className="mt-1 text-2xl font-semibold text-white">{formatNumber(closedTotal)}</p>
-        </div>
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-400">
+        <span>
+          생성된 이슈 <span className="font-semibold text-purple-200">{formatNumber(createdTotal)}</span>
+        </span>
+        <span className="hidden h-1 w-1 rounded-full bg-slate-600 sm:inline-block" />
+        <span>
+          해결한 이슈 <span className="font-semibold text-cyan-200">{formatNumber(closedTotal)}</span>
+        </span>
       </div>
 
       {data.length === 0 ? (
         <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-white/10 bg-white/[0.02] text-slate-500">
-          표시할 이슈 활동 데이터가 없습니다.
+          최근 28일 간 이슈가 없습니다.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025] p-2">
+        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025] p-2">
           <svg
             viewBox={`0 0 ${width} ${height}`}
             className="h-[280px] w-full"
@@ -372,6 +669,14 @@ function IssueActivityChart({ activity }) {
               );
             })}
           </svg>
+
+          {!hasIssueActivity && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <div className="text-sm font-semibold text-slate-300">
+                최근 28일 간 이슈가 없습니다.
+              </div>
+            </div>
+          )}
         </div>
       )}
     </GlassPanel>
@@ -640,32 +945,32 @@ export default function GithubStatsPage() {
               </div>
             )}
 
-            <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
-              <MetricCard
+            <section className="grid gap-x-8 gap-y-5 border-y border-[var(--border)] py-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <MetricItem
                 icon={Star}
                 label="스타 수"
                 value={compactNumber(summary?.stars)}
                 helper={formatDelta(summary?.starDelta28d)}
-                accent="yellow"
+                accent="text-yellow-300"
               />
 
-              <MetricCard
+              <MetricItem
                 icon={GitFork}
                 label="포크 수"
                 value={compactNumber(summary?.forks)}
                 helper={formatDelta(summary?.forkDelta28d)}
-                accent="purple"
+                accent="text-purple-300"
               />
 
-              <MetricCard
+              <MetricItem
                 icon={AlertCircle}
                 label="오픈 이슈"
                 value={formatNumber(summary?.openIssues)}
                 helper={formatDelta(summary?.openIssueDelta28d)}
-                accent="yellow"
+                accent="text-yellow-300"
               />
 
-              <MetricCard
+              <MetricItem
                 icon={BarChart3}
                 label="최근 28일 해결 이슈"
                 value={
@@ -680,20 +985,20 @@ export default function GithubStatsPage() {
                     ? "GitHub 이슈 API 확인 필요"
                     : "최근 28일 closed 기준"
                 }
-                accent="cyan"
+                accent="text-cyan-300"
               />
 
-              <MetricCard
+              <MetricItem
                 icon={Users}
                 label="기여자 수"
                 value={formatNumber(summary?.contributors)}
                 helper={formatDelta(summary?.contributorDelta28d)}
-                accent="blue"
+                accent="text-blue-300"
               />
             </section>
 
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-              <StarTrendChart repository={repository} summary={summary} />
+              <StarTrendChart stats={stats} summary={summary} />
               <IssueActivityChart activity={activity} />
             </div>
 
