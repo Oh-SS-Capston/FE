@@ -15,7 +15,7 @@ export default function AuthRequiredPage() {
 
   return (
     <main className="min-h-[70vh] flex items-center justify-center px-6">
-      <section className="w-full max-w-md rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center shadow-2xl shadow-purple-950/20">
+      <section className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center">
         <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-500/15 text-purple-200">
           <LockKeyhole size={28} />
         </div>
