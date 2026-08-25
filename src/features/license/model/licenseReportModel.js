@@ -4,6 +4,10 @@ import {
   formatReviewLevel,
   pickFirst,
 } from "./licenseAnalysisModel";
+import {
+  formatLicenseEvidenceSource,
+  formatLicenseEvidenceType,
+} from "./licenseEvidenceModel";
 
 function fallbackText(value, fallback = "-") {
   const text = String(value ?? "").trim();
@@ -20,15 +24,11 @@ function formatList(title, items) {
 
 function formatEvidenceLine(evidence, index) {
   const path = pickFirst(evidence, ["path", "filePath", "file_path"], "알 수 없는 파일");
-  const source = pickFirst(
-    evidence,
-    ["source", "sourceType", "source_type"],
-    "UNKNOWN_SOURCE"
+  const source = formatLicenseEvidenceSource(
+    pickFirst(evidence, ["source", "sourceType", "source_type"], "UNKNOWN_SOURCE")
   );
-  const type = pickFirst(
-    evidence,
-    ["evidenceType", "evidence_type", "type"],
-    "UNKNOWN_TYPE"
+  const type = formatLicenseEvidenceType(
+    pickFirst(evidence, ["evidenceType", "evidence_type", "type"], "UNKNOWN_TYPE")
   );
 
   return `${index + 1}. ${path} (${source}, ${type})`;
