@@ -138,8 +138,8 @@ export default function LicenseAnalysisPage() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-3 text-sm text-gray-400">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
+          <div className="text-sm text-gray-400 lg:text-right">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
               Repository
             </p>
             <p className="mt-1 break-all font-semibold text-slate-100">
@@ -149,7 +149,7 @@ export default function LicenseAnalysisPage() {
         </div>
 
         {progressError && !licenseReady && (
-          <div className="mt-6 rounded-2xl border border-amber-300/25 bg-amber-300/[0.07] p-4 text-sm leading-6 text-amber-100">
+          <div className="mt-6 text-sm leading-6 text-amber-100">
             {progressError}
           </div>
         )}

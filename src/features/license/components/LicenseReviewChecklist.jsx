@@ -17,14 +17,14 @@ import {
 
 function priorityClass(priority) {
   if (priority === "필수") {
-    return "border-amber-300/30 bg-amber-300/10 text-amber-100";
+    return "text-amber-100";
   }
 
   if (priority === "권장") {
-    return "border-cyan-300/30 bg-cyan-300/10 text-cyan-100";
+    return "text-cyan-100";
   }
 
-  return "border-emerald-300/30 bg-emerald-300/10 text-emerald-100";
+  return "text-emerald-100";
 }
 
 function categoryIcon(category) {
@@ -48,11 +48,7 @@ function ChecklistItem({ item, checked, onToggle }) {
 
   return (
     <label
-      className={`group flex cursor-pointer items-start gap-4 rounded-2xl border p-4 transition ${
-        checked
-          ? "border-emerald-300/25 bg-emerald-300/[0.07]"
-          : "border-white/10 bg-black/20 hover:border-cyan-300/25 hover:bg-cyan-300/[0.045]"
-      }`}
+      className="group flex cursor-pointer items-start gap-4 py-3"
     >
       <input
         type="checkbox"
@@ -78,7 +74,7 @@ function ChecklistItem({ item, checked, onToggle }) {
             {item.label}
           </span>
           <span
-            className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${priorityClass(
+            className={`text-[11px] font-semibold ${priorityClass(
               item.priority
             )}`}
           >
@@ -131,27 +127,24 @@ export default function LicenseReviewChecklist({ analysis, runId, repo }) {
             </p>
           </div>
 
-          <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:min-w-[360px]">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
-                Completed
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-emerald-100">
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-400 xl:justify-end">
+            <span>
+              Completed{" "}
+              <span className="font-semibold text-emerald-100">
                 {progress.completed}/{progress.total}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
-                Remaining
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-cyan-100">
+              </span>
+            </span>
+            <span className="hidden h-1 w-1 self-center rounded-full bg-gray-600 sm:inline-block" />
+            <span>
+              Remaining{" "}
+              <span className="font-semibold text-cyan-100">
                 {progress.remaining}
-              </p>
-            </div>
+              </span>
+            </span>
           </div>
         </div>
 
-        <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
+        <div className="mt-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
               <div className="h-3 overflow-hidden rounded-full border border-white/10 bg-white/[0.04]">
@@ -176,7 +169,7 @@ export default function LicenseReviewChecklist({ analysis, runId, repo }) {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+        <div className="mt-5 grid gap-x-8 gap-y-1 lg:grid-cols-2">
           {items.map((item) => (
             <ChecklistItem
               key={item.id}

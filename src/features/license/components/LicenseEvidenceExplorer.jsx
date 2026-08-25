@@ -37,7 +37,7 @@ function buildSourceOptions(evidences) {
 function ReviewDigest({ warnings, reviewItems }) {
   if (warnings.length === 0 && reviewItems.length === 0) {
     return (
-      <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.06] p-4">
+      <div>
         <div className="flex items-start gap-3">
           <ShieldCheck size={18} className="mt-0.5 shrink-0 text-emerald-200" />
           <div>
@@ -52,7 +52,7 @@ function ReviewDigest({ warnings, reviewItems }) {
   }
 
   return (
-    <div className="rounded-2xl border border-amber-300/25 bg-amber-300/[0.07] p-4">
+    <div>
       <div className="flex items-start gap-3">
         <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-200" />
         <div>
@@ -135,7 +135,7 @@ export default function LicenseEvidenceExplorer({ analysis }) {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-bold text-cyan-100">
               <FileSearch size={14} />
-              Evidence Explorer
+              근거 탐색
             </div>
             <h3 className="mt-4 text-2xl font-semibold text-white">
               판단 근거 탐색
@@ -146,41 +146,31 @@ export default function LicenseEvidenceExplorer({ analysis }) {
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[420px]">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
-                Evidence
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-cyan-100">
-                {evidences.length}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
-                Sources
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-slate-100">
-                {sourceOptions.length}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
-                Review
-              </p>
-              <p
-                className={`mt-2 text-2xl font-semibold ${
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-400 xl:justify-end">
+            <span>
+              근거 <span className="font-semibold text-cyan-100">{evidences.length}</span>
+            </span>
+            <span className="hidden h-1 w-1 self-center rounded-full bg-gray-600 sm:inline-block" />
+            <span>
+              Sources <span className="font-semibold text-slate-100">{sourceOptions.length}</span>
+            </span>
+            <span className="hidden h-1 w-1 self-center rounded-full bg-gray-600 sm:inline-block" />
+            <span>
+              검토 상태{" "}
+              <span
+                className={`font-semibold ${
                   license.manualReviewRequired ? "text-amber-100" : "text-emerald-100"
                 }`}
               >
                 {license.manualReviewRequired ? "필요" : "통과"}
-              </p>
-            </div>
+              </span>
+            </span>
           </div>
         </div>
 
         <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm text-gray-300 focus-within:border-cyan-300/40">
+          <div>
+            <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2.5 text-sm text-gray-300 focus-within:border-cyan-300/40">
               <Search size={17} className="shrink-0 text-cyan-200" />
               <input
                 value={query}
@@ -228,7 +218,7 @@ export default function LicenseEvidenceExplorer({ analysis }) {
           </div>
 
           {filteredEvidences.length > 0 ? (
-            <div className="grid gap-3">
+            <div>
               {filteredEvidences.map((evidence, index) => (
                 <LicenseEvidenceCard
                   key={pickFirst(
@@ -242,7 +232,7 @@ export default function LicenseEvidenceExplorer({ analysis }) {
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-6 text-sm leading-6 text-gray-500">
+            <div className="py-6 text-sm leading-6 text-gray-500">
               조건에 맞는 근거가 없습니다. 검색어를 줄이거나 source 필터를
               전체로 바꿔보세요.
             </div>

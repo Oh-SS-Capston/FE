@@ -3,10 +3,7 @@ import {
   BadgeCheck,
   FileSearch,
   FileText,
-  Gauge,
   Info,
-  Scale,
-  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import {
@@ -17,7 +14,6 @@ import {
 } from "../model/licenseAnalysisModel";
 import LicenseDetailList from "./LicenseDetailList";
 import LicenseEvidenceCard from "./LicenseEvidenceCard";
-import LicenseMetricCard from "./LicenseMetricCard";
 import LicenseReviewNotice from "./LicenseReviewNotice";
 
 function emptyStateToneClass(tone) {
@@ -117,29 +113,49 @@ function LicenseErrorState({ error }) {
   );
 }
 
-function LicenseHeroCard({ license }) {
+function LicenseSummary({ license }) {
   return (
-    <div
-      className={`relative overflow-hidden rounded-xl border ${license.tone.border} bg-[var(--surface-secondary)] p-6 xl:col-span-2`}
-    >
-      <div className="absolute right-5 top-5 rounded-full border border-white/10 bg-white/[0.05] p-3 text-white/70">
-        <ShieldCheck size={22} />
+    <div className="mt-5">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+            Detected SPDX
+          </p>
+          <p className={`mt-1 break-all text-3xl font-semibold ${license.tone.text}`}>
+            {license.spdxId}
+          </p>
+          <p className="mt-1 text-sm font-semibold text-slate-100">
+            {license.displayName}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-400 xl:justify-end">
+          <span>
+            신뢰도{" "}
+            <span className="font-semibold text-cyan-100">
+              {formatPercent(license.confidence)}
+            </span>
+          </span>
+          <span className="hidden h-1 w-1 self-center rounded-full bg-gray-600 sm:inline-block" />
+          <span>
+            검토 등급{" "}
+            <span
+              className={`font-semibold ${
+                license.manualReviewRequired ? "text-amber-100" : "text-emerald-100"
+              }`}
+            >
+              {formatReviewLevel(license.reviewLevel)}
+            </span>
+          </span>
+          <span className="hidden h-1 w-1 self-center rounded-full bg-gray-600 sm:inline-block" />
+          <span>
+            라이선스 계열 <span className="font-semibold text-slate-200">{license.family}</span>
+          </span>
+        </div>
       </div>
 
-      <p className="text-xs font-bold uppercase tracking-[0.24em] text-gray-400">
-        Detected SPDX
-      </p>
-      <p
-        className={`mt-4 break-all text-5xl font-semibold leading-none ${license.tone.text} md:text-6xl`}
-      >
-        {license.spdxId}
-      </p>
-      <p className="mt-4 text-lg font-semibold text-slate-100">
-        {license.displayName}
-      </p>
-
       {license.summary && (
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-300">
+        <p className="mt-3 max-w-4xl text-sm leading-6 text-gray-400">
           {license.summary}
         </p>
       )}
@@ -207,36 +223,14 @@ export default function LicenseAnalysisSection({
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 xl:grid-cols-4">
-          <LicenseHeroCard license={license} />
-
-          <LicenseMetricCard
-            icon={Gauge}
-            label="Confidence"
-            value={formatPercent(license.confidence)}
-            hint="근거 파일과 매칭 강도 기준"
-            tone="text-cyan-100"
-          />
-
-          <LicenseMetricCard
-            icon={Scale}
-            label="Review"
-            value={formatReviewLevel(license.reviewLevel)}
-            hint={`family: ${license.family}`}
-            tone={
-              license.manualReviewRequired
-                ? "text-amber-100"
-                : "text-emerald-100"
-            }
-          />
-        </div>
+        <LicenseSummary license={license} />
 
         <LicenseReviewNotice
           warnings={license.warnings}
           reviewItems={license.reviewItems}
         />
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+        <div className="mt-5 grid gap-x-8 gap-y-5 lg:grid-cols-3">
           <LicenseDetailList
             title="허용되는 대표 행위"
             items={license.permissions}
@@ -257,9 +251,7 @@ export default function LicenseAnalysisSection({
         <div className="mt-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-2 text-cyan-100">
-                <FileSearch size={18} />
-              </div>
+              <FileSearch size={18} className="text-cyan-100" />
               <div>
                 <h4 className="font-semibold text-white">판단 근거</h4>
                 <p className="text-sm text-gray-500">
@@ -276,7 +268,7 @@ export default function LicenseAnalysisSection({
           </div>
 
           {license.evidences.length > 0 ? (
-            <div className="mt-4 grid gap-3">
+            <div className="mt-4">
               {license.evidences.map((evidence, index) => (
                 <LicenseEvidenceCard
                   key={pickFirst(
@@ -290,7 +282,7 @@ export default function LicenseAnalysisSection({
               ))}
             </div>
           ) : (
-            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-5 text-sm text-gray-500">
+            <div className="mt-4 py-5 text-sm text-gray-500">
               <FileText size={18} className="mb-2 text-gray-400" />
               연결된 근거 파일이 없습니다. 이 경우 UNKNOWN 또는 검토 필요
               결과일 수 있습니다.

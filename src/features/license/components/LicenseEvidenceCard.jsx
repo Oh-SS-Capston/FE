@@ -20,7 +20,7 @@ function EvidenceActionButton({ icon: Icon, label, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-bold text-gray-300 transition hover:border-cyan-300/30 hover:bg-cyan-300/10 hover:text-cyan-100"
+      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-gray-400 transition hover:bg-[var(--surface-hover)] hover:text-cyan-100"
     >
       <Icon size={13} />
       {label}
@@ -64,17 +64,17 @@ export default function LicenseEvidenceCard({ evidence, index }) {
   };
 
   return (
-    <article className="group rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:border-cyan-300/25 hover:bg-cyan-300/[0.035]">
+    <article className="border-t border-[var(--border)] py-4 first:border-t-0 first:pt-0 last:pb-0">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2.5 py-1 text-[11px] font-bold text-cyan-100">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+            <span className="font-semibold text-cyan-100">
               {viewModel.evidenceId}
             </span>
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-gray-300">
+            <span>
               {viewModel.source}
             </span>
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-gray-400">
+            <span>
               {viewModel.type}
             </span>
           </div>
@@ -84,12 +84,12 @@ export default function LicenseEvidenceCard({ evidence, index }) {
           </p>
         </div>
 
-        <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-semibold text-gray-300">
+        <span className="shrink-0 text-xs font-semibold text-gray-400">
           {viewModel.lineLabel}
         </span>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <EvidenceActionButton
           icon={Copy}
           label="경로 복사"
@@ -103,10 +103,10 @@ export default function LicenseEvidenceCard({ evidence, index }) {
 
         {status.message && (
           <span
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${
+            className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
               status.tone === "warning"
-                ? "border-amber-300/25 bg-amber-300/10 text-amber-100"
-                : "border-emerald-300/25 bg-emerald-300/10 text-emerald-100"
+                ? "text-amber-100"
+                : "text-emerald-100"
             }`}
           >
             {status.tone === "warning" ? (
@@ -120,8 +120,8 @@ export default function LicenseEvidenceCard({ evidence, index }) {
       </div>
 
       {viewModel.snippet && (
-        <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-slate-950/60">
-          <blockquote className="whitespace-pre-wrap p-4 text-sm leading-6 text-gray-300">
+        <div className="mt-3">
+          <blockquote className="whitespace-pre-wrap font-mono text-xs leading-6 text-gray-400">
             {displayedSnippet}
           </blockquote>
 
@@ -129,7 +129,7 @@ export default function LicenseEvidenceCard({ evidence, index }) {
             <button
               type="button"
               onClick={() => setExpanded((current) => !current)}
-              className="flex w-full items-center justify-center gap-1.5 border-t border-white/10 bg-white/[0.025] px-4 py-2 text-xs font-bold text-cyan-100 transition hover:bg-cyan-300/10"
+              className="mt-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-cyan-100 transition hover:bg-[var(--surface-hover)]"
             >
               {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               {expanded ? "접기" : "전체 보기"}

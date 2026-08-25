@@ -1,8 +1,4 @@
 import {
-  ClipboardCheck,
-  FileSearch,
-  Gauge,
-  ListChecks,
   ShieldCheck,
 } from "lucide-react";
 import { buildLicenseViewModel } from "../model/licenseAnalysisModel";
@@ -11,33 +7,25 @@ const NAV_ITEMS = [
   {
     id: "license-summary",
     label: "요약",
-    description: "대표 SPDX와 검토 등급",
-    icon: Gauge,
   },
   {
     id: "license-guide",
     label: "검토 가이드",
-    description: "다음 행동 체크리스트",
-    icon: ClipboardCheck,
   },
   {
     id: "license-checklist",
     label: "체크리스트",
-    description: "수동 확인 상태 기록",
-    icon: ListChecks,
   },
   {
     id: "license-evidence",
     label: "근거 탐색",
-    description: "파일 근거 검색과 필터",
-    icon: FileSearch,
   },
 ];
 
 function StatBadge({ label, value, tone = "text-slate-100" }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-2">
-      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-500">
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500">
         {label}
       </p>
       <p className={`mt-1 truncate text-sm font-semibold ${tone}`}>{value}</p>
@@ -46,23 +34,12 @@ function StatBadge({ label, value, tone = "text-slate-100" }) {
 }
 
 function NavItem({ item }) {
-  const Icon = item.icon;
-
   return (
     <a
       href={`#${item.id}`}
-      className="group flex min-w-[190px] items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 transition hover:border-cyan-300/30 hover:bg-cyan-300/[0.07]"
+      className="shrink-0 rounded-md px-2 py-1.5 text-sm font-semibold text-gray-400 transition hover:bg-[var(--surface-hover)] hover:text-cyan-100"
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-100 transition group-hover:border-cyan-300/40">
-        <Icon size={17} />
-      </span>
-
-      <span className="min-w-0">
-        <span className="block font-bold text-slate-100">{item.label}</span>
-        <span className="mt-0.5 block truncate text-xs text-gray-500">
-          {item.description}
-        </span>
-      </span>
+      {item.label}
     </a>
   );
 }
@@ -89,14 +66,14 @@ export default function LicenseSectionNavigator({ analysis }) {
           </div>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[440px]">
+        <div className="flex flex-wrap gap-x-5 gap-y-2 xl:justify-end">
           <StatBadge
             label="SPDX"
             value={license?.spdxId ?? "대기 중"}
             tone="text-cyan-100"
           />
           <StatBadge
-            label="Review"
+            label="검토 상태"
             value={
               license
                 ? license.manualReviewRequired
@@ -107,7 +84,7 @@ export default function LicenseSectionNavigator({ analysis }) {
             tone={license ? reviewTone : "text-slate-100"}
           />
           <StatBadge
-            label="Evidence"
+            label="근거"
             value={license ? `${license.evidences.length}개` : "대기 중"}
             tone="text-slate-100"
           />
