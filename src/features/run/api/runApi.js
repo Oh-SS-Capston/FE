@@ -30,7 +30,12 @@ function toArtifactId(value) {
   return Number.isFinite(num) && num > 0 ? num : null;
 }
 
-export function createRepoRun({ repoUrl, ref, forceRebuild = false }) {
+export function createRepoRun({
+  repoUrl,
+  ref,
+  forceRebuild = false,
+  llmProvider,
+}) {
   const body = {
     repoUrl,
     ref: ref || null,
@@ -38,6 +43,16 @@ export function createRepoRun({ repoUrl, ref, forceRebuild = false }) {
 
   if (forceRebuild) {
     body.forceRebuild = true;
+  }
+
+  /*
+   * llmProvider("claude" | "ollama")는 선택 필드입니다.
+   * 값이 없으면 아예 보내지 않고 서버 설정(ossdoc.llm.provider)을 따릅니다.
+   */
+  const provider = String(llmProvider ?? "").trim();
+
+  if (provider) {
+    body.llmProvider = provider;
   }
 
   return apiClient("/api/v1/runs", {

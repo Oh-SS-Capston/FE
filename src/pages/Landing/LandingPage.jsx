@@ -6,6 +6,7 @@ import SearchBar from "./components/SearchBar";
 import SearchHistory from "./components/SearchHistory";
 import { useAuth } from "../../features/auth/model/AuthContext";
 import { createRepoRun, getRecentRuns } from "../../features/run/api/runApi";
+import { DEFAULT_LLM_PROVIDER } from "../../features/run/constants/llmProvider";
 import InsufficientTokenModal from "../../features/token/components/InsufficientTokenModal";
 import { TOKEN_COST } from "../../features/token/constants/tokenPolicy";
 import { formatUserErrorMessage } from "../../shared/lib/userErrorMessage";
@@ -209,6 +210,8 @@ export default function LandingPage() {
   const { authLoading, isAuthenticated } = useAuth();
 
   const [repoUrl, setRepoUrl] = useState("");
+  /* 분석 요청에 함께 보낼 LLM 제공자입니다. */
+  const [llmProvider, setLlmProvider] = useState(DEFAULT_LLM_PROVIDER);
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [analyzeLoading, setAnalyzeLoading] = useState(false);
@@ -353,6 +356,7 @@ export default function LandingPage() {
 
       const run = await createRepoRun({
         repoUrl: pendingRepoUrl,
+        llmProvider,
       });
 
       /*
@@ -372,6 +376,7 @@ export default function LandingPage() {
             repo: pendingRepoLabel,
             repoUrl: pendingRepoUrl,
             run,
+            llmProvider,
           },
         }
       );
@@ -490,6 +495,8 @@ export default function LandingPage() {
               loading={analyzeLoading}
               disabled={analyzeDisabled}
               loginRequired={!authLoading && !isAuthenticated}
+              llmProvider={llmProvider}
+              onLlmProviderChange={setLlmProvider}
             />
 
             {analyzeError && (

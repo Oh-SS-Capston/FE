@@ -906,6 +906,13 @@ export default function AnalyPage() {
     const refForRequest =
       run?.resolvedRef || run?.ref || run?.requestedRef || run?.branch || null;
 
+    /*
+     * 재생성은 원래 run과 같은 LLM 제공자로 돌립니다.
+     * 어느 쪽에서도 찾지 못하면 보내지 않고 서버 기본값을 따릅니다.
+     */
+    const providerForRequest =
+      run?.llmProvider || location.state?.llmProvider || null;
+
     try {
       setRebuildLoading(true);
       setLlmError(null);
@@ -914,6 +921,7 @@ export default function AnalyPage() {
         repoUrl: repoUrlForRequest,
         ref: refForRequest,
         forceRebuild: true,
+        llmProvider: providerForRequest,
       });
 
       const nextRepo =
@@ -930,6 +938,7 @@ export default function AnalyPage() {
             repo: nextRepo,
             repoUrl: repoUrlForRequest,
             run: nextRun,
+            llmProvider: providerForRequest,
           },
         }
       );

@@ -1,5 +1,7 @@
 import { Github, Loader2, Search } from "lucide-react";
 import Button from "../../../shared/components/ui/Button";
+import LlmProviderSelect from "./LlmProviderSelect";
+import { DEFAULT_LLM_PROVIDER } from "../../../features/run/constants/llmProvider";
 
 export default function SearchBar({
   repoUrl,
@@ -8,6 +10,8 @@ export default function SearchBar({
   loading = false,
   disabled = false,
   loginRequired = false,
+  llmProvider = DEFAULT_LLM_PROVIDER,
+  onLlmProviderChange,
 }) {
   const isDisabled = loading || disabled;
 
@@ -18,8 +22,16 @@ export default function SearchBar({
   };
 
   return (
-    <div className="relative flex w-full min-w-0 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 transition-colors focus-within:border-cyan-300/60">
-      <div className="pl-3 text-[var(--text-muted)] shrink-0">
+    <div className="relative flex w-full min-w-0 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 transition-colors focus-within:border-cyan-300/60 md:gap-3">
+      <LlmProviderSelect
+        value={llmProvider}
+        onChange={onLlmProviderChange}
+        disabled={isDisabled}
+      />
+
+      <span className="h-7 w-px shrink-0 bg-[var(--border)]" />
+
+      <div className="pl-1 text-[var(--text-muted)] shrink-0">
         <Github size={20} />
       </div>
 
