@@ -1,81 +1,217 @@
-import { Github } from "lucide-react";
+import {
+  CalendarClock,
+  CheckCircle2,
+  Database,
+  GitBranch,
+  GitCommitHorizontal,
+  Github,
+  Loader2,
+  TriangleAlert,
+} from "lucide-react";
+import Badge from "../../../shared/components/ui/Badge";
+import Panel from "../../../shared/components/ui/Panel";
 
-export default function RepoInfoSection({ repo, info, loading, error }) {
-  if (loading) {
-    return (
-      <section className="rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl p-8">
-        <div className="animate-pulse flex flex-col gap-4">
-          <div className="h-8 bg-white/10 rounded w-2/3" />
-          <div className="h-4 bg-white/5 rounded w-full" />
-          <div className="flex gap-4 mt-2">
-            <div className="h-6 bg-white/5 rounded w-24" />
-            <div className="h-6 bg-white/5 rounded w-20" />
-          </div>
-        </div>
-      </section>
-    );
+function formatAnalyzedAt(value) {
+  if (!value) {
+    return "분석 시각 확인 중";
   }
 
-  if (error) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function statusMeta(status) {
+  switch (String(status ?? "").toUpperCase()) {
+    case "SUCCESS":
+      return {
+        label: "분석 완료",
+        icon: CheckCircle2,
+        className: "border-emerald-300/25 bg-emerald-300/10 text-emerald-100",
+      };
+    case "FAILED":
+      return {
+        label: "분석 실패",
+        icon: TriangleAlert,
+        className: "border-red-300/25 bg-red-300/10 text-red-100",
+      };
+    case "RUNNING":
+      return {
+        label: "분석 중",
+        icon: Loader2,
+        className: "border-cyan-300/25 bg-cyan-300/10 text-cyan-100",
+      };
+    case "QUEUED":
+      return {
+        label: "분석 대기",
+        icon: Loader2,
+        className: "border-yellow-300/25 bg-yellow-300/10 text-yellow-100",
+      };
+    default:
+      return null;
+  }
+}
+
+function MetaItem({ icon: Icon, label, value, href, mono = false }) {
+  const content = (
+    <>
+      <Icon size={15} className="shrink-0 text-cyan-200/80" />
+      <span className="shrink-0 text-xs text-gray-400">{label}</span>
+      <span
+        className={`min-w-0 truncate text-sm font-semibold text-gray-100 ${
+          mono ? "font-mono" : ""
+        }`}
+        title={value}
+      >
+        {value}
+      </span>
+    </>
+  );
+
+  if (href) {
     return (
-      <section className="rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl p-8">
-        <p className="text-red-400">{error}</p>
-        <p className="text-gray-500 text-sm mt-2">레포지토리 URL을 확인하거나 나중에 다시 시도해 주세요.</p>
-      </section>
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="flex min-w-0 items-center gap-2 text-gray-400 transition hover:text-cyan-100"
+      >
+        {content}
+      </a>
     );
   }
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl overflow-hidden">
-      {/* 상단 글로우 라인 */}
-      <div
-        className="h-1 opacity-60"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, rgba(34,211,238,0.5), rgba(168,85,247,0.5), transparent)",
-        }}
-      />
-      <div className="p-8">
-        <div className="flex items-start justify-between gap-6">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                <Github size={24} className="text-gray-400" />
+    <div className="flex min-w-0 items-center gap-2 text-gray-400">
+      {content}
+    </div>
+  );
+}
+
+export default function RepoInfoSection({
+  repo,
+  info,
+  loading,
+  error,
+  commitSha,
+  analysisRef,
+  analyzedAt,
+  analysisStatus,
+  cacheHit = false,
+}) {
+  const commitUrl = info?.html_url && commitSha
+    ? `${info.html_url}/commit/${encodeURIComponent(commitSha)}`
+    : null;
+  const status = statusMeta(analysisStatus);
+  const StatusIcon = status?.icon;
+
+  return (
+    <Panel padding="none" className="overflow-hidden">
+      <div className="p-6 sm:p-8">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] p-3">
+                <Github size={24} className="text-gray-300" />
               </div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-300 to-purple-400 bg-clip-text text-transparent truncate">
-                {info?.full_name ?? repo}
-              </h2>
+
+              <div className="min-w-0">
+                <h1 className="truncate text-2xl font-semibold text-[var(--text-primary)] sm:text-3xl">
+                  {info?.full_name ?? repo}
+                </h1>
+                {loading ? (
+                  <div className="mt-2 h-4 w-72 max-w-full animate-pulse rounded bg-white/10" />
+                ) : info?.description ? (
+                  <p className="mt-2 max-w-4xl text-sm leading-6 text-gray-300 sm:text-base">
+                    {info.description}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-500">
+                    레포지토리 설명이 등록되어 있지 않습니다.
+                  </p>
+                )}
+              </div>
             </div>
 
-            {info?.description && (
-              <p className="text-gray-400 mt-2 line-clamp-2">{info.description}</p>
+            {error && (
+              <div className="mt-4 flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-950/10 px-4 py-3 text-sm text-red-200">
+                <TriangleAlert size={16} className="mt-0.5 shrink-0" />
+                <span>GitHub 메타데이터를 불러오지 못했습니다. {error}</span>
+              </div>
             )}
 
-            <div className="flex flex-wrap gap-3 mt-5 text-sm">
-              {info?.language && (
-                <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-gray-400">
-                  {info.language}
+            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2">
+              <MetaItem
+                icon={GitCommitHorizontal}
+                label="Commit"
+                value={commitSha ? commitSha.slice(0, 12) : "확인 중"}
+                href={commitUrl}
+                mono
+              />
+              <MetaItem
+                icon={GitBranch}
+                label="Ref"
+                value={analysisRef ?? "확인 중"}
+                mono
+              />
+              <MetaItem
+                icon={CalendarClock}
+                label="분석 시각"
+                value={formatAnalyzedAt(analyzedAt)}
+              />
+              <MetaItem
+                icon={Database}
+                label="결과 유형"
+                value={cacheHit ? "기존 분석 결과" : "신규 분석 결과"}
+              />
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+              {status && (
+                <span
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-medium ${status.className}`}
+                >
+                  <StatusIcon
+                    size={15}
+                    className={analysisStatus === "RUNNING" || analysisStatus === "QUEUED" ? "animate-spin" : ""}
+                  />
+                  {status.label}
                 </span>
               )}
+
+              {info?.language && (
+                <Badge>
+                  {info.language}
+                </Badge>
+              )}
+              {info?.license?.spdx_id && (
+                <Badge>
+                  {info.license.spdx_id}
+                </Badge>
+              )}
               {typeof info?.stargazers_count === "number" && (
-                <span className="text-gray-500">
-                  <span className="text-cyan-400 font-medium">
+                <span className="text-gray-400">
+                  <strong className="text-cyan-200">
                     {info.stargazers_count.toLocaleString()}
-                  </span>{" "}
+                  </strong>{" "}
                   stars
                 </span>
               )}
               {typeof info?.forks_count === "number" && (
-                <span className="text-gray-500">
-                  <span className="text-purple-400 font-medium">
+                <span className="text-gray-400">
+                  <strong className="text-purple-200">
                     {info.forks_count.toLocaleString()}
-                  </span>{" "}
+                  </strong>{" "}
                   forks
-                </span>
-              )}
-              {info?.license?.spdx_id && (
-                <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-gray-400">
-                  {info.license.spdx_id}
                 </span>
               )}
             </div>
@@ -86,13 +222,13 @@ export default function RepoInfoSection({ repo, info, loading, error }) {
               href={info.html_url}
               target="_blank"
               rel="noreferrer"
-              className="shrink-0 px-4 py-2 rounded-full text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors"
+              className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-hover)]"
             >
               GitHub에서 보기 →
             </a>
           )}
         </div>
       </div>
-    </section>
+    </Panel>
   );
 }

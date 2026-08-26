@@ -1,29 +1,72 @@
-import { Search } from "lucide-react";
-import { Github } from "lucide-react";
+import { Github, Loader2, Search } from "lucide-react";
+import Button from "../../../shared/components/ui/Button";
+import LlmProviderSelect from "./LlmProviderSelect";
+import { DEFAULT_LLM_PROVIDER } from "../../../features/run/constants/llmProvider";
 
-export default function SearchBar({ repoUrl, onChange, onAnalyze }) {
+export default function SearchBar({
+  repoUrl,
+  onChange,
+  onAnalyze,
+  loading = false,
+  disabled = false,
+  loginRequired = false,
+  llmProvider = DEFAULT_LLM_PROVIDER,
+  onLlmProviderChange,
+}) {
+  const isDisabled = loading || disabled;
+
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") onAnalyze();
+    if (e.key === "Enter" && !isDisabled) {
+      onAnalyze();
+    }
   };
 
   return (
-    <div className="relative flex items-center bg-[#000000]/60 backdrop-blur-xl rounded-full border border-white/10 overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.4)] focus-within:border-purple-500/50 focus-within:shadow-[0_0_50px_rgba(168,85,247,0.3)] transition-all duration-300">
-      <div className="pl-8 text-gray-500">
-        <Github size={28} />
+    <div className="relative flex w-full min-w-0 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 transition-colors focus-within:border-cyan-300/60 md:gap-3">
+      <LlmProviderSelect
+        value={llmProvider}
+        onChange={onLlmProviderChange}
+        disabled={isDisabled}
+      />
+
+      <span className="h-7 w-px shrink-0 bg-[var(--border)]" />
+
+      <div className="pl-1 text-[var(--text-muted)] shrink-0">
+        <Github size={20} />
       </div>
+
       <input
         value={repoUrl}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="분석 url 형식: https://github.com/facebook/react.git"
-        className="w-full bg-transparent py-6 px-6 text-xl text-white outline-none placeholder:text-gray-600 font-medium"
+        disabled={isDisabled}
+        placeholder={
+          loginRequired
+            ? "로그인을 하면 분석을 진행할 수 있습니다"
+            : "분석 url 형식: https://github.com/facebook/react.git"
+        }
+        className="min-w-0 flex-1 bg-transparent px-2 py-3 text-base text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] disabled:opacity-60"
       />
-      <button
+
+      <Button
         onClick={onAnalyze}
-        className="mr-3 px-10 py-4 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 rounded-full font-bold text-lg shadow-[0_0_20px_rgba(124,58,237,0.4)] hover:shadow-[0_0_35px_rgba(124,58,237,0.6)] transition-all active:scale-95 flex items-center gap-2"
+        disabled={isDisabled}
+        variant="primary"
+        size="lg"
+        className="shrink-0"
       >
-        <Search size={20} className="stroke-[3px]" /> Analyze
-      </button>
+        {loading ? (
+          <>
+            <Loader2 size={20} className="animate-spin" />
+            Analyzing
+          </>
+        ) : (
+          <>
+            <Search size={20} className="stroke-[3px]" />
+            Analyze
+          </>
+        )}
+      </Button>
     </div>
   );
 }

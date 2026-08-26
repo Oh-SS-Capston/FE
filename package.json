@@ -1,5 +1,5 @@
 {
-  "name": "capston",
+  "name": "ohss",
   "private": true,
   "version": "1.0.0",
   "description": "Oh! SS - Frontend",
@@ -16,6 +16,9 @@
     "tailwindcss": "^4.2.1"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^3.0.0",
+    "@portone/browser-sdk": "^0.1.8",
+    "@xyflow/react": "^12.10.2",
     "lucide-react": "^0.576.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

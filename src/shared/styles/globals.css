@@ -1,4 +1,29 @@
 @import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+/* 기본 브라우저 글자 크기를 유지해 결과 화면의 가독성을 확보합니다. */
+:root {
+  --ossdoc-ui-scale: 1;
+  --background: #07080D;
+  --surface: #0D0F16;
+  --surface-secondary: #12151E;
+  --surface-hover: #171A24;
+  --border: #242833;
+  --border-strong: #323746;
+  --text-primary: #F2F4F8;
+  --text-secondary: #9299A8;
+  --text-muted: #6F7685;
+  --brand-primary: #4FD1E5;
+  --brand-secondary: #8B7CF6;
+}
+
+html {
+  font-size: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
 
 /* A2z 폰트 (에이투지체) */
 @font-face {
@@ -14,48 +39,56 @@
   font-weight: 100;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'A2z';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-6@1.0/에이투지체-2ExtraLight.woff2') format('woff2');
   font-weight: 200;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'A2z';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-6@1.0/에이투지체-3Light.woff2') format('woff2');
   font-weight: 300;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'A2z';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-6@1.0/에이투지체-4Regular.woff2') format('woff2');
   font-weight: 400;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'A2z';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-6@1.0/에이투지체-5Medium.woff2') format('woff2');
   font-weight: 500;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'A2z';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-6@1.0/에이투지체-6SemiBold.woff2') format('woff2');
   font-weight: 600;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'A2z';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-6@1.0/에이투지체-7Bold.woff2') format('woff2');
   font-weight: 700;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'A2z';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-6@1.0/에이투지체-8ExtraBold.woff2') format('woff2');
   font-weight: 800;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'A2z';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-6@1.0/에이투지체-9Black.woff2') format('woff2');
@@ -64,30 +97,43 @@
 }
 
 /* 어두운 테마 기본 - 배경 어둡게, 글씨 밝게 */
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
   height: 100%;
   width: 100%;
-  background-color: #030306;
-  color: #e5e7eb;
+  overflow-x: hidden;
+  background-color: var(--background);
+  color: var(--text-primary);
   font-family: 'A2z', sans-serif;
 }
+
 #root {
-  background-color: #030306;
-  color: #e5e7eb;
+  background-color: var(--background);
+  color: var(--text-primary);
 }
 
 /* LandingPage 전용 커스텀 애니메이션 */
 @keyframes pulse-slow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%, 100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 @keyframes tilt {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(1deg); }
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(1deg);
+  }
 }
 
 .animate-pulse-slow {
@@ -104,12 +150,19 @@ html, body {
 
 /* 우주 배경: 별 반짝임 */
 @keyframes twinkle {
-  0%, 100% { opacity: 0.1; }
-  50% { opacity: 1; }
+  0%, 100% {
+    opacity: 0.1;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
+
 .star-twinkle {
   animation: twinkle 3s ease-in-out infinite;
 }
+
 .star-twinkle.delay-1 { animation-delay: 0.5s; }
 .star-twinkle.delay-2 { animation-delay: 1.2s; }
 .star-twinkle.delay-3 { animation-delay: 2s; }
@@ -123,30 +176,65 @@ html, body {
 
 /* 성운·그라데이션 움직임 */
 @keyframes nebula-drift {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(3%, -2%) scale(1.02); }
-  66% { transform: translate(-2%, 2%) scale(0.98); }
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(3%, -2%) scale(1.02);
+  }
+
+  66% {
+    transform: translate(-2%, 2%) scale(0.98);
+  }
 }
 
 @keyframes nebula-float {
-  0%, 100% { transform: translate(0, 0); opacity: 0.5; }
-  50% { transform: translate(-4%, 3%) scale(1.05); opacity: 0.9; }
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: translate(-4%, 3%) scale(1.05);
+    opacity: 0.9;
+  }
 }
 
 @keyframes gradient-flow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 @keyframes nebula-pulse {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.1); }
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
 }
 
 @keyframes star-layer-drift {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(0.5%, 0.3%); }
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(0.5%, 0.3%);
+  }
 }
 
 .animate-nebula-drift {
@@ -170,3 +258,245 @@ html, body {
 .animate-star-drift {
   animation: star-layer-drift 40s ease-in-out infinite;
 }
+
+/* 별똥별 */
+@keyframes shooting-star-flight {
+  0% {
+    opacity: 0;
+    transform:
+      rotate(var(--shooting-star-angle, -24deg))
+      translate3d(var(--shooting-star-from, -35vw), 0, 0)
+      scaleX(0.8);
+  }
+
+  8% {
+    opacity: 1;
+  }
+
+  70% {
+    opacity: 1;
+    transform:
+      rotate(var(--shooting-star-angle, -24deg))
+      translate3d(var(--shooting-star-to, 145vw), 0, 0)
+      scaleX(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      rotate(var(--shooting-star-angle, -24deg))
+      translate3d(var(--shooting-star-to, 145vw), 0, 0)
+      scaleX(1);
+  }
+}
+
+.shooting-star {
+  position: absolute;
+  display: block;
+  width: var(--shooting-star-width, 220px);
+  height: 3px;
+  border-radius: 9999px;
+  opacity: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(125, 211, 252, 0.1) 20%,
+    rgba(125, 211, 252, 0.75) 55%,
+    rgba(255, 255, 255, 1) 100%
+  );
+  filter:
+    drop-shadow(0 0 8px rgba(255, 255, 255, 0.9))
+    drop-shadow(0 0 18px rgba(125, 211, 252, 0.9))
+    drop-shadow(0 0 32px rgba(168, 85, 247, 0.65));
+  transform-origin: right center;
+  animation: shooting-star-flight var(--shooting-star-duration, 5.8s) linear infinite;
+  animation-delay: var(--shooting-star-delay, 0s);
+  will-change: transform, opacity;
+}
+
+.shooting-star::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: white;
+  box-shadow:
+    0 0 12px rgba(255, 255, 255, 1),
+    0 0 26px rgba(125, 211, 252, 0.95),
+    0 0 44px rgba(168, 85, 247, 0.75);
+  transform: translateY(-50%);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 85, 247, 0.75) rgba(3, 3, 6, 0.75);
+}
+
+/* Chrome, Edge, Safari */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(3, 3, 6, 0.95),
+      rgba(10, 11, 31, 0.95)
+    );
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  border: 2px solid rgba(3, 3, 6, 0.9);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(34, 211, 238, 0.85),
+      rgba(168, 85, 247, 0.9),
+      rgba(236, 72, 153, 0.75)
+    );
+  box-shadow:
+    0 0 8px rgba(34, 211, 238, 0.45),
+    0 0 14px rgba(168, 85, 247, 0.45);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(103, 232, 249, 1),
+      rgba(192, 132, 252, 1),
+      rgba(244, 114, 182, 0.95)
+    );
+  box-shadow:
+    0 0 12px rgba(34, 211, 238, 0.75),
+    0 0 22px rgba(168, 85, 247, 0.7);
+}
+
+*::-webkit-scrollbar-corner {
+  background: rgba(3, 3, 6, 0.95);
+}
+
+/* 스크롤바 때문에 레이아웃이 흔들리는 것 방지 */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* Class Diagram React Flow Controls */
+.class-diagram-flow .react-flow__controls {
+  overflow: hidden;
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  border-radius: 16px;
+  background: rgba(5, 8, 22, 0.78);
+  box-shadow:
+    0 0 18px rgba(34, 211, 238, 0.18),
+    0 0 32px rgba(168, 85, 247, 0.16),
+    inset 0 0 16px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(14px);
+}
+
+.class-diagram-flow .react-flow__controls-button {
+  width: 32px;
+  height: 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(15, 23, 42, 0.95),
+      rgba(30, 41, 59, 0.88)
+    );
+  color: rgba(236, 254, 255, 0.95);
+  fill: rgba(236, 254, 255, 0.95);
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    fill 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.class-diagram-flow .react-flow__controls-button svg {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+
+.class-diagram-flow .react-flow__controls-button:hover {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(34, 211, 238, 0.95),
+      rgba(168, 85, 247, 0.95)
+    );
+  color: white;
+  fill: white;
+  box-shadow:
+    0 0 12px rgba(34, 211, 238, 0.65),
+    0 0 22px rgba(168, 85, 247, 0.55);
+  transform: translateY(-1px);
+}
+
+.class-diagram-flow .react-flow__controls-button:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.class-diagram-flow .react-flow__controls-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: rgba(15, 23, 42, 0.75);
+  color: rgba(148, 163, 184, 0.7);
+  fill: rgba(148, 163, 184, 0.7);
+  box-shadow: none;
+}
+
+.class-diagram-flow .react-flow__controls-button:last-child {
+  border-bottom: none;
+}
+
+/* ================================
+   Landing Scroll Linked Motion
+   - 스크롤 위치에 따라 계속 opacity / transform / blur 변경
+================================ */
+
+.landing-scroll-linked {
+  will-change: opacity, transform, filter;
+  transform-style: preserve-3d;
+}
+
+/* 검색바 아래 Scroll 안내선 움직임 */
+@keyframes landing-scroll-hint-float {
+  0%, 100% {
+    opacity: 0.45;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 0.9;
+    transform: translateY(8px);
+  }
+}
+
+.landing-scroll-hint {
+  animation: landing-scroll-hint-float 1.8s ease-in-out infinite;
+}
+
+/* @media (prefers-reduced-motion: reduce) {
+  .landing-scroll-linked {
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none !important;
+  }
+
+  .landing-scroll-hint {
+    animation: none;
+  }
+} */

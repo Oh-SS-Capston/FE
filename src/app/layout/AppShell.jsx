@@ -1,20 +1,69 @@
 import { useMemo } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { Header } from "../../shared/components/common/Header";
 
 const STAR_SEED = 42;
+
 const mulberry32 = (a) => () => ((a += 0x6d2b79f5) | 0) >>> 0;
+
 const seededRandom = (seed) => {
   const next = mulberry32(seed);
   return () => next() / 0xffffffff;
 };
+
+/*
+ * 별똥별 개수는 기존처럼 4개만 유지합니다.
+ * 대신 시작 위치를 화면 전체에 분산합니다.
+ */
+const SHOOTING_STARS = [
+  {
+    left: "-18%",
+    top: "12%",
+    width: "220px",
+    delay: "0s",
+    duration: "5.8s",
+    angle: "-24deg",
+    from: "-35vw",
+    to: "145vw",
+  },
+  {
+    left: "8%",
+    top: "34%",
+    width: "190px",
+    delay: "1.8s",
+    duration: "6.4s",
+    angle: "-20deg",
+    from: "-22vw",
+    to: "112vw",
+  },
+  {
+    left: "38%",
+    top: "58%",
+    width: "230px",
+    delay: "3.6s",
+    duration: "6.8s",
+    angle: "-27deg",
+    from: "-18vw",
+    to: "86vw",
+  },
+  {
+    left: "68%",
+    top: "82%",
+    width: "180px",
+    delay: "5.2s",
+    duration: "7.2s",
+    angle: "-32deg",
+    from: "-14vw",
+    to: "62vw",
+  },
+];
 
 const TWINKLE_STARS = [
   { left: "12%", top: "22%", d: "delay-1" },
   { left: "88%", top: "18%", d: "delay-2" },
   { left: "45%", top: "35%", d: "delay-3" },
   { left: "72%", top: "55%", d: "delay-4" },
-  { left: "8%",  top: "70%", d: "delay-5" },
+  { left: "8%", top: "70%", d: "delay-5" },
   { left: "92%", top: "78%", d: "delay-6" },
   { left: "28%", top: "85%", d: "delay-7" },
   { left: "55%", top: "12%", d: "delay-8" },
@@ -23,28 +72,38 @@ const TWINKLE_STARS = [
 ];
 
 export function AppShell() {
+  const location = useLocation();
+  const isLanding = location.pathname === "/";
   const starStyle = useMemo(() => {
     const rnd = seededRandom(STAR_SEED);
-    const shadows = Array.from({ length: 120 }, () => {
+
+    const shadows = Array.from({ length: 260 }, () => {
       const x = rnd() * 100;
       const y = rnd() * 100;
       const size = rnd() > 0.92 ? 1.5 : 0.5;
       const opacity = 0.3 + rnd() * 0.7;
-      return `${x}vw ${y}vh 0 ${size}px rgba(255,255,255,${opacity.toFixed(2)})`;
+
+      return `${x}vw ${y}vh 0 ${size}px rgba(255,255,255,${opacity.toFixed(
+        2
+      )})`;
     }).join(", ");
+
     return { boxShadow: shadows };
   }, []);
 
   return (
     <div
-      className="fixed inset-0 w-full h-full min-h-screen text-white selection:bg-purple-500/50 overflow-auto"
+      className="fixed inset-0 w-full h-full min-h-screen text-white selection:bg-purple-500/50 overflow-y-auto overflow-x-hidden"
       style={{
-        background: "radial-gradient(ellipse at top, #0a0b1f 0%, #030306 50%, #000000 100%)",
+        background:
+          "radial-gradient(ellipse at top, #0a0b1f 0%, #030306 50%, #000000 100%)",
       }}
     >
       {/* 레이어 0: 배경 그라데이션 흐름 */}
       <div
-        className="absolute inset-0 pointer-events-none -z-20 animate-gradient-flow"
+        className={`absolute inset-0 pointer-events-none -z-20 ${
+          isLanding ? "animate-gradient-flow opacity-100" : "opacity-35"
+        }`}
         style={{
           background:
             "radial-gradient(ellipse 80% 50% at 20% 40%, rgba(88,28,135,0.15) 0%, transparent 50%), radial-gradient(ellipse 60% 80% at 80% 60%, rgba(6,78,59,0.12) 0%, transparent 50%), radial-gradient(ellipse 50% 50% at 50% 80%, rgba(30,58,138,0.1) 0%, transparent 55%)",
@@ -53,14 +112,40 @@ export function AppShell() {
         aria-hidden
       />
 
-      {/* 레이어 1: 별 */}
+      {/* 레이어 1: 기본 별 */}
       <div
         className="absolute inset-0 w-0 h-0 pointer-events-none -z-10 animate-star-drift"
         style={starStyle}
         aria-hidden
       />
 
+      {/* 레이어 1.5: 화면 전체에 분산된 별똥별 */}
+      {isLanding && (
+        <div
+          className="fixed inset-0 pointer-events-none z-[2] overflow-hidden"
+          aria-hidden
+        >
+          {SHOOTING_STARS.map((star, i) => (
+            <span
+              key={i}
+              className="shooting-star"
+              style={{
+                left: star.left,
+                top: star.top,
+                "--shooting-star-width": star.width,
+                "--shooting-star-delay": star.delay,
+                "--shooting-star-duration": star.duration,
+                "--shooting-star-angle": star.angle,
+                "--shooting-star-from": star.from,
+                "--shooting-star-to": star.to,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       {/* 레이어 2: 은하수 */}
+      {isLanding && (
       <div className="absolute pointer-events-none -z-10 w-[140%] h-[50%] -left-[20%] top-[15%] opacity-40 animate-nebula-drift">
         <div
           className="w-full h-full"
@@ -73,6 +158,9 @@ export function AppShell() {
           aria-hidden
         />
       </div>
+      )}
+
+      {isLanding && (
       <div className="absolute pointer-events-none -z-10 w-[100%] h-[35%] left-[-10%] bottom-[10%] opacity-30 animate-nebula-float">
         <div
           className="w-full h-full"
@@ -85,8 +173,10 @@ export function AppShell() {
           aria-hidden
         />
       </div>
+      )}
 
       {/* 성운 블롭 */}
+      {isLanding && (
       <div
         className="absolute pointer-events-none -z-10 w-[70%] h-[60%] top-[5%] right-[-15%] animate-nebula-pulse"
         style={{
@@ -96,6 +186,9 @@ export function AppShell() {
         }}
         aria-hidden
       />
+      )}
+
+      {isLanding && (
       <div
         className="absolute pointer-events-none -z-10 w-[50%] h-[50%] bottom-[0%] left-[-10%] animate-nebula-drift"
         style={{
@@ -105,6 +198,9 @@ export function AppShell() {
         }}
         aria-hidden
       />
+      )}
+
+      {isLanding && (
       <div
         className="absolute pointer-events-none -z-10 w-[40%] h-[50%] top-[40%] left-[20%] animate-nebula-float"
         style={{
@@ -114,6 +210,7 @@ export function AppShell() {
         }}
         aria-hidden
       />
+      )}
 
       {/* 반짝이는 별 */}
       <div className="absolute inset-0 pointer-events-none -z-10">
@@ -128,12 +225,24 @@ export function AppShell() {
       </div>
 
       {/* 배경 Orb */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-800/15 rounded-full blur-[150px] -z-10 animate-nebula-drift" aria-hidden />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyan-900/15 rounded-full blur-[150px] -z-10 animate-nebula-float" aria-hidden />
+      {isLanding && (
+      <div
+        className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-800/15 rounded-full blur-[150px] -z-10 animate-nebula-drift"
+        aria-hidden
+      />
+      )}
+
+      {isLanding && (
+      <div
+        className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyan-900/15 rounded-full blur-[150px] -z-10 animate-nebula-float"
+        aria-hidden
+      />
+      )}
 
       {/* 콘텐츠 레이어 */}
       <div className="relative z-10 flex flex-col min-h-full">
         <Header />
+
         <main className="flex-1">
           <Outlet />
         </main>
