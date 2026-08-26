@@ -15,7 +15,7 @@ export default function LoginFailurePage() {
 
       <button
         onClick={() => navigate("/", { replace: true })}
-        className="mt-8 px-6 py-3 rounded-full bg-gradient-to-r from-cyan-600 to-purple-600 font-bold text-white hover:from-cyan-500 hover:to-purple-500 transition-all"
+        className="mt-8 rounded-lg bg-cyan-300 px-6 py-3 font-semibold text-slate-950 transition-colors hover:bg-cyan-200"
       >
         메인으로 돌아가기
       </button>

@@ -151,34 +151,28 @@ function buildActionItems(license) {
 
 function statusClass(accent) {
   if (accent === "amber") {
-    return "border-amber-300/30 bg-amber-300/10 text-amber-100";
+    return "text-amber-100";
   }
 
   if (accent === "emerald") {
-    return "border-emerald-300/30 bg-emerald-300/10 text-emerald-100";
+    return "text-emerald-100";
   }
 
-  return "border-cyan-300/30 bg-cyan-300/10 text-cyan-100";
+  return "text-cyan-100";
 }
 
 function ActionItem({ item }) {
   const Icon = item.icon;
 
   return (
-    <article className="rounded-2xl border border-white/10 bg-black/20 p-4">
+    <article>
       <div className="flex items-start gap-3">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-2 text-cyan-100">
-          <Icon size={18} />
-        </div>
+        <Icon size={17} className="mt-0.5 shrink-0 text-cyan-100" />
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h4 className="font-bold text-slate-100">{item.label}</h4>
-            <span
-              className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${statusClass(
-                item.accent
-              )}`}
-            >
+            <span className={`text-[11px] font-semibold ${statusClass(item.accent)}`}>
               {item.status}
             </span>
           </div>
@@ -204,8 +198,7 @@ export default function LicenseActionGuide({ analysis }) {
   const actionItems = buildActionItems(license);
 
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080817]/75 shadow-[0_24px_90px_rgba(0,0,0,0.38)] backdrop-blur-xl">
-      <div className="h-1 bg-gradient-to-r from-transparent via-emerald-300/40 to-transparent" />
+    <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
 
       <div className="p-6 lg:p-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -214,7 +207,7 @@ export default function LicenseActionGuide({ analysis }) {
               <CheckCircle2 size={14} />
               Review Guide
             </div>
-            <h3 className="mt-4 text-2xl font-black text-white">
+            <h3 className="mt-4 text-2xl font-semibold text-white">
               검토 가이드
             </h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
@@ -223,25 +216,25 @@ export default function LicenseActionGuide({ analysis }) {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
+          <div className="text-sm text-gray-400 xl:text-right">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
               SPDX
             </p>
-            <p className="mt-1 break-all text-xl font-black text-slate-100">
+            <p className="mt-1 break-all text-xl font-semibold text-slate-100">
               {license.spdxId}
             </p>
           </div>
         </div>
 
-        <div className={`mt-5 rounded-2xl border p-5 ${tone.panel}`}>
+        <div className="mt-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="flex items-start gap-3">
-              <div className={`rounded-2xl border p-3 ${tone.icon}`}>
+              <div className={`mt-0.5 ${tone.title}`}>
                 <DecisionIcon size={21} />
               </div>
 
               <div>
-                <h4 className={`text-lg font-black ${tone.title}`}>
+                <h4 className={`text-lg font-semibold ${tone.title}`}>
                   {decision.title}
                 </h4>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-300">
@@ -251,14 +244,14 @@ export default function LicenseActionGuide({ analysis }) {
             </div>
 
             <span
-              className={`w-fit rounded-full border px-3 py-1 text-xs font-black ${tone.badge}`}
+              className={`w-fit rounded-full border px-3 py-1 text-xs font-medium ${tone.badge}`}
             >
               {decision.badge}
             </span>
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+        <div className="mt-5 grid gap-x-8 gap-y-5 lg:grid-cols-3">
           {actionItems.map((item) => (
             <ActionItem key={item.label} item={item} />
           ))}

@@ -16,16 +16,16 @@ export default function ReanalysisConfirmModal({
       <button
         type="button"
         aria-label="재분석 확인 모달 닫기"
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/70"
         onClick={loading ? undefined : onClose}
       />
 
-      <section className="relative w-full max-w-md rounded-3xl border border-white/10 bg-slate-950 p-7 shadow-2xl shadow-purple-950/30">
+      <section className="relative w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-7">
         <button
           type="button"
           onClick={onClose}
           disabled={loading}
-          className="absolute right-5 top-5 rounded-full p-2 text-gray-400 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="absolute right-5 top-5 rounded-lg p-2 text-gray-400 transition hover:bg-[var(--surface-hover)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="닫기"
         >
           <X size={20} />
@@ -45,9 +45,9 @@ export default function ReanalysisConfirmModal({
           차감됩니다.
         </p>
 
-        <div className="mt-5 rounded-2xl bg-white/[0.04] p-4">
+        <div className="mt-5 rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)] p-4">
           <p className="text-sm font-semibold text-gray-400">차감 토큰</p>
-          <p className="mt-1 text-2xl font-black text-white">
+          <p className="mt-1 text-2xl font-semibold text-white">
             {TOKEN_COST.REANALYSIS.toLocaleString()} T
           </p>
         </div>
@@ -57,7 +57,7 @@ export default function ReanalysisConfirmModal({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="rounded-full border border-white/10 px-5 py-2.5 text-sm font-bold text-gray-300 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-[var(--border)] px-5 py-2.5 text-sm font-semibold text-gray-300 transition hover:bg-[var(--surface-hover)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             취소
           </button>
@@ -66,7 +66,7 @@ export default function ReanalysisConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className="rounded-full bg-white px-5 py-2.5 text-sm font-black text-slate-950 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-cyan-300 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "재분석 요청 중..." : "재분석 요청"}
           </button>

@@ -5,7 +5,6 @@ import {
   Clipboard,
   FileJson,
   FileText,
-  Share2,
 } from "lucide-react";
 import {
   buildLicenseReportFilename,
@@ -38,20 +37,15 @@ function ActionButton({ icon: Icon, label, description, onClick, disabled }) {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="group rounded-2xl border border-white/10 bg-black/20 p-4 text-left transition hover:border-cyan-300/35 hover:bg-cyan-300/[0.07] disabled:cursor-not-allowed disabled:opacity-45"
+      className="inline-flex min-w-0 items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-left text-sm text-gray-300 transition hover:bg-[var(--surface-hover)] hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
     >
-      <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-100 transition group-hover:border-cyan-300/45">
-          <Icon size={18} />
+      <Icon size={16} className="shrink-0 text-cyan-100" />
+      <span className="min-w-0">
+        <span className="block font-semibold">{label}</span>
+        <span className="block truncate text-xs text-gray-500">
+          {description}
         </span>
-
-        <span className="min-w-0">
-          <span className="block font-black text-slate-100">{label}</span>
-          <span className="mt-1 block text-sm leading-5 text-gray-500">
-            {description}
-          </span>
-        </span>
-      </div>
+      </span>
     </button>
   );
 }
@@ -128,18 +122,12 @@ export default function LicenseReportActions({ analysis, runId, repo }) {
   };
 
   return (
-    <section className="mt-8 overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080817]/75 shadow-[0_20px_70px_rgba(0,0,0,0.34)] backdrop-blur-xl">
-      <div className="h-1 bg-gradient-to-r from-transparent via-sky-300/45 to-transparent" />
+    <section className="mt-8 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
 
       <div className="p-6 lg:p-7">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/25 bg-sky-300/10 px-3 py-1 text-xs font-bold text-sky-100">
-              <Share2 size={14} />
-              Report Actions
-            </div>
-
-            <h3 className="mt-4 text-2xl font-black text-white">
+            <h3 className="text-xl font-semibold text-white">
               리포트 액션
             </h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
@@ -165,7 +153,7 @@ export default function LicenseReportActions({ analysis, runId, repo }) {
           )}
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+        <div className="mt-5 flex flex-wrap gap-2">
           <ActionButton
             icon={Clipboard}
             label="Markdown 복사"

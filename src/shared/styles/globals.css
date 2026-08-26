@@ -4,6 +4,17 @@
 /* 기본 브라우저 글자 크기를 유지해 결과 화면의 가독성을 확보합니다. */
 :root {
   --ossdoc-ui-scale: 1;
+  --background: #07080D;
+  --surface: #0D0F16;
+  --surface-secondary: #12151E;
+  --surface-hover: #171A24;
+  --border: #242833;
+  --border-strong: #323746;
+  --text-primary: #F2F4F8;
+  --text-secondary: #9299A8;
+  --text-muted: #6F7685;
+  --brand-primary: #4FD1E5;
+  --brand-secondary: #8B7CF6;
 }
 
 html {
@@ -94,14 +105,14 @@ body {
   height: 100%;
   width: 100%;
   overflow-x: hidden;
-  background-color: #030306;
-  color: #e5e7eb;
+  background-color: var(--background);
+  color: var(--text-primary);
   font-family: 'A2z', sans-serif;
 }
 
 #root {
-  background-color: #030306;
-  color: #e5e7eb;
+  background-color: var(--background);
+  color: var(--text-primary);
 }
 
 /* LandingPage 전용 커스텀 애니메이션 */

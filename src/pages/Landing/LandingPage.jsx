@@ -11,6 +11,7 @@ import { TOKEN_COST } from "../../features/token/constants/tokenPolicy";
 import { formatUserErrorMessage } from "../../shared/lib/userErrorMessage";
 import AnalysisRequestConfirmModal from "../../features/token/components/AnalysisRequestConfirmModal";
 import { getMyTokenBalance } from "../../features/token/api/tokenApi";
+import Badge from "../../shared/components/ui/Badge";
 
 const clamp01 = (value) => Math.min(1, Math.max(0, value));
 
@@ -124,7 +125,7 @@ function useScrollLinkedStyle(options = {}) {
   return [ref, style];
 }
 
-function FeaturedPlanetCard({
+function ExampleRepositoryCard({
   item,
   analyzeLoading,
   analyzeDisabled,
@@ -150,28 +151,24 @@ function FeaturedPlanetCard({
       style={lockedStyle}
       onClick={() => onAnalyze(item.name)}
       disabled={analyzeLoading || analyzeDisabled}
-      className="landing-scroll-linked group p-6 bg-gradient-to-br from-white/[0.03] to-transparent backdrop-blur-md border border-white/10 rounded-3xl hover:border-purple-500/40 hover:shadow-[0_0_30px_rgba(168,85,247,0.2)] transition-[border-color,box-shadow] duration-300 text-left relative overflow-hidden disabled:cursor-not-allowed disabled:hover:border-white/10 disabled:hover:shadow-none"
+      className="landing-scroll-linked group relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 text-left transition-colors hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-50"
     >
       {analyzeDisabled && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#030306]/35 backdrop-blur-[1px]">
-          <span className="rounded-full border border-white/10 bg-black/40 px-3 py-1 text-xs font-semibold text-white/55">
-            Login Required
+          <span className="rounded-full border border-[var(--border)] bg-[var(--surface-secondary)] px-3 py-1 text-xs font-semibold text-white/55">
+            로그인 필요
           </span>
         </div>
       )}
 
-      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
       <div className="flex justify-between items-start gap-3 mb-3 relative z-10 min-w-0">
-        <span className="min-w-0 truncate text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-300 group-hover:from-purple-300 group-hover:to-cyan-300 transition-all">
+        <span className="min-w-0 truncate text-lg font-semibold text-[var(--text-primary)]">
           {item.name}
         </span>
 
-        <span
-          className={`text-xs font-bold px-3 py-1.5 rounded-full bg-gradient-to-r ${item.color} text-[#050510] shadow-sm`}
-        >
+        <Badge>
           {item.lang}
-        </span>
+        </Badge>
       </div>
 
       <div className="flex items-center gap-1.5 text-sm text-gray-500 font-medium relative z-10">
@@ -306,7 +303,7 @@ export default function LandingPage() {
   };
 
   /*
-   * 직접 URL 입력 Analyze 버튼과 Featured Planets 클릭이 모두 이 함수를 탑니다.
+   * 직접 URL 입력 분석 버튼과 예시 레포지토리 클릭이 모두 이 함수를 탑니다.
    * 여기서는 실제 분석 요청을 보내지 않고, 현재 토큰을 조회한 뒤 확인 모달만 엽니다.
    */
   const handleAnalyze = async (raw) => {
@@ -422,7 +419,7 @@ export default function LandingPage() {
     );
   };
 
-  const featuredPlanets = [
+  const exampleRepositories = [
     {
       name: "apache/commons-cli",
       lang: "Java Library",
@@ -473,26 +470,19 @@ export default function LandingPage() {
         {/* 첫 화면: 검색바를 더 중앙에 배치 */}
         <section className="landing-hero flex min-h-[calc(100vh+120px)] w-full flex-col items-center justify-center pt-24 pb-36 text-center">
           <div className="mb-12">
-            <h2 className="text-2xl md:text-4xl font-extrabold mb-8 tracking-tight leading-tight">
-              Explore the <br className="md:hidden" />
-              <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-500 bg-clip-text text-transparent drop-shadow-[0_0_25px_rgba(59,130,246,0.6)]">
-                Galaxy
-              </span>{" "}
-              of OSS (Open Source Software)
+            <h2 className="mb-8 text-3xl font-semibold leading-tight tracking-tight text-[var(--text-primary)] md:text-5xl">
+              Open Source Intelligence Platform
             </h2>
 
             <p className="text-sm md:text-base text-gray-400 font-light max-w-3xl mx-auto leading-relaxed">
-              GitHub 레포지토리를 분석하여{" "}
-              <span className="text-purple-300 font-semibold drop-shadow-[0_0_10px_rgba(168,85,247,0.4)]">
-                시각적인 우주
-              </span>
-              로 펼쳐드립니다.
+              처음 접하는 저장소의 구조, 공개 API, 호출 관계, 모듈 관계,
+              개발 규칙을 정적 분석하고
+              <br />
+              근거가 연결된 온보딩 문서를 자동 생성합니다.
             </p>
           </div>
 
           <div className="w-full max-w-4xl relative">
-            <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 rounded-full blur-xl opacity-30 animate-tilt" />
-
             <SearchBar
               repoUrl={repoUrl}
               onChange={setRepoUrl}
@@ -510,15 +500,15 @@ export default function LandingPage() {
           </div>
 
           <div className="landing-scroll-hint mt-16 flex flex-col items-center gap-2 text-xs font-medium uppercase tracking-[0.3em] text-cyan-100/50">
-            <span>Scroll</span>
-            <span className="h-8 w-px rounded-full bg-gradient-to-b from-cyan-300/70 via-purple-300/40 to-transparent" />
+            <span>아래로 이동</span>
+            <span className="h-8 w-px rounded-full bg-cyan-300/45" />
           </div>
         </section>
 
         {/* 스크롤 위치에 따라 계속 움직이는 영역 */}
         <section className="w-full pb-[42vh] md:pb-[36vh]">
           <div className="w-full grid md:grid-cols-2 gap-16 items-start">
-            {/* Recent Explorations */}
+            {/* 최근 분석 */}
             <div
               ref={recentRef}
               style={recentStyle}
@@ -532,25 +522,25 @@ export default function LandingPage() {
               />
             </div>
 
-            {/* Featured Planets */}
+            {/* 예시 레포지토리 */}
             <section>
               <div
                 ref={featuredHeaderRef}
                 style={featuredHeaderStyle}
                 className="landing-scroll-linked flex items-center gap-3 mb-8 min-w-0"
               >
-                <div className="p-2 bg-white/5 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] p-2">
                   <Star size={24} className="text-yellow-300" />
                 </div>
 
-                <h3 className="text-2xl font-bold tracking-wide">
-                  Featured Planets
+                <h3 className="text-2xl font-semibold tracking-wide">
+                  예시 레포지토리
                 </h3>
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                {featuredPlanets.map((item) => (
-                  <FeaturedPlanetCard
+                {exampleRepositories.map((item) => (
+                  <ExampleRepositoryCard
                     key={item.name}
                     item={item}
                     analyzeLoading={analyzeLoading}

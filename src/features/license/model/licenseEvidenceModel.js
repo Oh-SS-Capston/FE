@@ -16,6 +16,73 @@ export function getLicenseEvidenceSource(evidence) {
   );
 }
 
+export function formatLicenseEvidenceSource(value) {
+  const normalized = String(value ?? "").trim().toUpperCase();
+
+  switch (normalized) {
+    case "LICENSE":
+    case "LICENSE_FILE":
+      return "라이선스 파일";
+    case "README":
+    case "README_FILE":
+      return "README";
+    case "PACKAGE_MANIFEST":
+      return "패키지 매니페스트";
+    case "BUILD_FILE":
+      return "빌드 설정 파일";
+    case "POM":
+    case "POM_XML":
+      return "Maven 설정";
+    case "GRADLE":
+    case "BUILD_GRADLE":
+      return "Gradle 설정";
+    case "NPM_PACKAGE":
+    case "PACKAGE_JSON":
+      return "npm 패키지 설정";
+    case "UNKNOWN_SOURCE":
+    case "":
+      return "출처 미확인";
+    default:
+      return formatTechnicalTerm(value);
+  }
+}
+
+export function formatLicenseEvidenceType(value) {
+  const normalized = String(value ?? "").trim().toUpperCase();
+
+  switch (normalized) {
+    case "LICENSE_EVIDENCE":
+    case "LICENSE_TEXT":
+      return "라이선스 근거";
+    case "SPDX_MATCH":
+      return "SPDX 매칭";
+    case "COPYRIGHT_NOTICE":
+      return "저작권 고지";
+    case "README_MENTION":
+      return "README 언급";
+    case "DEPENDENCY_DECLARATION":
+      return "의존성 선언";
+    case "UNKNOWN_TYPE":
+    case "":
+      return "유형 미확인";
+    default:
+      return formatTechnicalTerm(value);
+  }
+}
+
+function formatTechnicalTerm(value) {
+  const text = String(value ?? "").trim();
+
+  if (!text) {
+    return "-";
+  }
+
+  return text
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .toLowerCase();
+}
+
 export function buildLicenseEvidenceViewModel(evidence, index = 0) {
   // 백엔드 근거 JSON의 snake_case/camelCase 차이를 화면에서 쓰기 쉬운 단일 구조로 정리합니다.
   const startLine = pickFirst(evidence, ["startLine", "start_line"], null);
@@ -36,12 +103,12 @@ export function buildLicenseEvidenceViewModel(evidence, index = 0) {
     path: pickFirst(evidence, ["path", "filePath", "file_path"], "unknown path"),
     startLine,
     endLine,
-    source: getLicenseEvidenceSource(evidence),
-    type: pickFirst(
+    source: formatLicenseEvidenceSource(getLicenseEvidenceSource(evidence)),
+    type: formatLicenseEvidenceType(pickFirst(
       evidence,
       ["evidenceType", "evidence_type", "type"],
       "LICENSE_EVIDENCE"
-    ),
+    )),
     snippet: pickFirst(
       evidence,
       ["snippet", "contextSnippet", "context_snippet"],

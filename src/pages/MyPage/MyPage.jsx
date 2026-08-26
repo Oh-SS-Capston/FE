@@ -265,20 +265,20 @@ export default function MyPage() {
         <button
           type="button"
           onClick={() => navigate("/")}
-          className="mb-6 flex w-fit items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+          className="mb-6 flex w-fit items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-[var(--surface-hover)] hover:text-white"
         >
           <ArrowLeft size={16} />
           Home
         </button>
 
         <p className="text-sm font-semibold text-purple-300">My Page</p>
-        <h1 className="mt-2 text-3xl font-black text-white">마이페이지</h1>
+        <h1 className="mt-2 text-3xl font-semibold text-white">마이페이지</h1>
         <p className="mt-3 text-sm leading-6 text-gray-400">
           계정 정보와 토큰 잔액을 관리합니다.
         </p>
       </header>
 
-      <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.035]">
+      <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
         <SectionTitle title="계정" description="Google 계정 기반 로그인 정보입니다." />
 
         <div className="divide-y divide-white/10">
@@ -318,7 +318,7 @@ export default function MyPage() {
                   type="button"
                   onClick={handleSaveNickname}
                   disabled={!canSaveNickname}
-                  className="rounded-xl bg-white px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg bg-cyan-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {savingNickname ? "저장 중..." : "저장"}
                 </button>
@@ -350,7 +350,7 @@ export default function MyPage() {
               type="button"
               onClick={refreshTokens}
               disabled={loadingTokens}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs font-bold text-gray-300 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-gray-300 transition hover:bg-[var(--surface-hover)] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               <RefreshCw size={14} />
               새로고침
@@ -366,7 +366,7 @@ export default function MyPage() {
                   <Coins size={17} />
                   보유 토큰
                 </div>
-                <p className="mt-2 text-4xl font-black text-white">
+                <p className="mt-2 text-4xl font-semibold text-white">
                   {loadingTokens ? "조회 중..." : formattedBalance}
                 </p>
                 <p className="mt-2 text-sm text-gray-500">
@@ -430,7 +430,7 @@ export default function MyPage() {
                 type="button"
                 onClick={handleChargeTokens}
                 disabled={paying || chargeAmount < MIN_CHARGE_AMOUNT}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <WalletCards size={18} />
                 {paying
@@ -483,7 +483,7 @@ export default function MyPage() {
           <button
             type="button"
             onClick={logout}
-            className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2.5 text-sm font-semibold text-gray-300 transition hover:bg-white/10 hover:text-white"
+            className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm font-semibold text-gray-300 transition hover:bg-[var(--surface-hover)] hover:text-white"
           >
             <LogOut size={17} />
             로그아웃
@@ -493,7 +493,7 @@ export default function MyPage() {
             type="button"
             onClick={() => setOpenDeleteModal(true)}
             disabled={deleting}
-            className="inline-flex items-center gap-2 rounded-full border border-red-400/30 px-4 py-2.5 text-sm font-semibold text-red-200 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg border border-red-400/30 px-4 py-2.5 text-sm font-semibold text-red-200 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Trash2 size={17} />
             회원 탈퇴
@@ -561,7 +561,7 @@ function TokenLedgerRow({ ledger }) {
 
       <div className="shrink-0 text-right">
         <p
-          className={`text-sm font-black ${positive ? "text-emerald-300" : "text-red-300"
+          className={`text-sm font-semibold ${positive ? "text-emerald-300" : "text-red-300"
             }`}
         >
           {positive ? "+" : ""}
@@ -581,17 +581,17 @@ function DeleteAccountModal({ deleting, onClose, onConfirm }) {
       <button
         type="button"
         aria-label="회원 탈퇴 모달 닫기"
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/70"
         onClick={onClose}
         disabled={deleting}
       />
 
-      <section className="relative w-full max-w-md overflow-hidden rounded-3xl border border-red-400/20 bg-slate-950 p-7 shadow-2xl shadow-red-950/30">
+      <section className="relative w-full max-w-md overflow-hidden rounded-2xl border border-red-400/20 bg-[var(--surface)] p-7">
         <button
           type="button"
           onClick={onClose}
           disabled={deleting}
-          className="absolute right-5 top-5 rounded-full p-2 text-gray-400 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="absolute right-5 top-5 rounded-lg p-2 text-gray-400 transition hover:bg-[var(--surface-hover)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="닫기"
         >
           <X size={20} />
@@ -628,7 +628,7 @@ function DeleteAccountModal({ deleting, onClose, onConfirm }) {
             type="button"
             onClick={onClose}
             disabled={deleting}
-            className="rounded-full border border-white/10 px-5 py-2.5 text-sm font-bold text-gray-300 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-[var(--border)] px-5 py-2.5 text-sm font-semibold text-gray-300 transition hover:bg-[var(--surface-hover)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             취소
           </button>
@@ -637,7 +637,7 @@ function DeleteAccountModal({ deleting, onClose, onConfirm }) {
             type="button"
             onClick={onConfirm}
             disabled={deleting}
-            className="rounded-full bg-red-500 px-5 py-2.5 text-sm font-black text-white transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-lg bg-red-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {deleting ? "탈퇴 처리 중..." : "회원 탈퇴"}
           </button>

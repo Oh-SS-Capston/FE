@@ -7,7 +7,7 @@ export default function LicenseReviewNotice({ warnings, reviewItems }) {
   }
 
   return (
-    <div className="mt-5 rounded-2xl border border-amber-300/25 bg-amber-300/[0.07] p-4">
+    <div className="mt-5">
       <div className="flex items-start gap-3">
         <AlertTriangle size={19} className="mt-0.5 shrink-0 text-amber-200" />
 

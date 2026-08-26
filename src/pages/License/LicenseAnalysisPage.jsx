@@ -89,11 +89,11 @@ export default function LicenseAnalysisPage() {
   if (!runId) {
     return (
       <main className="relative z-10 flex min-h-[calc(100vh-80px)] items-center justify-center px-6">
-        <section className="max-w-lg rounded-[1.75rem] border border-white/10 bg-[#080817]/80 p-8 text-center shadow-[0_24px_90px_rgba(0,0,0,0.42)] backdrop-blur-xl">
+        <section className="max-w-lg rounded-xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-300/10 text-amber-100">
             <ShieldCheck size={22} />
           </div>
-          <h1 className="mt-5 text-2xl font-black text-white">
+          <h1 className="mt-5 text-2xl font-semibold text-white">
             라이선스 분석 실행 ID가 없습니다.
           </h1>
           <p className="mt-3 text-sm leading-6 text-gray-400">
@@ -102,7 +102,7 @@ export default function LicenseAnalysisPage() {
           <button
             type="button"
             onClick={() => navigate("/")}
-            className="mt-6 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-5 py-2 text-sm font-bold text-cyan-100 transition hover:border-cyan-300/45 hover:bg-cyan-300/20"
+            className="mt-6 rounded-lg border border-cyan-300/25 bg-cyan-300/10 px-5 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300/45 hover:bg-cyan-300/20"
           >
             홈으로 돌아가기
           </button>
@@ -119,21 +119,17 @@ export default function LicenseAnalysisPage() {
             <button
               type="button"
               onClick={goBackToAnalyze}
-              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-[var(--surface-hover)] hover:text-white"
             >
               <ArrowLeft size={18} />
               분석 결과로 돌아가기
             </button>
 
             <div className="mt-6 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-bold text-cyan-100">
-                <ShieldCheck size={14} />
-                License Center
-              </span>
               <StatusPill progress={progress} loading={progressLoading} />
             </div>
 
-            <h1 className="mt-4 text-3xl font-black text-white md:text-5xl">
+            <h1 className="mt-4 text-3xl font-semibold text-white md:text-5xl">
               대표 라이선스 상세 분석
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-400 md:text-base">
@@ -142,8 +138,8 @@ export default function LicenseAnalysisPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm text-gray-400">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
+          <div className="text-sm text-gray-400 lg:text-right">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
               Repository
             </p>
             <p className="mt-1 break-all font-semibold text-slate-100">
@@ -153,7 +149,7 @@ export default function LicenseAnalysisPage() {
         </div>
 
         {progressError && !licenseReady && (
-          <div className="mt-6 rounded-2xl border border-amber-300/25 bg-amber-300/[0.07] p-4 text-sm leading-6 text-amber-100">
+          <div className="mt-6 text-sm leading-6 text-amber-100">
             {progressError}
           </div>
         )}

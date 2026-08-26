@@ -7,7 +7,6 @@ import ClassDiagramSection from "./components/ClassDiagramSection";
 import DirectoryStructureSection from "./components/DirectoryStructureSection";
 import AnalyzeProgressPanel from "./components/AnalyzeProgressPanel";
 import LlmResultSection from "./components/LlmResultSection";
-import PackageClassDocsSection from "./components/PackageClassDocsSection";
 import LicenseAnalysisSection from "../../features/license/components/LicenseAnalysisSection";
 import { useLicenseAnalysisArtifact } from "../../features/license/hooks/useLicenseAnalysisArtifact";
 import { buildLicenseAnalysisPath } from "../../features/license/lib/licenseNavigation";
@@ -19,6 +18,8 @@ import {
   formatUserErrorMessage,
   formatUserMessage,
 } from "../../shared/lib/userErrorMessage";
+import Panel from "../../shared/components/ui/Panel";
+import { TabButton, TabsList } from "../../shared/components/ui/Tabs";
 
 import {
   createRepoRun,
@@ -1078,7 +1079,7 @@ export default function AnalyPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <button
             onClick={() => navigate("/")}
-            className="flex w-fit items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+            className="flex w-fit items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
           >
             <ArrowLeft size={18} />
             Home
@@ -1092,7 +1093,7 @@ export default function AnalyPage() {
                     type="button"
                     onClick={requestBrowserNotificationPermission}
                     translate="no"
-                    className="notranslate rounded-full border border-yellow-300/30 bg-yellow-300/10 px-4 py-2 text-sm font-bold text-yellow-100 transition hover:border-yellow-300/50 hover:bg-yellow-300/20"
+                    className="notranslate rounded-lg border border-yellow-300/30 bg-yellow-300/10 px-4 py-2 text-sm font-semibold text-yellow-100 transition hover:border-yellow-300/50 hover:bg-yellow-300/20"
                   >
                     분석 완료 알림 허용
                   </button>
@@ -1101,7 +1102,7 @@ export default function AnalyPage() {
               <button
                 type="button"
                 onClick={moveToGithubStats}
-                className="flex w-fit items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-sm font-bold text-cyan-100 transition hover:border-cyan-300/40 hover:bg-cyan-300/20"
+                className="flex w-fit items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-hover)]"
               >
                 <BarChart3 size={18} />
                 GitHub 통계 보기
@@ -1141,7 +1142,7 @@ export default function AnalyPage() {
               <button
                 type="button"
                 onClick={moveToLicenseAnalysis}
-                className="inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 text-sm font-black text-cyan-100 transition hover:border-cyan-300/45 hover:bg-cyan-300/20"
+                className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/15"
               >
                 상세 보기
                 <ArrowUpRight size={16} />
@@ -1150,41 +1151,37 @@ export default function AnalyPage() {
           }
         />
 
-        <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a1a]/50 backdrop-blur-xl">
-          <div className="border-b border-white/10 p-3">
-            <div
+        <Panel padding="none" className="overflow-hidden">
+          <div className="border-b border-[var(--border)] p-3">
+            <TabsList
               role="tablist"
               aria-label="분석 결과 보기"
-              className="grid gap-2 md:grid-cols-3"
+              className="md:grid-cols-3"
             >
               {resultTabs.map((tab) => {
                 const Icon = tab.icon;
                 const active = activeResultTab === tab.key;
 
                 return (
-                  <button
+                  <TabButton
                     key={tab.key}
-                    type="button"
                     role="tab"
                     aria-selected={active}
+                    active={active}
                     onClick={() => setActiveResultTab(tab.key)}
-                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
-                      active
-                        ? "border-cyan-300/35 bg-cyan-300/10 text-cyan-50"
-                        : "border-transparent bg-white/[0.025] text-gray-400 hover:border-white/10 hover:bg-white/[0.05] hover:text-gray-100"
-                    }`}
+                    className="flex items-center gap-3"
                   >
                     <Icon size={19} className="shrink-0" />
                     <span className="min-w-0">
                       <span className="block font-semibold">{tab.label}</span>
-                      <span className="mt-0.5 block truncate text-xs opacity-70">
+                      <span className="mt-0.5 block truncate text-xs text-[var(--text-muted)]">
                         {tab.description}
                       </span>
                     </span>
-                  </button>
+                  </TabButton>
                 );
               })}
-            </div>
+            </TabsList>
           </div>
 
           <div className="p-4 sm:p-6">
@@ -1229,7 +1226,7 @@ export default function AnalyPage() {
               />
             )}
           </div>
-        </section>
+        </Panel>
       </div>
       <ReanalysisConfirmModal
         open={reanalysisConfirmOpen}
@@ -1261,7 +1258,7 @@ export default function AnalyPage() {
           role="alert"
           aria-live="assertive"
           translate="no"
-          className="notranslate fixed bottom-6 right-6 z-[120] w-[min(420px,calc(100vw-2rem))] rounded-2xl border border-cyan-300/30 bg-slate-950/95 p-4 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur"
+          className="notranslate fixed bottom-6 right-6 z-[120] w-[min(420px,calc(100vw-2rem))] rounded-xl border border-cyan-300/30 bg-[var(--surface)] p-4"
         >
           <div className="flex items-start justify-between gap-3">
             <div>

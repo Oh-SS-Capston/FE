@@ -7,6 +7,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { FileTreeDocsPanel } from "./LlmResultSection";
+import Panel from "../../../shared/components/ui/Panel";
 
 function TreeNode({ node, depth, expanded, onToggle }) {
   const isDirectory = node.type === "dir";
@@ -73,7 +74,7 @@ function TreeNode({ node, depth, expanded, onToggle }) {
 
 function PanelHeader({ title, description, badge }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 px-4 py-4">
+    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-4">
       <div>
         <h3 className="font-bold text-gray-100">{title}</h3>
         <p className="mt-1 text-sm leading-5 text-gray-400">{description}</p>
@@ -95,8 +96,8 @@ export default function DirectoryStructureSection({
   docsError = null,
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl">
-      <div className="border-b border-white/10 px-5 py-5 sm:px-6">
+    <Panel padding="none" className="overflow-hidden">
+      <div className="border-b border-[var(--border)] px-5 py-5 sm:px-6">
         <h2 className="text-xl font-bold text-white">코드 탐색</h2>
         <p className="mt-1 text-sm leading-6 text-gray-400">
           분석에 사용된 동일 Commit의 디렉토리와 LLM 파일 설명을 한 화면에서 확인합니다.
@@ -104,7 +105,7 @@ export default function DirectoryStructureSection({
       </div>
 
       <div className="grid gap-4 p-4 sm:p-6 xl:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.15fr)]">
-        <div className="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+        <div className="min-w-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)]">
           <PanelHeader
             title="Commit 디렉토리"
             description="GitHub 최신 브랜치가 아닌 분석 Snapshot 기준 구조입니다."
@@ -121,7 +122,7 @@ export default function DirectoryStructureSection({
 
           <div className="max-h-[680px] overflow-auto p-3">
             {loading && (
-              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm text-gray-300">
+              <div className="flex items-center gap-3 px-1 py-3 text-sm text-gray-300">
                 <Loader2 size={16} className="animate-spin" />
                 {commitSha
                   ? "Commit 기준 디렉토리를 불러오는 중입니다."
@@ -136,7 +137,7 @@ export default function DirectoryStructureSection({
             )}
 
             {!loading && !error && (!tree || tree.length === 0) && (
-              <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm text-gray-400">
+              <div className="px-1 py-3 text-sm text-gray-400">
                 {commitSha
                   ? "표시할 디렉토리 구조가 없습니다."
                   : "Commit SHA가 확인되면 디렉토리를 조회합니다."}
@@ -159,7 +160,7 @@ export default function DirectoryStructureSection({
           </div>
         </div>
 
-        <div className="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+        <div className="min-w-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)]">
           <PanelHeader
             title="파일 분석 문서"
             description="파일·클래스·메서드 역할과 연결된 코드 근거를 확인합니다."
@@ -167,7 +168,7 @@ export default function DirectoryStructureSection({
 
           <div className="max-h-[680px] overflow-auto p-4">
             {docsLoading && (
-              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm text-gray-300">
+              <div className="flex items-center gap-3 px-1 py-3 text-sm text-gray-300">
                 <Loader2 size={16} className="animate-spin" />
                 파일 분석 문서를 불러오는 중입니다.
               </div>
@@ -185,6 +186,6 @@ export default function DirectoryStructureSection({
           </div>
         </div>
       </div>
-    </section>
+    </Panel>
   );
 }

@@ -69,7 +69,6 @@ docs/
   license-analysis-verification.md # 라이선스 분석 기능 검증 가이드
 public/
   favicon-ossdoc.svg                # 서비스 파비콘
-  vite.svg                          # Vite 기본 로고 이미지
 src/
   app/
     config/
@@ -80,20 +79,14 @@ src/
       AppProviders.jsx              # 인증과 라우터 전역 Provider 구성
     routes/
       index.jsx                     # 페이지 라우트와 인증 보호 라우트 정의
-  assets/
-    react.svg                       # React 로고 이미지
   features/
     auth/
       api/
         authApi.js                  # 로그인, 회원 정보, 로그아웃 API
       components/
         LoginModal.jsx              # Google 로그인 안내 모달
-        SignupModal.jsx             # Google 회원가입 안내 모달
       model/
         AuthContext.jsx             # 인증 상태와 사용자 정보 Context
-    classmap/
-      api/
-        classMapApi.js              # 클래스 맵 분석 API
     githubStats/
       api/
         githubStatsApi.js           # GitHub 통계 조회 API
@@ -150,9 +143,7 @@ src/
         ClassDiagramSection.jsx     # 클래스 관계 다이어그램 탐색 UI
         DirectoryStructureSection.jsx # 저장소 디렉터리 트리 UI
         LlmResultSection.jsx        # LLM 분석 산출물 탭과 상세 결과
-        PackageClassDocsSection.jsx # 패키지·클래스·메서드 문서 UI
         RepoInfoSection.jsx         # 저장소 기본 정보 영역
-        classMapWorkspace.jsx       # 서브시스템별 클래스 맵 작업 영역
       AnalyPage.jsx                 # 저장소 분석 실행과 결과 화면
     Auth/
       AuthRequiredPage.jsx          # 인증 필요 안내 화면

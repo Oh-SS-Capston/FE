@@ -3,10 +3,7 @@ import {
   BadgeCheck,
   FileSearch,
   FileText,
-  Gauge,
   Info,
-  Scale,
-  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import {
@@ -17,7 +14,6 @@ import {
 } from "../model/licenseAnalysisModel";
 import LicenseDetailList from "./LicenseDetailList";
 import LicenseEvidenceCard from "./LicenseEvidenceCard";
-import LicenseMetricCard from "./LicenseMetricCard";
 import LicenseReviewNotice from "./LicenseReviewNotice";
 
 function emptyStateToneClass(tone) {
@@ -59,7 +55,7 @@ function LicenseEmptyState({ state }) {
 
   return (
     <section
-      className={`overflow-hidden rounded-[1.75rem] border ${tone.border} ${tone.bg} backdrop-blur-xl`}
+      className={`overflow-hidden rounded-xl border ${tone.border} ${tone.bg}`}
     >
       <div className="p-6 lg:p-7">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -68,7 +64,7 @@ function LicenseEmptyState({ state }) {
               <Icon size={20} />
             </div>
             <div>
-              <h3 className="font-black text-white">{resolvedState.title}</h3>
+              <h3 className="font-semibold text-white">{resolvedState.title}</h3>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
                 {resolvedState.description}
               </p>
@@ -76,7 +72,7 @@ function LicenseEmptyState({ state }) {
           </div>
 
           <span
-            className={`w-fit rounded-full border px-3 py-1 text-xs font-black ${tone.badge}`}
+            className={`w-fit rounded-full border px-3 py-1 text-xs font-medium ${tone.badge}`}
           >
             {resolvedState.badge}
           </span>
@@ -88,7 +84,7 @@ function LicenseEmptyState({ state }) {
 
 function LicenseLoadingState() {
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080817]/70 p-6 backdrop-blur-xl">
+    <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
       <div className="animate-pulse space-y-5">
         <div className="h-5 w-48 rounded bg-white/10" />
         <div className="grid gap-4 lg:grid-cols-4">
@@ -103,7 +99,7 @@ function LicenseLoadingState() {
 
 function LicenseErrorState({ error }) {
   return (
-    <section className="rounded-[1.75rem] border border-red-400/20 bg-red-950/10 p-6 backdrop-blur-xl">
+    <section className="rounded-xl border border-red-400/20 bg-red-950/10 p-6">
       <div className="flex items-start gap-3 text-red-100">
         <AlertTriangle size={20} className="mt-0.5 shrink-0" />
         <div>
@@ -117,29 +113,49 @@ function LicenseErrorState({ error }) {
   );
 }
 
-function LicenseHeroCard({ license }) {
+function LicenseSummary({ license }) {
   return (
-    <div
-      className={`relative overflow-hidden rounded-3xl border ${license.tone.border} bg-gradient-to-br ${license.tone.bg} p-6 xl:col-span-2`}
-    >
-      <div className="absolute right-5 top-5 rounded-full border border-white/10 bg-white/[0.05] p-3 text-white/70">
-        <ShieldCheck size={22} />
+    <div className="mt-5">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+            Detected SPDX
+          </p>
+          <p className={`mt-1 break-all text-3xl font-semibold ${license.tone.text}`}>
+            {license.spdxId}
+          </p>
+          <p className="mt-1 text-sm font-semibold text-slate-100">
+            {license.displayName}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-400 xl:justify-end">
+          <span>
+            신뢰도{" "}
+            <span className="font-semibold text-cyan-100">
+              {formatPercent(license.confidence)}
+            </span>
+          </span>
+          <span className="hidden h-1 w-1 self-center rounded-full bg-gray-600 sm:inline-block" />
+          <span>
+            검토 등급{" "}
+            <span
+              className={`font-semibold ${
+                license.manualReviewRequired ? "text-amber-100" : "text-emerald-100"
+              }`}
+            >
+              {formatReviewLevel(license.reviewLevel)}
+            </span>
+          </span>
+          <span className="hidden h-1 w-1 self-center rounded-full bg-gray-600 sm:inline-block" />
+          <span>
+            라이선스 계열 <span className="font-semibold text-slate-200">{license.family}</span>
+          </span>
+        </div>
       </div>
 
-      <p className="text-xs font-bold uppercase tracking-[0.24em] text-gray-400">
-        Detected SPDX
-      </p>
-      <p
-        className={`mt-4 break-all text-5xl font-black leading-none ${license.tone.text} md:text-6xl`}
-      >
-        {license.spdxId}
-      </p>
-      <p className="mt-4 text-lg font-semibold text-slate-100">
-        {license.displayName}
-      </p>
-
       {license.summary && (
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-300">
+        <p className="mt-3 max-w-4xl text-sm leading-6 text-gray-400">
           {license.summary}
         </p>
       )}
@@ -171,9 +187,8 @@ export default function LicenseAnalysisSection({
 
   return (
     <section
-      className={`overflow-hidden rounded-[1.75rem] border ${license.tone.border} bg-[#080817]/75 shadow-[0_24px_90px_rgba(0,0,0,0.42)] backdrop-blur-xl`}
+      className={`overflow-hidden rounded-xl border ${license.tone.border} bg-[var(--surface)]`}
     >
-      <div className={`h-1 bg-gradient-to-r ${license.tone.bg}`} />
 
       <div className="p-6 lg:p-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
@@ -188,7 +203,7 @@ export default function LicenseAnalysisSection({
               </span>
             </div>
 
-            <h3 className="mt-4 text-2xl font-black text-white md:text-3xl">
+            <h3 className="mt-4 text-2xl font-semibold text-white md:text-3xl">
               대표 라이선스 분석
             </h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
@@ -199,7 +214,7 @@ export default function LicenseAnalysisSection({
 
           <div className="flex flex-wrap items-center gap-2">
             <div
-              className={`w-fit rounded-full border px-4 py-2 text-sm font-black ${license.tone.chip}`}
+              className={`w-fit rounded-full border px-4 py-2 text-sm font-medium ${license.tone.chip}`}
             >
               {license.manualReviewRequired ? "검토 필요" : "자동 판단 가능"}
             </div>
@@ -208,36 +223,14 @@ export default function LicenseAnalysisSection({
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 xl:grid-cols-4">
-          <LicenseHeroCard license={license} />
-
-          <LicenseMetricCard
-            icon={Gauge}
-            label="Confidence"
-            value={formatPercent(license.confidence)}
-            hint="근거 파일과 매칭 강도 기준"
-            tone="text-cyan-100"
-          />
-
-          <LicenseMetricCard
-            icon={Scale}
-            label="Review"
-            value={formatReviewLevel(license.reviewLevel)}
-            hint={`family: ${license.family}`}
-            tone={
-              license.manualReviewRequired
-                ? "text-amber-100"
-                : "text-emerald-100"
-            }
-          />
-        </div>
+        <LicenseSummary license={license} />
 
         <LicenseReviewNotice
           warnings={license.warnings}
           reviewItems={license.reviewItems}
         />
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+        <div className="mt-5 grid gap-x-8 gap-y-5 lg:grid-cols-3">
           <LicenseDetailList
             title="허용되는 대표 행위"
             items={license.permissions}
@@ -258,11 +251,9 @@ export default function LicenseAnalysisSection({
         <div className="mt-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-2 text-cyan-100">
-                <FileSearch size={18} />
-              </div>
+              <FileSearch size={18} className="text-cyan-100" />
               <div>
-                <h4 className="font-black text-white">판단 근거</h4>
+                <h4 className="font-semibold text-white">판단 근거</h4>
                 <p className="text-sm text-gray-500">
                   {license.evidences.length}개의 파일 근거가 연결되었습니다.
                 </p>
@@ -277,7 +268,7 @@ export default function LicenseAnalysisSection({
           </div>
 
           {license.evidences.length > 0 ? (
-            <div className="mt-4 grid gap-3">
+            <div className="mt-4">
               {license.evidences.map((evidence, index) => (
                 <LicenseEvidenceCard
                   key={pickFirst(
@@ -291,7 +282,7 @@ export default function LicenseAnalysisSection({
               ))}
             </div>
           ) : (
-            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-5 text-sm text-gray-500">
+            <div className="mt-4 py-5 text-sm text-gray-500">
               <FileText size={18} className="mb-2 text-gray-400" />
               연결된 근거 파일이 없습니다. 이 경우 UNKNOWN 또는 검토 필요
               결과일 수 있습니다.

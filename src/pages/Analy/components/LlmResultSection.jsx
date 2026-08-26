@@ -179,14 +179,75 @@ function formatLayer(layer) {
 
   switch (String(layer).toLowerCase()) {
     case "application":
-      return "Application";
+      return "애플리케이션 계층";
     case "domain":
-      return "Domain";
+      return "도메인 계층";
     case "infrastructure":
-      return "Infrastructure";
+      return "인프라 계층";
+    case "presentation":
+      return "표현 계층";
+    case "interface":
+      return "인터페이스 계층";
+    case "entrypoint":
+    case "entry_point":
+      return "진입점";
+    case "super_cluster":
+    case "supercluster":
+      return "상위 군집";
+    case "cluster":
+      return "군집";
     default:
-      return layer;
+      return formatTechnicalTerm(layer);
   }
+}
+
+function formatTechnicalTerm(value) {
+  const text = String(value ?? "").trim();
+
+  if (!text) {
+    return "-";
+  }
+
+  const normalized = text.toLowerCase().replaceAll("-", "_");
+  const termMap = {
+    entrypoint: "진입점",
+    entry_point: "진입점",
+    publicapi: "공개 API",
+    public_api: "공개 API",
+    api: "API",
+    api_flow: "API 흐름",
+    api_flow_trace: "API 흐름 추적",
+    flow_trace: "흐름 추적",
+    start_here: "시작 지점",
+    extension_point: "확장 지점",
+    super_cluster: "상위 군집",
+    supercluster: "상위 군집",
+    cluster: "군집",
+    controller: "컨트롤러",
+    service: "서비스",
+    repository: "저장소 계층",
+    entity: "엔티티",
+    dto: "전송 모델",
+    input_model: "입력 모델",
+    output_model: "출력 모델",
+    config: "설정",
+    utility: "유틸리티",
+    util: "유틸리티",
+    adapter: "어댑터",
+    factory: "생성 팩토리",
+    handler: "처리기",
+    primary: "주요",
+    secondary: "보조",
+  };
+
+  if (termMap[normalized]) {
+    return termMap[normalized];
+  }
+
+  return text
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .toLowerCase();
 }
 
 function normalizePath(path) {
@@ -1201,7 +1262,7 @@ export function FileTreeDocsPanel({ data }) {
 
                                       {roleGuide && (
                                         <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[11px] text-cyan-100">
-                                          {roleGuide.code} · {roleGuide.label}
+                                          {roleGuide.label}
                                         </span>
                                       )}
                                     </div>
@@ -1243,7 +1304,7 @@ export function FileTreeDocsPanel({ data }) {
                                                   )}
                                                   {method?.estimated && (
                                                     <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[10px] text-yellow-200">
-                                                      estimated
+                                                      추정
                                                     </span>
                                                   )}
                                                 </>
@@ -1990,7 +2051,7 @@ function RefinedRulesPanel({ data }) {
 
 function EmptyText({ text }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.025] px-4 py-6 text-sm text-gray-500">
+    <div className="py-6 text-sm text-gray-500">
       {text}
     </div>
   );
@@ -2182,15 +2243,7 @@ export default function LlmResultSection({
   };
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a1a]/60 backdrop-blur-xl">
-      <div
-        className="h-1 opacity-60"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, rgba(250,204,21,0.45), rgba(168,85,247,0.5), transparent)",
-        }}
-      />
-
+    <section className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
       <div className="p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -2211,7 +2264,7 @@ export default function LlmResultSection({
               type="button"
               onClick={onRefresh}
               disabled={!onRefresh || regenerating}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-gray-300 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-2 text-sm text-gray-300 transition hover:bg-[var(--surface-hover)] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
               LLM 결과 새로고침
@@ -2221,7 +2274,7 @@ export default function LlmResultSection({
               type="button"
               onClick={handleOpenRegenerateModal}
               disabled={!onRegenerate || regenerating}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/15 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <RefreshCw size={15} className={regenerating ? "animate-spin" : ""} />
               {regenerating ? "재생성 요청 중..." : "재생성"}
@@ -2230,10 +2283,10 @@ export default function LlmResultSection({
         </div>
 
         {showCachedNotice && (
-          <div className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-50">
+          <div className="mt-4 text-sm text-cyan-100">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p>기존 분석 결과 · 최근 분석 {cachedAnalyzedTimeLabel}</p>
-              <span className="rounded-full border border-cyan-300/30 bg-cyan-400/15 px-2 py-0.5 text-[11px] font-semibold text-cyan-100">
+              <span className="text-[11px] font-medium text-cyan-200">
                 기존 분석 결과
               </span>
             </div>
@@ -2241,7 +2294,7 @@ export default function LlmResultSection({
         )}
 
         {loading && (
-          <div className="mt-5 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-4 text-sm text-gray-300">
+          <div className="mt-5 flex items-center gap-3 text-sm text-gray-300">
             <RefreshCw size={16} className="animate-spin" />
             LLM 결과를 불러오는 중입니다.
           </div>
@@ -2255,14 +2308,14 @@ export default function LlmResultSection({
         )}
 
         {!loading && !hasResult && (
-          <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-6 text-sm text-gray-500">
+          <div className="mt-5 py-6 text-sm text-gray-500">
             아직 표시할 LLM 결과 산출물이 없습니다.
           </div>
         )}
 
         {hasResult && (
           <>
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-5 grid gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)] p-1 md:grid-cols-5">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const active = activeTab === tab.key;
@@ -2275,15 +2328,15 @@ export default function LlmResultSection({
                       setUserSelectedTab(true);
                       setActiveTab(tab.key);
                     }}
-                    className={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
                       active
-                        ? "border-yellow-300/30 bg-yellow-300/10 text-yellow-100"
-                        : "border-white/10 bg-white/[0.03] text-gray-400 hover:bg-white/[0.06] hover:text-gray-200"
+                        ? "border-cyan-300/35 bg-[var(--surface-hover)] text-gray-100"
+                        : "border-transparent text-gray-400 hover:bg-[var(--surface-hover)] hover:text-gray-200"
                     }`}
                   >
                     <Icon size={15} />
                     <span>{tab.label}</span>
-                    <span className="rounded-full border border-white/10 bg-black/20 px-1.5 py-0.5 text-[10px]">
+                    <span className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-[10px]">
                       {tab.count}
                     </span>
                   </button>
