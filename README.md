@@ -1,180 +1,304 @@
-# Oh! SS 
+# Oh! SS Frontend
 
-처음 접하는 오픈소스 저장소의 구조·Public API·호출 관계·모듈 관계·개발 규칙을 정적 분석하고, 근거가 연결된 온보딩 문서를 자동 생성하는 오픈소스 분석 플랫폼
+> Oh! SS의 Repository 분석 결과 탐색 및 시각화를 담당하는 React Frontend
 
----
+Oh! SS Frontend는 사용자가 GitHub Repository 분석을 요청하고, Backend Analysis Engine이 생성한 **Repository 구조, Class Map, Public API, Rule & Evidence, 라이선스 분석, GitHub 통계 및 AI 분석 결과**를 웹에서 탐색할 수 있도록 제공하는 애플리케이션입니다.
 
-## 주요 특징
+프로젝트 전체 소개와 Architecture는 아래 Organization README를 참고해주세요.
 
-- **저장소 분석 실행**
-  - GitHub 저장소 URL 또는 `owner/repo` 형식 입력
-  - 최근 분석 실행 내역 조회와 재실행
-  - 분석 단계별 진행 상태와 완료 알림 제공
-- **코드 구조 탐색**
-  - 저장소 기본 정보와 디렉토리 트리 조회
-  - 패키지, 클래스, 메서드 단위 문서 탐색
-  - 클래스 관계 다이어그램과 서브시스템별 클래스 맵 제공
-- **AI 분석 결과**
-  - 파일 구조, 시나리오, 서브시스템, Public API 분석
-  - 정제 규칙과 코드 근거를 포함한 상세 결과 제공
-- **라이선스 분석**
-  - 라이선스 식별 결과와 핵심 지표 제공
-  - 분석 근거 검색, 출처 필터, 검토 체크리스트 지원
-  - Markdown 및 JSON 형식의 분석 보고서 다운로드
-- **GitHub 통계**
-  - 스타 추이, 이슈 활동, 릴리스와 저장소 핵심 지표 시각화
-  - 저장소 활동 데이터를 기반으로 한 인사이트 제공
-- **회원 및 결제**
-  - Google 계정 기반 로그인과 회원 정보 관리
-  - 토큰 잔액, 사용 내역, 충전 및 결제 검증 지원
+https://github.com/Oh-SS-Capston
 
 ---
 
-## 기능 검증 문서
+## 주요 기능
 
-- [라이선스 분석 기능 검증 가이드](docs/license-analysis-verification.md)
+### 1. Repository 분석
+
+* GitHub Repository URL 또는 `owner/repository` 형식 입력
+* Repository 분석 요청
+* 분석 단계별 진행 상태 확인
+* 최근 분석 실행 내역 조회
+* 기존 Repository 재분석
 
 ---
 
-## 스택
+### 2. 코드 구조 탐색
 
-### Frontend
+분석된 Repository의 구조를 계층적으로 탐색할 수 있습니다.
 
-- React 19
-- React DOM 19
-- React Router DOM 7
-- Tailwind CSS 4
-- Lucide React
+* Repository 기본 정보
+* Directory Structure
+* Package
+* Class
+* Method
+* 코드 요소 간 관계
 
-### 데이터 시각화
+---
 
-- React Flow
-- Dagre
+### 3. Class Diagram / Class Map
 
-### 결제
+Backend에서 생성된 코드 관계 정보를 기반으로 Repository의 구조를 시각화합니다.
 
-- PortOne Browser SDK
+* Class Diagram
+* Class Map
+* 클래스 간 관계 탐색
+* Subsystem 단위 구조 확인
 
-### 개발 및 빌드
+---
 
-- Vite 7
-- Vite React Plugin
-- Tailwind CSS Vite Plugin
-- PostCSS
-- Autoprefixer
+### 4. Public API
 
-## 디렉토리 구조
-```txt
-docs/
-  license-analysis-verification.md # 라이선스 분석 기능 검증 가이드
-public/
-  favicon-ossdoc.svg                # 서비스 파비콘
-src/
-  app/
-    config/
-      env.js                        # API 기본 URL 환경 변수 설정
-    layout/
-      AppShell.jsx                  # 공통 헤더와 배경을 포함한 앱 레이아웃
-    providers/
-      AppProviders.jsx              # 인증과 라우터 전역 Provider 구성
-    routes/
-      index.jsx                     # 페이지 라우트와 인증 보호 라우트 정의
-  features/
-    auth/
-      api/
-        authApi.js                  # 로그인, 회원 정보, 로그아웃 API
-      components/
-        LoginModal.jsx              # Google 로그인 안내 모달
-      model/
-        AuthContext.jsx             # 인증 상태와 사용자 정보 Context
-    githubStats/
-      api/
-        githubStatsApi.js           # GitHub 통계 조회 API
-    license/
-      components/
-        LicenseActionGuide.jsx      # 라이선스별 대응 가이드
-        LicenseAnalysisSection.jsx  # 라이선스 분석 결과 메인 영역
-        LicenseDetailList.jsx       # 라이선스 상세 항목 목록
-        LicenseEvidenceCard.jsx     # 분석 근거 카드
-        LicenseEvidenceExplorer.jsx # 근거 검색과 출처 필터 UI
-        LicenseMetricCard.jsx       # 라이선스 지표 카드
-        LicenseReportActions.jsx    # 분석 보고서 다운로드 기능
-        LicenseReviewChecklist.jsx  # 검토 체크리스트
-        LicenseReviewNotice.jsx     # 경고와 검토 필요 항목 안내
-        LicenseSectionNavigator.jsx # 분석 결과 섹션 내비게이션
-      hooks/
-        useLicenseAnalysisArtifact.js # 라이선스 산출물 조회 Hook
-        useLicenseReviewChecklist.js  # 체크리스트 상태 관리 Hook
-      lib/
-        licenseNavigation.js        # 분석 페이지 경로 생성 유틸리티
-      model/
-        licenseAnalysisModel.js     # 분석 응답 정규화와 View Model 생성
-        licenseArtifactResolver.js  # 라이선스 산출물 ID와 실패 상태 판별
-        licenseDetailStateModel.js  # 라이선스 상세 화면 상태 계산
-        licenseEvidenceModel.js     # 분석 근거 데이터 가공
-        licenseReportModel.js       # Markdown·JSON 보고서 생성
-        licenseReviewChecklistModel.js # 검토 체크리스트 항목과 진행률 생성
-    membership/
-      api/
-        membershipApi.js            # 내 멤버십 정보 조회 API
-    payment/
-      api/
-        paymentApi.js               # 토큰 결제 준비와 검증 API
-      lib/
-        portonePayment.js           # PortOne 결제 요청 연동
-    run/
-      api/
-        runApi.js                   # 분석 실행, 진행 상태, 산출물 조회 API
-      hooks/
-        useRunProgressPolling.js    # 분석 진행 상태 Polling Hook
-    token/
-      api/
-        tokenApi.js                 # 토큰 잔액과 사용 내역 조회 API
-      components/
-        AnalysisRequestConfirmModal.jsx # 분석 요청 확인 모달
-        InsufficientTokenModal.jsx  # 토큰 부족 안내 모달
-        ReanalysisConfirmModal.jsx  # 재분석 요청 확인 모달
-      constants/
-        tokenPolicy.js              # 기능별 토큰 비용 정책
-  pages/
-    Analy/
-      components/
-        AnalyzeProgressPanel.jsx    # 분석 단계별 진행 상태 패널
-        ClassDiagramSection.jsx     # 클래스 관계 다이어그램 탐색 UI
-        DirectoryStructureSection.jsx # 저장소 디렉터리 트리 UI
-        LlmResultSection.jsx        # LLM 분석 산출물 탭과 상세 결과
-        RepoInfoSection.jsx         # 저장소 기본 정보 영역
-      AnalyPage.jsx                 # 저장소 분석 실행과 결과 화면
-    Auth/
-      AuthRequiredPage.jsx          # 인증 필요 안내 화면
-      LoginFailurePage.jsx          # 로그인 실패 화면
-      LoginSuccessPage.jsx          # 로그인 성공 처리 화면
-    GithubStats/
-      GithubStatsPage.jsx           # GitHub 저장소 통계 대시보드
-    Landing/
-      components/
-        SearchBar.jsx               # 저장소 주소 입력과 분석 요청 폼
-        SearchHistory.jsx           # 최근 분석 실행 목록
-      LandingPage.jsx               # 서비스 소개와 저장소 검색 화면
-    License/
-      LicenseAnalysisPage.jsx       # 라이선스 분석 상세 화면
-    MyPage/
-      MyPage.jsx                    # 회원 정보, 토큰 충전·내역 관리 화면
-  shared/
-    api/
-      client.js                     # 공통 HTTP 요청과 API 오류 처리
-    components/
-      common/
-        Header.jsx                  # 전역 내비게이션 헤더
-    styles/
-      globals.css                   # 전역 스타일과 화면별 공통 스타일
-  main.jsx                          # React 애플리케이션 진입점
-.gitignore                          # Git 추적 제외 규칙
-eslint.config.js                    # ESLint 검사 규칙
-index.html                          # Vite HTML 진입 문서
-package-lock.json                   # npm 의존성 잠금 파일
-package.json                        # 프로젝트 스크립트와 의존성 정의
-README.md                           # 프로젝트 소개와 사용 문서
-vercel.json                         # Vercel 배포 라우팅 설정
-vite.config.js                      # Vite와 React 빌드 설정
+Repository에서 분석된 Public API 정보를 조회합니다.
+
+* Public API 목록
+* 관련 Class / Method
+* API 관련 코드 정보
+* 분석 결과와 연결된 Evidence
+
+---
+
+### 5. Rule & Evidence
+
+Repository에서 분석된 개발 규칙과 관련 근거를 확인할 수 있습니다.
+
+* Rule 분석 결과
+* 관련 Source / Document Evidence
+* 분석 근거 탐색
+
+---
+
+### 6. AI 분석 결과
+
+AI 설명은 Backend Analysis Engine에서 생성됩니다.
+
+Backend는 JavaParser·ASM 기반 정적 분석과 Graph 분석으로 구조화된 결과와 Evidence를 생성한 뒤, 기본적으로 **Ollama 기반 Qwen3.5 9B**를 통해 개발자가 이해하기 쉬운 설명을 생성합니다.
+
+```text
+Repository
+    ↓
+Static Analysis
+    ↓
+Structured Result / Evidence
+    ↓
+Ollama + Qwen3.5 9B
+    ↓
+AI Analysis Result
+    ↓
+Frontend
 ```
+
+Frontend는 해당 결과를 API로 조회하여 사용자에게 제공합니다.
+
+---
+
+### 7. 라이선스 분석
+
+Repository의 오픈소스 라이선스 분석 결과를 제공합니다.
+
+* 탐지된 라이선스
+* License Metric
+* 라이선스 상세 정보
+* Evidence 조회
+* Evidence 검색 및 출처 필터
+* Review Checklist
+* Markdown / JSON Report
+
+> Oh! SS의 라이선스 분석 결과는 법률 자문을 대체하지 않으며, 개발자의 오픈소스 라이선스 검토를 지원하기 위한 정보입니다.
+
+---
+
+### 8. GitHub Repository 통계
+
+GitHub Repository의 활동 정보를 시각화합니다.
+
+* Star 변화
+* Issue 활동
+* Release 정보
+* Repository 주요 지표
+
+---
+
+### 9. 사용자 기능
+
+* Google OAuth 로그인
+* 사용자 정보 관리
+* Token 잔액 및 사용 내역 조회
+* 분석 실행 관련 Token 처리
+* Token 충전 및 결제
+
+---
+
+## Tech Stack
+
+| 영역                  | 기술                  |
+| ------------------- | ------------------- |
+| Framework           | React 19            |
+| Routing             | React Router DOM 7  |
+| Build               | Vite 7              |
+| Styling             | Tailwind CSS 4      |
+| Graph Visualization | React Flow          |
+| Graph Layout        | Dagre               |
+| Icons               | Lucide React        |
+| Payment             | PortOne Browser SDK |
+
+---
+
+## Project Structure
+
+```text
+src/
+├── app/
+│   ├── config/          # Application 및 환경 설정
+│   ├── layout/          # 공통 Layout
+│   ├── providers/       # Global Provider
+│   └── routes/          # Routing
+│
+├── features/
+│   ├── auth/            # 인증
+│   ├── githubStats/     # GitHub 통계
+│   ├── license/         # 라이선스 분석
+│   ├── membership/      # Membership
+│   ├── payment/         # 결제
+│   ├── run/             # Repository 분석 실행
+│   └── token/           # Token 관련 기능
+│
+├── pages/
+│   ├── Analy/           # Repository 분석 결과
+│   ├── Auth/            # 인증
+│   ├── GithubStats/     # GitHub 통계
+│   ├── Landing/         # Repository 입력
+│   ├── License/         # 라이선스 분석
+│   └── MyPage/          # 사용자 정보
+│
+└── shared/
+    ├── api/             # 공통 HTTP Client
+    ├── components/      # 공통 Component
+    └── styles/          # Global Style
+```
+
+---
+
+## Local Development
+
+### Requirements
+
+* Node.js
+* npm
+
+### Clone
+
+```bash
+git clone https://github.com/Oh-SS-Capston/FE.git
+cd FE
+```
+
+### Install
+
+```bash
+npm install
+```
+
+또는 lockfile 기준 재현 설치:
+
+```bash
+npm ci
+```
+
+### Environment
+
+기본 Backend API 주소는 다음과 같습니다.
+
+```text
+http://localhost:8080
+```
+
+필요한 경우 환경 변수로 Backend 주소를 변경할 수 있습니다.
+
+```env
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+실제 Secret 또는 운영 환경 값은 Repository에 Commit하지 않습니다.
+
+---
+
+## Run
+
+```bash
+npm run dev
+```
+
+Vite 개발 서버가 실행됩니다.
+
+---
+
+## Production Build
+
+```bash
+npm run build
+```
+
+최종 제출 전에는 clean 환경에서 다음 명령의 성공을 확인합니다.
+
+```bash
+npm ci
+npm run build
+```
+
+---
+
+## Backend Integration
+
+Oh! SS Frontend는 Repository 분석 자체를 수행하지 않고 Backend Analysis Engine에서 생성된 분석 결과를 제공합니다.
+
+```text
+GitHub Repository
+        ↓
+Backend Analysis Engine
+        ↓
+Static / Graph Analysis
+        ↓
+Structured Artifacts
+        ↓
+Ollama + Qwen3.5 9B
+        ↓
+REST API
+        ↓
+Oh! SS Frontend
+```
+
+Backend Repository:
+
+https://github.com/Oh-SS-Capston/BE
+
+---
+
+## Screenshots
+
+프로젝트 전체 Architecture 이미지는 Organization README에서 확인할 수 있습니다.
+
+Frontend README에는 별도 이미지를 많이 추가하지 않고, 실제 서비스와 대표 README를 통해 전체 흐름을 확인할 수 있도록 구성했습니다.
+
+---
+
+## Open Source
+
+Oh! SS Frontend는 여러 오픈소스 라이브러리를 활용하여 개발되었습니다.
+
+주요 외부 의존성의 라이선스 정보는 다음 파일에서 확인할 수 있습니다.
+
+```text
+THIRD_PARTY_LICENSES.md
+```
+
+---
+
+## License
+
+Oh! SS Frontend is licensed under the **Apache License 2.0**.
+
+See [`LICENSE`](./LICENSE) for details.
+
+Third-party dependencies remain subject to their respective licenses.
+
+See [`THIRD_PARTY_LICENSES.md`](./THIRD_PARTY_LICENSES.md).
