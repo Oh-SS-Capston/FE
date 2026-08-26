@@ -461,11 +461,11 @@ export default function LandingPage() {
       description: "Java와 Android에서 사용하는 HTTP 클라이언트 라이브러리",
     },
     {
-      name: "mockito/mockito",
+      name: "apache/commons-io",
       lang: "Java Library",
-      star: "Test",
+      star: "I/O",
       color: "from-pink-400 to-rose-300",
-      description: "Java 단위 테스트를 위한 mocking 프레임워크",
+      description: "파일과 스트림 처리를 돕는 Java I/O 유틸리티 라이브러리",
     },
   ];
 
